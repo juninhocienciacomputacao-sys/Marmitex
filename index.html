@@ -1,0 +1,1485 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Marmitex Gestão</title>
+<meta name="theme-color" content="#1f5c3d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Marmitex">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}</style>
+</head>
+<body>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: app shell. Sidebar on desktop, bottom tab bar on phone. Deep leaf green + pepper red, cool paper neutrals. */
+:root{
+  --bg:#f3f5f1; --surface:#ffffff; --surface2:#e8ece5; --line:#d3dacd;
+  --fg:#1b241d; --muted:#5d6a60;
+  --brand:#1f5c3d; --brand-fg:#ffffff; --brand-soft:#dbe9df;
+  --accent:#c2412d; --accent-soft:#f6dfd9;
+  --ok:#2c7a4b; --warn:#a86b00; --warn-soft:#fbecc9; --bad:#b3261e;
+  --display:"Familjen Grotesk", "Segoe UI", system-ui, sans-serif;
+  --body:"Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121713; --surface:#1a211c; --surface2:#232c25; --line:#334036;
+  --fg:#e6ece6; --muted:#9aa89d;
+  --brand:#5fb487; --brand-fg:#0d1a12; --brand-soft:#21382a;
+  --accent:#ef7a62; --accent-soft:#3d231d;
+  --ok:#6cc68f; --warn:#e3b04b; --warn-soft:#3a2f17; --bad:#f2867c; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121713; --surface:#1a211c; --surface2:#232c25; --line:#334036;
+  --fg:#e6ece6; --muted:#9aa89d;
+  --brand:#5fb487; --brand-fg:#0d1a12; --brand-soft:#21382a;
+  --accent:#ef7a62; --accent-soft:#3d231d;
+  --ok:#6cc68f; --warn:#e3b04b; --warn-soft:#3a2f17; --bad:#f2867c; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.45}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:1.7rem} h2{font-size:1.25rem} h3{font-size:1.02rem}
+button,input,select,textarea{font:inherit;color:inherit}
+.app{display:grid;grid-template-columns:220px 1fr;min-height:100%}
+nav.side{background:var(--surface);border-right:1px solid var(--line);padding:20px 12px;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh}
+.logo{font-family:var(--display);font-weight:700;font-size:1.3rem;padding:4px 10px 18px;color:var(--brand)}
+.logo small{display:block;font-family:var(--body);font-weight:400;font-size:.78rem;color:var(--muted)}
+.navbtn{display:flex;align-items:center;gap:10px;border:0;background:none;padding:9px 10px;border-radius:8px;cursor:pointer;text-align:left;color:var(--muted);font-weight:700}
+.navbtn svg{width:20px;height:20px;flex:none}
+.navbtn:hover{background:var(--surface2);color:var(--fg)}
+.navbtn[aria-current="page"]{background:var(--brand-soft);color:var(--brand)}
+main{min-width:0;padding-block:24px 96px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1040px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.head{display:flex;flex-wrap:wrap;gap:12px;align-items:end;justify-content:space-between}
+.head p{margin:4px 0 0;color:var(--muted)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{border:1px solid var(--line);background:var(--surface);padding:8px 14px;border-radius:8px;cursor:pointer;font-weight:700;white-space:nowrap}
+.btn:hover{border-color:var(--brand)}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:var(--brand-fg)}
+.btn.danger{color:var(--bad)}
+.btn.small{padding:5px 10px;font-size:.88rem}
+.btn:focus-visible,.navbtn:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,.day:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px}
+.stat b{display:block;font-family:var(--display);font-size:1.7rem;font-variant-numeric:tabular-nums}
+.stat span{color:var(--muted);font-size:.85rem}
+.pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:.78rem;font-weight:700;background:var(--surface2);color:var(--muted);white-space:nowrap}
+.pill.ok{background:var(--brand-soft);color:var(--ok)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.bad{background:var(--accent-soft);color:var(--bad)}
+.muted{color:var(--muted)}
+.tablebox{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:640px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);background:var(--surface2)}
+tr:last-child td{border-bottom:0}
+td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+tbody tr.click{cursor:pointer} tbody tr.click:hover{background:var(--surface2)}
+input[type=text],input[type=tel],input[type=number],input[type=date],input[type=search],select,textarea{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 10px}
+textarea{min-height:80px;resize:vertical}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:.85rem;font-weight:700;color:var(--muted);min-width:0}
+.form{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}
+.form .c2{grid-column:span 2}.form .c3{grid-column:span 3}.form .c4{grid-column:span 4}.form .c6{grid-column:span 6}
+.check{display:flex;align-items:center;gap:8px;font-weight:700}
+.overlay{position:fixed;inset:0;background:rgba(10,15,12,.55);display:flex;align-items:flex-start;justify-content:center;padding:max(24px,env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) 24px max(12px,env(safe-area-inset-left,0px));overflow:auto;z-index:50}
+.modal{background:var(--surface);border-radius:14px;width:100%;max-width:760px;padding:20px;display:flex;flex-direction:column;gap:16px;border:1px solid var(--line)}
+.modal .foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+.banner{border-radius:var(--r);padding:10px 14px;background:var(--warn-soft);color:var(--fg);font-size:.9rem}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.cal .dow{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:center;font-weight:700}
+.day{aspect-ratio:1/1;max-width:100%;border:1px solid var(--line);border-radius:8px;background:var(--surface);cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;padding:6px;font-variant-numeric:tabular-nums;font-weight:700;min-width:0}
+.day.open{background:var(--brand);border-color:var(--brand);color:var(--brand-fg)}
+.day.today{box-shadow:inset 0 0 0 2px var(--accent)}
+.day.blank{visibility:hidden}
+.day .dot{font-size:.62rem;font-weight:700;opacity:.9}
+.items{display:flex;flex-direction:column;gap:8px}
+.item{display:grid;grid-template-columns:1fr 170px auto;gap:8px;align-items:center}
+.msg{white-space:pre-wrap;background:var(--surface2);border-radius:8px;padding:12px;font-size:.92rem;max-height:340px;overflow:auto}
+.mods{display:grid;gap:8px}
+.mod{display:flex;gap:12px;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.mod p{margin:2px 0 0;font-size:.85rem;color:var(--muted)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:8px;font-weight:700;z-index:60}
+.empty{padding:28px;text-align:center;color:var(--muted)}
+.menu-list{margin:6px 0 0;padding-left:18px}
+.steps{display:flex;flex-direction:column;gap:0}
+.step{display:grid;grid-template-columns:36px 1fr;gap:12px;padding:14px 0;border-bottom:1px solid var(--line)}
+.step:last-child{border-bottom:0}
+.sn{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-weight:700;border:2px solid var(--line);color:var(--muted)}
+.step.done .sn{background:var(--brand);border-color:var(--brand);color:var(--brand-fg)}
+.sb{min-width:0;display:flex;flex-direction:column;gap:8px}
+.sb p{margin:0;color:var(--muted);font-size:.9rem}
+.qty{display:inline-flex;align-items:center;gap:6px}
+.qty b{min-width:22px;text-align:center;font-variant-numeric:tabular-nums}
+.results{display:flex;flex-direction:column;gap:6px}
+.res{display:flex;justify-content:space-between;align-items:center;gap:8px;border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+.res div{min-width:0}
+.bar{height:8px;border-radius:4px;background:var(--brand);display:inline-block;vertical-align:middle}
+.bar.av{background:var(--accent)}
+a.btn{text-decoration:none;color:inherit;display:inline-block}
+a.btn.primary{color:var(--brand-fg)}
+@media (max-width:760px){
+  .app{grid-template-columns:1fr}
+  nav.side{position:fixed;top:auto;bottom:0;left:0;right:0;height:auto;flex-direction:row;justify-content:space-around;padding:6px max(6px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(6px,env(safe-area-inset-left,0px));border-right:0;border-top:1px solid var(--line);z-index:40;gap:0;overflow-x:auto}
+  .logo{display:none}
+  .navbtn{flex-direction:column;gap:2px;font-size:.68rem;padding:6px 6px;min-width:58px;align-items:center}
+  .form{grid-template-columns:1fr 1fr}
+  .form .c2,.form .c3{grid-column:span 1}.form .c4,.form .c6{grid-column:span 2}
+  .item{grid-template-columns:1fr auto}
+  .item select{grid-column:1/2}
+  h1{font-size:1.4rem}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="app">
+  <nav class="side" id="nav" aria-label="Seções"></nav>
+  <main><div class="wrap" id="view"></div></main>
+</div>
+<div id="modalRoot"></div>
+
+<script>
+(function(){
+"use strict";
+// ---------- helpers ----------
+const $ = s => document.querySelector(s);
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pad = n => String(n).padStart(2,"0");
+const iso = d => d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const parseIso = s => { const [y,m,d] = s.split("-").map(Number); return new Date(y,m-1,d); };
+const today = () => iso(new Date());
+const addDays = (s,n) => { const d = parseIso(s); d.setDate(d.getDate()+n); return iso(d); };
+const DOW = ["dom","seg","ter","qua","qui","sex","sáb"];
+const DOW_LONG = ["domingo","segunda","terça","quarta","quinta","sexta","sábado"];
+const MESES = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+const fmtDate = s => { if(!s) return "—"; const d = parseIso(s); return pad(d.getDate())+"/"+pad(d.getMonth()+1)+"/"+d.getFullYear(); };
+const brl = n => (Number(n)||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+function normPhone(raw){
+  let d = String(raw||"").replace(/\D/g,"");
+  if(!d) return "";
+  if(d.startsWith("0")) d = d.replace(/^0+/,"");
+  if(d.length===10||d.length===11) d = "55"+d;
+  return d;
+}
+function fmtPhone(d){
+  if(!d) return "—";
+  if(d.startsWith("55") && (d.length===12||d.length===13)){
+    const ddd = d.slice(2,4), n = d.slice(4);
+    return "("+ddd+") "+(n.length===9? n.slice(0,5)+"-"+n.slice(5) : n.slice(0,4)+"-"+n.slice(4));
+  }
+  return "+"+d;
+}
+const PAGAMENTOS = ["Pix","Dinheiro","Cartão de débito","Cartão de crédito","Vale-refeição","Boleto","Outro"];
+const CATEGORIAS = ["Prato principal","Guarnição","Salada","Sobremesa","Bebida","Opção vegetariana"];
+const MODULOS = [
+  {id:"hoje",nome:"Dia",desc:"Passo a passo do dia: cardápio, envio, confirmações e lista de entrega.",fixo:true},
+  {id:"clientes",nome:"Clientes",desc:"Cadastro e importação do WhatsApp."},
+  {id:"planos",nome:"Planos",desc:"Planos prontos e personalizados."},
+  {id:"cardapio",nome:"Cardápio",desc:"Cardápio do dia e mensagem pronta para o WhatsApp."},
+  {id:"calendario",nome:"Calendário",desc:"Dias em que o restaurante abre."},
+  {id:"relatorios",nome:"Relatórios",desc:"Clientes de plano e avulsos, saldos e totais por dia, semana e mês."},
+  {id:"entregas",nome:"Entregas",desc:"Entregadores, divisão por bairro, rotas no mapa e lista de produção."},
+  {id:"financeiro",nome:"Financeiro",desc:"Recebimentos, despesas, a receber, previsões e lucro."},
+  {id:"marketing",nome:"Marketing",desc:"Link para Instagram, campanhas, indicações e clientes para reativar."},
+  {id:"ajustes",nome:"Ajustes",desc:"Módulos e dados do restaurante.",fixo:true},
+];
+const ICONS = {
+  hoje:'<path d="M4 6h16M4 12h16M4 18h10"/>',
+  clientes:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c1.9.7 3.1 2.4 3.5 5.2"/>',
+  planos:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>',
+  cardapio:'<path d="M3 13h18a9 9 0 0 1-18 0Z"/><path d="M12 4v5M8 6v3M16 6v3"/>',
+  calendario:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  relatorios:'<path d="M4 20V11M10 20V5M16 20v-6M21 20H3"/>',
+  entregas:'<circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M9 17h6M6 14l3-7h4l2 4h3l3 3M13 7h-2"/>',
+  financeiro:'<rect x="3" y="6" width="18" height="13" rx="2"/><circle cx="12" cy="12.5" r="2.5"/><path d="M3 10h2M19 15h2"/>',
+  marketing:'<path d="M3 11v3l12 5V6L3 11Z"/><path d="M18 9a4 4 0 0 1 0 6M7 15l1 5h3l-1-4"/>',
+  ajustes:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>',
+};
+const icon = id => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(ICONS[id]||"")+'</svg>';
+
+// ---------- state ----------
+const DEFAULT_CONFIG = {restaurante:"", meuNomeWhats:"", horarioLimite:"10:30", alertaSaldo:3, alertaDias:5, msgAlerta:"Olá {nome}! Restam {saldo} marmitas no seu plano {plano}, que vai até {fim}. Quer renovar?", enderecoRestaurante:"", cidade:"", custoMarmita:0, custoFixoMensal:0, telefoneRestaurante:"", premioIndicacao:"1 marmita grátis", abertos:[], modulos:{clientes:true,planos:true,cardapio:true,calendario:true,relatorios:true,entregas:true,financeiro:true,marketing:true}};
+const S = {clientes:[], planos:[], cardapios:{}, config:structuredClone(DEFAULT_CONFIG), tab:"hoje", loaded:{}, mode:"loading",
+  busca:"", filtro:"todos", mostrar:100, cardData:today(), calMes:today().slice(0,7), pedidos:{}, entregadores:[], fin:{}, finPeriodo:"mes", diaData:today(), confBusca:"", relPeriodo:"7", relTipo:"todos"};
+
+// ---------- store (shared db, or this-browser fallback) ----------
+const Store = {
+  fs:null, local:null, subs:{},
+  async init(){
+    this.fs = window.__fs || null;
+    if(this.fs){ S.mode = "cloud"; return; }
+    S.mode = "local";
+    try{ this.local = JSON.parse(localStorage.getItem("marmitex-local")||"null"); }catch(e){}
+    if(!this.local) this.local = {clientes:{},planos:{},cardapios:{},config:{}};
+  },
+  saveLocal(){ try{ localStorage.setItem("marmitex-local", JSON.stringify(this.local)); }catch(e){} },
+  watch(col, cb, since){
+    if(this.fs){
+      let q = this.fs.collection(col); if(since) q = q.where("data",">=",since);
+      q.onSnapshot(snap => cb(snap.docs.map(d => Object.assign({id:d.id}, d.data()))), e => toast("Erro ao carregar "+col+": "+(e.code||e.message)));
+    } else {
+      this.subs[col] = cb; cb(Object.entries(this.local[col]||{}).map(([id,v]) => Object.assign({id}, v)));
+    }
+  },
+  async set(col, id, data){
+    const body = Object.assign({}, data); delete body.id;
+    if(this.fs) return this.fs.collection(col).doc(id).set(body);
+    (this.local[col] ||= {})[id] = body; this.saveLocal(); this.subs[col] && this.watch(col, this.subs[col]);
+  },
+  async update(col, id, patch){
+    if(this.fs) return this.fs.collection(col).doc(id).set(patch, {merge:true});
+    const cur = (this.local[col] ||= {})[id]; if(!cur) throw {code:"invalid_argument"};
+    const merge = (x,y) => { for(const k in y){ if(y[k] && typeof y[k]==="object" && !Array.isArray(y[k]) && x[k] && typeof x[k]==="object") merge(x[k],y[k]); else x[k]=y[k]; } };
+    merge(cur, patch); this.saveLocal(); this.subs[col] && this.watch(col, this.subs[col]);
+  },
+  async del(col, id){
+    if(this.fs) return this.fs.collection(col).doc(id).delete();
+    delete (this.local[col]||{})[id]; this.saveLocal(); this.subs[col] && this.watch(col, this.subs[col]);
+  }
+};
+async function saveConfig(patch){
+  S.config = Object.assign({}, S.config, patch);
+  try{ await Store.set("config","geral",S.config); }catch(e){ toast(erroMsg(e)); }
+}
+function erroMsg(e){
+  if(!e) return "Não foi possível salvar.";
+  if(e.code==="invalid_argument" || e.code==="permission-denied") return "Sem permissão para salvar. Confira se seu e-mail está nas regras do Firebase.";
+  if(e.code==="quota_exceeded") return "Espaço cheio. Apague registros antigos para continuar.";
+  if(e.code==="resource_exhausted") return "Muitas gravações seguidas. Espere alguns segundos.";
+  return "Não foi possível salvar ("+(e.code||"erro")+").";
+}
+
+// ---------- toast & modal ----------
+let toastT;
+function toast(t){ let el = $("#toast"); if(!el){ el = document.createElement("div"); el.id="toast"; el.className="toast"; el.setAttribute("role","status"); document.body.appendChild(el);} el.textContent=t; el.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>el.hidden=true,2600); }
+function openModal(html, onMount){
+  const root = $("#modalRoot");
+  root.innerHTML = '<div class="overlay" id="ov"><div class="modal" role="dialog" aria-modal="true">'+html+'</div></div>';
+  $("#ov").addEventListener("click", e => { if(e.target.id==="ov") closeModal(); });
+  root.querySelectorAll("[data-close]").forEach(b => b.onclick = closeModal);
+  onMount && onMount(root);
+  const first = root.querySelector("input,select,textarea,button"); first && first.focus();
+}
+function closeModal(){ $("#modalRoot").innerHTML=""; render(); }
+document.addEventListener("keydown", e => { if(e.key==="Escape" && $("#ov")) closeModal(); });
+async function copiar(text){
+  try{ await navigator.clipboard.writeText(text); toast("Mensagem copiada. Cole no WhatsApp."); }
+  catch(e){ const ta = $("#msgCopy"); if(ta){ ta.focus(); ta.select(); } toast("Selecione o texto e copie manualmente."); }
+}
+
+// ---------- derived ----------
+const plano = id => S.planos.find(p => p.id===id);
+const isOpen = d => S.config.abertos.includes(d);
+const pedido = d => S.pedidos[d] || {data:d, confirmados:{}};
+const confirmadosDia = d => Object.entries(pedido(d).confirmados||{}).filter(([id,v]) => v && v.qtd>0).map(([id,v]) => ({id, qtd:v.qtd, avulso:!!v.avulso, cliente:S.clientes.find(c=>c.id===id) || {id, nome:"(cliente apagado)"}}));
+function usadas(c){
+  if(!c.planoId) return 0; let n = 0;
+  for(const d in S.pedidos){ if(c.inicio && d < c.inicio) continue; if(c.fim && d > c.fim) continue; const v = (S.pedidos[d].confirmados||{})[c.id]; if(v && v.qtd>0 && !v.avulso) n += v.qtd; }
+  return n;
+}
+const saldo = c => (Number(c.marmitasContratadas)||0) - usadas(c);
+function statusCliente(c){
+  if(c.ativo===false) return {t:"Inativo",k:""};
+  if(!c.planoId) return {t:"Avulso",k:""};
+  if(c.fim && c.fim < today()) return {t:"Plano vencido",k:"bad"};
+  const s = saldo(c), lim = Number(S.config.alertaSaldo)||0;
+  if(c.marmitasContratadas && s <= 0) return {t:"Sem saldo",k:"bad"};
+  if((c.marmitasContratadas && s <= lim) || (c.fim && c.fim <= addDays(today(), Number(S.config.alertaDias)||5))) return {t:"Acabando",k:"warn"};
+  return {t:"Plano ativo",k:"ok"};
+}
+const enderecoTxt = c => [[c.rua, c.numero].filter(Boolean).join(", "), c.complemento, c.bairro].filter(Boolean).join(" - ");
+function msgAlerta(c){
+  return (S.config.msgAlerta||DEFAULT_CONFIG.msgAlerta).replace(/\{nome\}/g, (c.nome||"").split(" ")[0]).replace(/\{saldo\}/g, Math.max(0,saldo(c))).replace(/\{plano\}/g, plano(c.planoId)?.nome||"").replace(/\{fim\}/g, fmtDate(c.fim));
+}
+// one write at a time, in order, so a day's document is created before it is merged into
+let wq = Promise.resolve();
+const enqueue = fn => (wq = wq.then(fn).catch(e => toast(erroMsg(e))));
+function setConf(d, c, qtd){
+  const prev = (pedido(d).confirmados||{})[c.id];
+  const avulso = prev && prev.qtd>0 ? !!prev.avulso : (!c.planoId || statusCliente(c).k==="bad");
+  const entry = {qtd:Math.max(0,qtd), avulso, hora:new Date().toISOString()};
+  const local = Object.assign({}, prev, entry);
+  const existed = !!S.pedidos[d];
+  S.pedidos[d] = Object.assign({data:d, enviado:false}, S.pedidos[d], {confirmados:Object.assign({}, pedido(d).confirmados, {[c.id]:local})});
+  return enqueue(() => existed ? Store.update("pedidos", d, {confirmados:{[c.id]:entry}}) : Store.set("pedidos", d, S.pedidos[d]));
+}
+function setPedidoCampos(d, patch){
+  const existed = !!S.pedidos[d];
+  S.pedidos[d] = Object.assign({data:d, confirmados:{}}, S.pedidos[d], patch);
+  return enqueue(() => existed ? Store.update("pedidos", d, patch) : Store.set("pedidos", d, S.pedidos[d]));
+}
+const csvCell = v => { const s = String(v ?? ""); return /[;"\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
+const toCsv = rows => rows.map(r => r.map(csvCell).join(";")).join("\r\n");
+async function baixar(nome, csv){
+  let dl = null; try{ dl = window.claude && window.claude.use ? await window.claude.use("downloads") : null; }catch(e){}
+  if(!dl){ const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"})); a.download = nome; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1000); toast("Planilha baixada."); return; }
+  try{ await dl.save({filename:nome, data:"\ufeff"+csv}); }catch(e){ if(e && e.code!=="declined") toast("Não foi possível baixar ("+(e.code||"erro")+")."); }
+}
+function menuText(dataIso){
+  const c = S.cardapios[dataIso]; if(!c) return "";
+  const d = parseIso(dataIso);
+  let t = "🍱 *Cardápio de "+DOW_LONG[d.getDay()]+", "+pad(d.getDate())+"/"+pad(d.getMonth()+1)+"*";
+  if(S.config.restaurante) t += "\n_"+S.config.restaurante+"_";
+  t += "\n";
+  CATEGORIAS.forEach(cat => {
+    const its = (c.itens||[]).filter(i => i.cat===cat && i.nome);
+    if(its.length){ t += "\n*"+cat+"*\n" + its.map(i=>"• "+i.nome).join("\n") + "\n"; }
+  });
+  if(c.preco) t += "\n💰 Marmita avulsa: "+brl(c.preco)+"\n";
+  if(c.obs) t += "\n"+c.obs+"\n";
+  t += "\nResponda *SIM* até as "+(S.config.horarioLimite||"10:30")+" para confirmar sua marmita.";
+  return t;
+}
+
+// ---------- nav ----------
+function modOn(id){ const m = MODULOS.find(x=>x.id===id); return m.fixo || (!m.breve && S.config.modulos[id]!==false); }
+function renderNav(){
+  const tabs = MODULOS.filter(m => modOn(m.id));
+  $("#nav").innerHTML = '<div class="logo">'+esc(S.config.restaurante||"Marmitex")+'<small>Gestão de marmitas</small></div>' +
+    tabs.map(m => '<button class="navbtn" data-tab="'+m.id+'" '+(S.tab===m.id?'aria-current="page"':'')+'>'+icon(m.id)+'<span>'+esc(m.nome)+'</span></button>').join("");
+  $("#nav").querySelectorAll("[data-tab]").forEach(b => b.onclick = () => go(b.dataset.tab));
+}
+function go(tab){ S.tab = tab; try{ history.replaceState(null,"","#"+tab); }catch(e){} render(); window.scrollTo(0,0); }
+function render(){
+  if(!modOn(S.tab)) S.tab = "hoje";
+  renderNav();
+  const v = $("#view");
+  const banner = S.mode==="local" ? '<div class="banner"><b>Modo de teste:</b> os dados ficam só neste navegador. Configure o Firebase para salvar e ver os mesmos dados no celular e no computador.</div>' : "";
+  v.onclick = null;
+  v.innerHTML = banner + (VIEWS[S.tab] || VIEWS.hoje)();
+  (BIND[S.tab]||(()=>{}))();
+}
+
+// ---------- views ----------
+const VIEWS = {}, BIND = {};
+
+// ----- Dia (passo a passo) -----
+function confOrdenados(d){
+  return confirmadosDia(d).sort((a,b) => (a.cliente.bairro||"~").localeCompare(b.cliente.bairro||"~","pt-BR") || (a.cliente.nome||"").localeCompare(b.cliente.nome||"","pt-BR"));
+}
+function planoHoje(d){
+  const wd = parseIso(d).getDay(), conf = pedido(d).confirmados||{};
+  return S.clientes.filter(c => c.ativo!==false && c.planoId && !(conf[c.id] && conf[c.id].qtd>0) && statusCliente(c).k!=="bad" && (plano(c.planoId)?.dias||[1,2,3,4,5]).includes(wd) && (!c.inicio || c.inicio<=d));
+}
+function listaEntrega(d){
+  const conf = confOrdenados(d), tot = conf.reduce((s,x)=>s+x.qtd,0);
+  let t = "🛵 *Entregas "+fmtDate(d)+"* — "+tot+" marmitas\n", bairro = null, i = 0;
+  conf.forEach(x => {
+    const c = x.cliente, b = c.bairro || "Sem bairro";
+    if(b!==bairro){ bairro = b; t += "\n*"+b+"*\n"; }
+    i++;
+    t += i+". "+(c.nome||"")+" ("+x.qtd+")"+(x.avulso?" avulso":"")+"\n   "+(enderecoTxt(c)||"sem endereço")+(c.referencia?" · Ref: "+c.referencia:"")+"\n   "+fmtPhone(c.telefone)+(c.pagamento?" · "+c.pagamento:"")+(c.obs?"\n   Obs: "+c.obs:"")+"\n";
+  });
+  return t;
+}
+function csvDia(d){
+  const rows = [["Bairro","Cliente","Telefone","Endereço","Referência","Quantidade","Tipo","Pagamento","Saldo do plano","Observações"]];
+  confOrdenados(d).forEach(x => { const c = x.cliente; rows.push([c.bairro||"", c.nome||"", fmtPhone(c.telefone), enderecoTxt(c), c.referencia||"", x.qtd, x.avulso?"Avulso":"Plano", c.pagamento||"", c.planoId&&c.marmitasContratadas?saldo(c):"", c.obs||""]); });
+  return toCsv(rows);
+}
+VIEWS.hoje = () => {
+  const d = S.diaData, dt = parseIso(d), p = pedido(d), card = S.cardapios[d];
+  const conf = confirmadosDia(d), tot = conf.reduce((s,x)=>s+x.qtd,0), av = conf.filter(x=>x.avulso).reduce((s,x)=>s+x.qtd,0);
+  const preco = Number(card && card.preco)||0;
+  const ativos = S.clientes.filter(c=>c.ativo!==false);
+  const alertas = ativos.filter(c => c.planoId && ["warn","bad"].includes(statusCliente(c).k));
+  const comTel = ativos.filter(c=>c.telefone), lotes = Math.ceil(comTel.length/256);
+  const ph = planoHoje(d);
+  const step = (n, titulo, feito, corpo) => `<div class="step ${feito?"done":""}"><div class="sn">${feito?"✓":n}</div><div class="sb"><h3>${titulo}</h3>${corpo}</div></div>`;
+  const nomeDia = DOW_LONG[dt.getDay()];
+  return `
+  <div class="head"><div><h1>${d===today()?"Hoje, ":""}${nomeDia[0].toUpperCase()+nomeDia.slice(1)} ${dt.getDate()} de ${MESES[dt.getMonth()]}</h1>
+    <p>${isOpen(d)?'<span class="pill ok">Aberto</span>':'<span class="pill">Fechado</span>'} ${S.config.restaurante?esc(S.config.restaurante):""}</p></div>
+    <div class="row"><button class="btn" id="dPrev" aria-label="Dia anterior">‹</button><input type="date" id="dDate" value="${d}" style="width:auto"><button class="btn" id="dNext" aria-label="Próximo dia">›</button></div></div>
+  <div class="stats">
+    <div class="stat"><b>${conf.length}</b><span>clientes confirmados</span></div>
+    <div class="stat"><b>${tot}</b><span>marmitas no total</span></div>
+    <div class="stat"><b>${tot-av}</b><span>de plano</span></div>
+    <div class="stat"><b>${av}</b><span>avulsas${preco?" · "+brl(av*preco):""}</span></div>
+  </div>
+  <section class="panel"><div class="steps">
+    ${step(1,"Lançar o cardápio do dia", !!card, card
+      ? `<p>${(card.itens||[]).map(i=>esc(i.nome)).join(" · ")}</p><div class="row"><button class="btn small" data-go="cardapio">Editar cardápio</button></div>`
+      : `<p>Ainda não tem cardápio para este dia.</p><div class="row"><button class="btn primary small" data-go="cardapio">Montar cardápio</button></div>`)}
+    ${step(2,"Enviar o cardápio aos clientes", !!p.enviado, `
+      <p>${p.enviado?"Enviado"+(p.enviadoEm?" às "+new Date(p.enviadoEm).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}):"")+".":"Copie a mensagem e cole nas suas listas de transmissão do WhatsApp Business (até 256 contatos cada)."}</p>
+      <div class="row">
+        <button class="btn small ${card?"primary":""}" id="copyMenu" ${card?"":"disabled"}>Copiar mensagem</button>
+        ${Array.from({length:lotes},(_,i)=>`<button class="btn small" data-lote="${i}">Copiar telefones ${i*256+1}–${Math.min((i+1)*256,comTel.length)}</button>`).join("")}
+        <button class="btn small" id="markEnv">${p.enviado?"Desmarcar envio":"Marcar como enviado"}</button>
+      </div>`)}
+    ${step(3,"Confirmar os pedidos", conf.length>0, `
+      <p>Quando o cliente responder, busque o nome ou telefone e toque em + para confirmar.</p>
+      <input type="search" id="confBusca" placeholder="Buscar cliente para confirmar" value="${esc(S.confBusca)}" aria-label="Buscar cliente para confirmar" autocomplete="off">
+      <div class="results" id="confRes"></div>
+      <div class="row"><button class="btn small primary" id="respBtn">Colar respostas do WhatsApp</button></div>
+      ${ph.length?`<div class="row"><button class="btn small" id="confPlano">Confirmar os ${ph.length} clientes de plano que recebem ${nomeDia}</button></div>`:""}`)}
+    ${step(4,"Gerar a lista de entrega", false, `
+      <p>Lista por bairro, com endereço, quantidade e forma de pagamento. Mande para os entregadores.</p>
+      <div class="row"><button class="btn small primary" id="copyEnt" ${conf.length?"":"disabled"}>Copiar lista de entrega</button><button class="btn small" id="csvDia" ${conf.length?"":"disabled"}>Baixar planilha (.csv)</button>${modOn("entregas")?`<button class="btn small" data-go="entregas">Montar rotas dos entregadores</button>`:""}</div>`)}
+  </div></section>
+  <section style="display:flex;flex-direction:column;gap:10px"><h2>Confirmados do dia</h2><div id="confTab"></div></section>
+  <textarea id="msgCopy" aria-hidden="true" tabindex="-1" style="position:absolute;left:-9999px;width:1px;height:1px"></textarea>
+  ${alertas.length ? `<section style="display:flex;flex-direction:column;gap:10px"><h2>Avisar sobre fim de plano</h2><p class="muted" style="margin:0">Planos com poucas marmitas, sem saldo ou vencidos. Copie o aviso e mande para o cliente.</p>
+    <div class="tablebox"><table><thead><tr><th>Cliente</th><th>Telefone</th><th>Plano</th><th>Saldo</th><th>Fim</th><th>Situação</th><th></th></tr></thead><tbody>
+    ${alertas.map(c=>{const s=statusCliente(c);return `<tr><td>${esc(c.nome)}</td><td class="num">${fmtPhone(c.telefone)}</td><td>${esc(plano(c.planoId)?.nome||"—")}</td><td class="num">${c.marmitasContratadas?saldo(c):"—"}</td><td class="num">${fmtDate(c.fim)}</td><td><span class="pill ${s.k}">${s.t}</span></td><td><button class="btn small" data-alerta="${esc(c.id)}">Copiar aviso</button></td></tr>`}).join("")}
+    </tbody></table></div></section>` : ""}`;
+};
+function renderConfirmados(){
+  const el = $("#confTab"); if(!el) return;
+  const conf = confOrdenados(S.diaData);
+  el.innerHTML = conf.length ? `<div class="tablebox"><table><thead><tr><th>Cliente</th><th>Bairro</th><th>Endereço</th><th>Qtd</th><th>Tipo</th><th>Pagamento</th><th>Saldo</th></tr></thead><tbody>
+    ${conf.map(x=>{const c=x.cliente;return `<tr><td><b>${esc(c.nome)}</b><div class="muted" style="font-size:.8rem">${fmtPhone(c.telefone)}</div></td><td>${esc(c.bairro||"—")}</td><td>${esc(enderecoTxt(c)||"—")}</td><td><span class="qty"><button class="btn small" data-q="${esc(x.id)}" data-v="${x.qtd-1}" aria-label="Menos uma">−</button><b>${x.qtd}</b><button class="btn small" data-q="${esc(x.id)}" data-v="${x.qtd+1}" aria-label="Mais uma">+</button></span></td><td>${x.avulso?'<span class="pill warn">Avulso</span>':'<span class="pill ok">Plano</span>'}</td><td>${esc(c.pagamento||"—")}</td><td class="num">${c.planoId&&c.marmitasContratadas?saldo(c):"—"}</td></tr>`}).join("")}
+  </tbody></table></div>` : `<div class="panel empty">Nenhum pedido confirmado neste dia ainda.</div>`;
+}
+function renderBuscaConf(){
+  const el = $("#confRes"); if(!el) return;
+  const q = S.confBusca.trim().toLowerCase(), qd = q.replace(/\D/g,"");
+  if(q.length<2){ el.innerHTML = ""; return; }
+  const conf = pedido(S.diaData).confirmados||{};
+  const res = S.clientes.filter(c => c.ativo!==false && ((c.nome||"").toLowerCase().includes(q) || (qd.length>=3 && (c.telefone||"").includes(qd)))).slice(0,8);
+  el.innerHTML = res.length ? res.map(c => { const v = conf[c.id] && conf[c.id].qtd || 0; const s = statusCliente(c);
+    return `<div class="res"><div><b>${esc(c.nome)}</b> <span class="pill ${s.k}">${s.t}</span><div class="muted" style="font-size:.8rem">${fmtPhone(c.telefone)} · ${esc(c.bairro||enderecoTxt(c)||"sem endereço")}</div></div>
+    <span class="qty">${v?`<button class="btn small" data-q="${esc(c.id)}" data-v="${v-1}" aria-label="Menos uma">−</button><b>${v}</b>`:""}<button class="btn small ${v?"":"primary"}" data-q="${esc(c.id)}" data-v="${v+(plano(c.planoId)?.porDia&&!v?plano(c.planoId).porDia:1)}">${v?"+":"+ Confirmar"}</button></span></div>`; }).join("")
+    : `<p class="muted" style="margin:0">Nenhum cliente encontrado. <button class="btn small" id="novoConf">Cadastrar cliente</button></p>`;
+  const n = $("#novoConf"); if(n) n.onclick = () => formCliente();
+}
+BIND.hoje = () => {
+  document.querySelectorAll("[data-go]").forEach(b => b.onclick = () => { if(b.dataset.go==="cardapio"){ S.cardData = S.diaData; draft = null; } go(b.dataset.go); });
+  const setD = v => { if(!v) return; S.diaData = v; S.confBusca = ""; render(); };
+  $("#dDate").onchange = e => setD(e.target.value);
+  $("#dPrev").onclick = () => setD(addDays(S.diaData,-1));
+  $("#dNext").onclick = () => setD(addDays(S.diaData,1));
+  const cm = $("#copyMenu"); if(cm) cm.onclick = () => copiar(menuText(S.diaData));
+  document.querySelectorAll("[data-lote]").forEach(b => b.onclick = () => {
+    const i = Number(b.dataset.lote); const tels = S.clientes.filter(c=>c.ativo!==false && c.telefone).slice(i*256,(i+1)*256).map(c=>"+"+c.telefone).join("\n");
+    $("#msgCopy").value = tels; copiar(tels);
+  });
+  $("#markEnv").onclick = () => { const on = !pedido(S.diaData).enviado; setPedidoCampos(S.diaData, {enviado:on, enviadoEm:on?new Date().toISOString():""}); render(); toast(on?"Envio marcado.":"Envio desmarcado."); };
+  const b = $("#confBusca"); b.oninput = () => { S.confBusca = b.value; renderBuscaConf(); };
+  const view = $("#view");
+  view.onclick = e => {
+    const q = e.target.closest("[data-q]");
+    if(q){ const c = S.clientes.find(x=>x.id===q.dataset.q) || {id:q.dataset.q}; setConf(S.diaData, c, Number(q.dataset.v)); renderConfirmados(); renderBuscaConf(); return; }
+    const a = e.target.closest("[data-alerta]");
+    if(a){ const c = S.clientes.find(x=>x.id===a.dataset.alerta); if(c){ const t = msgAlerta(c); $("#msgCopy").value = t; copiar(t); } }
+  };
+  const cp = $("#confPlano"); if(cp) cp.onclick = () => { const l = planoHoje(S.diaData); l.forEach(c => setConf(S.diaData, c, plano(c.planoId)?.porDia||1)); render(); toast(l.length+" clientes de plano confirmados."); };
+  $("#respBtn").onclick = colarRespostas;
+  const ce = $("#copyEnt"); if(ce) ce.onclick = () => { const t = listaEntrega(S.diaData); $("#msgCopy").value = t; copiar(t); };
+  const cd = $("#csvDia"); if(cd) cd.onclick = () => baixar("entregas-"+S.diaData+".csv", csvDia(S.diaData));
+  renderConfirmados(); renderBuscaConf();
+};
+
+// ----- Clientes -----
+function filtrados(){
+  const q = S.busca.trim().toLowerCase(), qd = q.replace(/\D/g,"");
+  return S.clientes.filter(c => {
+    if(S.filtro!=="todos"){ const s = statusCliente(c); if(S.filtro==="ativo" && s.k!=="ok") return false; if(S.filtro==="alerta" && !["warn","bad"].includes(s.k)) return false; if(S.filtro==="avulso" && s.t!=="Avulso") return false; if(S.filtro==="inativo" && s.t!=="Inativo") return false; }
+    if(!q) return true;
+    return (c.nome||"").toLowerCase().includes(q) || (qd && (c.telefone||"").includes(qd)) || (c.bairro||"").toLowerCase().includes(q) || (c.rua||"").toLowerCase().includes(q);
+  }).sort((a,b) => (a.nome||"").localeCompare(b.nome||"","pt-BR"));
+}
+VIEWS.clientes = () => {
+  const list = filtrados(), vis = list.slice(0,S.mostrar);
+  return `
+  <div class="head"><div><h1>Clientes</h1><p>${S.clientes.length} cadastrados</p></div>
+    <div class="row"><button class="btn" id="imp">Importar do WhatsApp</button><button class="btn primary" id="novo">Novo cliente</button></div></div>
+  <div class="row">
+    <div style="flex:1 1 240px"><input type="search" id="busca" placeholder="Buscar por nome, telefone ou bairro" value="${esc(S.busca)}" aria-label="Buscar"></div>
+    <div style="flex:0 1 200px"><select id="filtro" aria-label="Filtrar">
+      ${[["todos","Todos"],["ativo","Plano ativo"],["alerta","Acabando, sem saldo ou vencido"],["avulso","Avulsos"],["inativo","Inativos"]].map(([v,t])=>`<option value="${v}" ${S.filtro===v?"selected":""}>${t}</option>`).join("")}
+    </select></div>
+  </div>
+  ${S.clientes.length===0 ? `<div class="panel empty"><h2>Nenhum cliente ainda</h2><p>Importe as conversas exportadas do WhatsApp ou cadastre o primeiro cliente.</p><div class="row" style="justify-content:center"><button class="btn primary" id="imp2">Importar do WhatsApp</button></div></div>` :
+  `<div class="tablebox"><table><thead><tr><th>Nome</th><th>Telefone</th><th>Endereço</th><th>Pagamento</th><th>Plano</th><th>Saldo</th><th>Situação</th></tr></thead><tbody>
+    ${vis.map(c=>{const s=statusCliente(c);return `<tr class="click" data-id="${esc(c.id)}" tabindex="0"><td><b>${esc(c.nome||"(sem nome)")}</b></td><td class="num">${fmtPhone(c.telefone)}</td><td>${esc([c.rua&&(c.rua+(c.numero?", "+c.numero:"")),c.bairro].filter(Boolean).join(" · ")||"—")}</td><td>${esc(c.pagamento||"—")}</td><td>${esc(plano(c.planoId)?.nome||"Avulso")}${c.fim?`<div class="muted" style="font-size:.8rem">até ${fmtDate(c.fim)}</div>`:""}</td><td class="num">${c.planoId&&c.marmitasContratadas?`<b>${saldo(c)}</b> de ${c.marmitasContratadas}`:"—"}</td><td><span class="pill ${s.k}">${s.t}</span></td></tr>`}).join("")}
+  </tbody></table></div>
+  ${list.length>vis.length?`<div class="row" style="justify-content:center"><button class="btn" id="mais">Mostrar mais (${list.length-vis.length})</button></div>`:""}
+  ${list.length===0?'<p class="muted">Nenhum cliente encontrado com esse filtro.</p>':""}`}`;
+};
+BIND.clientes = () => {
+  $("#novo").onclick = () => formCliente();
+  $("#imp").onclick = importar; const i2 = $("#imp2"); if(i2) i2.onclick = importar;
+  const b = $("#busca"); let bt; b.oninput = () => { clearTimeout(bt); bt = setTimeout(()=>{ S.busca=b.value; S.mostrar=100; render(); const nb=$("#busca"); nb.focus(); nb.setSelectionRange(nb.value.length,nb.value.length); },250); };
+  $("#filtro").onchange = e => { S.filtro = e.target.value; render(); };
+  const m = $("#mais"); if(m) m.onclick = () => { S.mostrar += 200; render(); };
+  document.querySelectorAll("tr[data-id]").forEach(tr => { const f = () => formCliente(S.clientes.find(c=>c.id===tr.dataset.id)); tr.onclick=f; tr.onkeydown=e=>{ if(e.key==="Enter") f(); }; });
+};
+function formCliente(c){
+  const novo = !c; c = c || {ativo:true, inicio:today(), pagamento:"Pix"};
+  openModal(`
+    <h2>${novo?"Novo cliente":"Editar cliente"}</h2>
+    <form id="fc" class="form">
+      <label class="f c4">Nome<input type="text" id="c_nome" required value="${esc(c.nome)}"></label>
+      <label class="f c2">Telefone (WhatsApp)<input type="tel" id="c_tel" placeholder="(11) 91234-5678" value="${esc(c.telefone?fmtPhone(c.telefone):"")}"></label>
+      <label class="f c4">Rua / avenida<input type="text" id="c_rua" value="${esc(c.rua)}"></label>
+      <label class="f c2">Número<input type="text" id="c_num" value="${esc(c.numero)}"></label>
+      <label class="f c2">Complemento<input type="text" id="c_comp" placeholder="Apto, bloco" value="${esc(c.complemento)}"></label>
+      <label class="f c2">Bairro<input type="text" id="c_bairro" value="${esc(c.bairro)}"></label>
+      <label class="f c2">Cidade<input type="text" id="c_cid" value="${esc(c.cidade)}"></label>
+      <label class="f c6">Ponto de referência<input type="text" id="c_ref" value="${esc(c.referencia)}"></label>
+      <label class="f c2">Forma de pagamento<select id="c_pag">${PAGAMENTOS.map(p=>`<option ${c.pagamento===p?"selected":""}>${p}</option>`).join("")}</select></label>
+      <label class="f c4">Plano<select id="c_plano"><option value="">Avulso (sem plano)</option>${S.planos.map(p=>`<option value="${esc(p.id)}" ${c.planoId===p.id?"selected":""}>${esc(p.nome)} · ${p.marmitas||0} marmitas · ${brl(p.preco)}</option>`).join("")}</select></label>
+      <label class="f c2">Início do plano<input type="date" id="c_ini" value="${esc(c.inicio)}"></label>
+      <label class="f c2">Fim do plano<input type="date" id="c_fim" value="${esc(c.fim)}"></label>
+      <label class="f c2">Marmitas contratadas<input type="number" min="0" id="c_qtd" value="${esc(c.marmitasContratadas)}"></label>
+      <label class="f c6">Indicado por<select id="c_ind"><option value="">Ninguém</option>${S.clientes.filter(x=>x.id!==c.id).sort((a,b)=>(a.nome||"").localeCompare(b.nome||"","pt-BR")).map(x=>`<option value="${esc(x.id)}" ${c.indicadoPor===x.id?"selected":""}>${esc(x.nome)}</option>`).join("")}</select></label>
+      <label class="f c6">Observações<textarea id="c_obs" placeholder="Sem cebola, entregar na portaria...">${esc(c.obs)}</textarea></label>
+      <label class="check c6"><input type="checkbox" id="c_ativo" ${c.ativo!==false?"checked":""}> Cliente ativo</label>
+    </form>
+    <div class="foot">${novo?"":`<button class="btn danger" id="c_del">Apagar</button>`}<span style="flex:1"></span><button class="btn" data-close>Cancelar</button><button class="btn primary" id="c_save">Salvar</button></div>`,
+  () => {
+    const fillFromPlan = () => {
+      const p = plano($("#c_plano").value); if(!p) return;
+      const ini = $("#c_ini").value || today(); $("#c_ini").value = ini;
+      if(p.duracao) $("#c_fim").value = addDays(ini, Number(p.duracao)-1);
+      if(p.marmitas) $("#c_qtd").value = p.marmitas;
+    };
+    $("#c_plano").onchange = fillFromPlan; $("#c_ini").onchange = () => { if($("#c_plano").value) fillFromPlan(); };
+    $("#c_save").onclick = async () => {
+      const nome = $("#c_nome").value.trim(); if(!nome){ toast("Preencha o nome."); $("#c_nome").focus(); return; }
+      const tel = normPhone($("#c_tel").value);
+      const data = Object.assign({}, c, {nome, telefone:tel, rua:$("#c_rua").value.trim(), numero:$("#c_num").value.trim(), complemento:$("#c_comp").value.trim(), bairro:$("#c_bairro").value.trim(), cidade:$("#c_cid").value.trim(), referencia:$("#c_ref").value.trim(), pagamento:$("#c_pag").value, planoId:$("#c_plano").value, inicio:$("#c_ini").value, fim:$("#c_fim").value, marmitasContratadas:Number($("#c_qtd").value)||0, obs:$("#c_obs").value.trim(), indicadoPor:$("#c_ind").value, ativo:$("#c_ativo").checked, atualizado:new Date().toISOString()});
+      let id = c.id || (tel || uid());
+      if(novo && tel && S.clientes.some(x=>x.id===tel)){ toast("Já existe um cliente com esse telefone."); return; }
+      try{ await Store.set("clientes", id, data); closeModal(); toast("Cliente salvo."); }catch(e){ toast(erroMsg(e)); }
+    };
+    const d = $("#c_del"); if(d) d.onclick = () => {
+      if(d.dataset.sure){ Store.del("clientes",c.id).then(()=>{closeModal();toast("Cliente apagado.");}).catch(e=>toast(erroMsg(e))); }
+      else { d.dataset.sure="1"; d.textContent="Toque de novo para apagar"; }
+    };
+  });
+}
+
+// ----- Importação WhatsApp -----
+const ADDR_RE = /\b(rua|r\.|av\.?|avenida|travessa|tv\.|alameda|al\.|estrada|rodovia|rod\.|pra[çc]a|largo|quadra|qd\.?|condom[ií]nio|cond\.|vila|bloco|apto|apartamento)\b[^\n]{3,}/i;
+const PAG_RE = /\b(pix|dinheiro|esp[eé]cie|cart[aã]o|cr[eé]dito|d[eé]bito|vale[- ]refei[çc][aã]o|\bvr\b|boleto)\b/i;
+const PHONE_RE = /(?:\+?55\s?)?\(?\d{2}\)?\s?9?\s?\d{4}[-\s]?\d{4}/g;
+function pagFrom(t){
+  const m = t.match(PAG_RE); if(!m) return "";
+  const w = m[1].toLowerCase();
+  if(w==="pix") return "Pix"; if(/dinheiro|esp/.test(w)) return "Dinheiro"; if(/d[eé]bito/.test(w)) return "Cartão de débito"; if(/cr[eé]dito|cart/.test(w)) return "Cartão de crédito"; if(/vale|vr/.test(w)) return "Vale-refeição"; if(/boleto/.test(w)) return "Boleto"; return "";
+}
+const LINE_A = /^(\d{1,2}\/\d{1,2}\/\d{2,4}),?\s(\d{1,2}:\d{2})(?::\d{2})?\s?(?:[ap]\.?\s?m\.?)?\s?[-–]\s([^:]{1,60}?):\s([\s\S]*)$/i;
+const LINE_B = /^\[(\d{1,2}\/\d{1,2}\/\d{2,4}),?\s(\d{1,2}:\d{2}(?::\d{2})?)(?:\s?[ap]\.?\s?m\.?)?\]\s([^:]{1,60}?):\s([\s\S]*)$/i;
+const looksPhone = s => /^[+\d\s()\-‪‬]{8,}$/.test(s) && s.replace(/\D/g,"").length>=10;
+function parseTxt(text, fileName, ignore){
+  const msgs = []; let cur = null;
+  text.replace(/\r/g,"").replace(/[‎‏‪‬]/g,"").split("\n").forEach(line => {
+    const m = line.match(LINE_A) || line.match(LINE_B);
+    if(m){ cur = {from:m[3].trim(), text:m[4]}; msgs.push(cur); }
+    else if(cur) cur.text += "\n"+line;
+  });
+  const bySender = {};
+  msgs.forEach(m => { if(ignore && m.from.toLowerCase()===ignore.toLowerCase()) return; (bySender[m.from] ||= []).push(m.text); });
+  let chatName = (fileName||"").replace(/\.txt$/i,"").replace(/^(conversa do whatsapp com|whatsapp chat with|chat de whatsapp con)\s*/i,"").trim();
+  const senders = Object.keys(bySender);
+  const out = [];
+  senders.forEach(s => {
+    const texts = bySender[s]; const all = texts.join("\n");
+    let nome = "", tel = "";
+    if(looksPhone(s)) tel = normPhone(s); else nome = s;
+    if(!nome && senders.length===1 && chatName && !looksPhone(chatName)) nome = chatName;
+    if(!tel){ const ph = (all.match(PHONE_RE)||[]).map(normPhone).filter(x=>x.length>=12); if(ph.length) tel = ph[ph.length-1]; }
+    if(!tel && senders.length===1 && looksPhone(chatName)) tel = normPhone(chatName);
+    let end = ""; for(let i=texts.length-1;i>=0;i--){ const a = texts[i].match(ADDR_RE); if(a){ end = texts[i].trim().slice(0,200); break; } }
+    let pag = ""; for(let i=texts.length-1;i>=0 && !pag;i--){ pag = pagFrom(texts[i]); }
+    out.push({nome, telefone:tel, endereco:end, pagamento:pag, origem:fileName, msgs:texts.length});
+  });
+  return out;
+}
+function parseVcf(text, fileName){
+  return text.replace(/\r/g,"").split(/BEGIN:VCARD/i).slice(1).map(card => {
+    const get = re => { const m = card.match(re); return m ? m[1].trim() : ""; };
+    const nome = get(/\nFN[^:]*:(.*)/i) || get(/\nN[^:]*:(.*)/i).split(";").filter(Boolean).reverse().join(" ");
+    const tel = normPhone(get(/\nTEL[^:]*:(.*)/i));
+    const adr = get(/\nADR[^:]*:(.*)/i).split(";").filter(Boolean).join(", ");
+    return {nome, telefone:tel, endereco:adr, pagamento:"", origem:fileName, msgs:0};
+  }).filter(c => c.nome || c.telefone);
+}
+function parseCsv(text, fileName){
+  const lines = text.replace(/\r/g,"").split("\n").filter(l=>l.trim()); if(lines.length<2) return [];
+  const sep = (lines[0].match(/;/g)||[]).length > (lines[0].match(/,/g)||[]).length ? ";" : ",";
+  const split = l => { const r=[]; let cur="", q=false; for(const ch of l){ if(ch==='"') q=!q; else if(ch===sep && !q){ r.push(cur); cur=""; } else cur+=ch; } r.push(cur); return r.map(x=>x.trim()); };
+  const h = split(lines[0]).map(x=>x.toLowerCase());
+  const idx = re => h.findIndex(x=>re.test(x));
+  const iN=idx(/nome|name/), iT=idx(/tel|fone|celular|whats|phone/), iE=idx(/ender|rua|address/), iP=idx(/pag/);
+  return lines.slice(1).map(l => { const c = split(l); return {nome:iN>=0?c[iN]:"", telefone:iT>=0?normPhone(c[iT]):"", endereco:iE>=0?c[iE]:"", pagamento:iP>=0?pagFrom(c[iP])||c[iP]:"", origem:fileName, msgs:0}; }).filter(c=>c.nome||c.telefone);
+}
+function splitEndereco(e){
+  if(!e) return {};
+  const m = e.match(/^(.*?(?:rua|r\.|av\.?|avenida|travessa|tv\.|alameda|estrada|rodovia|pra[çc]a)[^,\d]*?)[, ]+(?:n[ºo°.]?\s*)?(\d+[a-z]?)\b([\s\S]*)$/i);
+  const bm = e.match(/bairro[:\s]+([^\n,.]+)/i); const bairro = bm ? bm[1].trim() : "";
+  if(m) return {bairro, rua:m[1].replace(/^.*?(?=(rua|r\.|av|avenida|travessa|tv\.|alameda|estrada|rodovia|pra[çc]a))/i,"").trim(), numero:m[2], complemento:m[3].replace(/bairro[:\s]+[^\n,.]+/i,"").replace(/\s+/g," ").replace(/^[\s,\-–]+/,"").trim()};
+  return {bairro, rua:e};
+}
+let IMP = [];
+function importar(){
+  openModal(`
+    <h2>Importar clientes do WhatsApp</h2>
+    <div class="muted" style="font-size:.92rem">
+      <b>Como exportar no celular:</b> abra a conversa com o cliente, toque em ⋮ (ou no nome dele no iPhone), depois <b>Mais &gt; Exportar conversa &gt; Sem mídia</b> e salve o arquivo .txt. Repita para cada cliente ou exporte um grupo de clientes.
+      Também aceito contatos em <b>.vcf</b> e planilhas em <b>.csv</b> (colunas nome, telefone, endereço, pagamento).
+    </div>
+    <div class="form">
+      <label class="f c4">Arquivos (.txt, .vcf, .csv)<input type="file" id="files" multiple accept=".txt,.vcf,.csv,text/plain,text/vcard,text/csv"></label>
+      <label class="f c2">Seu nome no WhatsApp (para ignorar)<input type="text" id="ign" value="${esc(S.config.meuNomeWhats)}" placeholder="Ex.: Marmitex da Ana"></label>
+    </div>
+    <div id="prev"></div>
+    <div class="foot"><button class="btn" data-close>Cancelar</button><button class="btn primary" id="doImp" disabled>Importar selecionados</button></div>`,
+  () => {
+    $("#files").onchange = async e => {
+      const ign = $("#ign").value.trim(); if(ign !== S.config.meuNomeWhats) saveConfig({meuNomeWhats:ign});
+      let all = [];
+      for(const f of e.target.files){
+        const text = await f.text(); const n = f.name.toLowerCase();
+        if(n.endsWith(".vcf")) all = all.concat(parseVcf(text,f.name));
+        else if(n.endsWith(".csv")) all = all.concat(parseCsv(text,f.name));
+        else all = all.concat(parseTxt(text,f.name,ign));
+      }
+      const map = new Map();
+      all.forEach(c => {
+        const k = c.telefone || ("nome:"+(c.nome||"").toLowerCase()); if(k==="nome:") return;
+        const p = map.get(k); if(!p) map.set(k, c); else { ["nome","telefone","endereco","pagamento"].forEach(f => { if(!p[f] && c[f]) p[f]=c[f]; }); p.msgs += c.msgs; }
+      });
+      IMP = [...map.values()].map(c => { const ex = S.clientes.find(x => (c.telefone && x.telefone===c.telefone) || (!c.telefone && c.nome && (x.nome||"").toLowerCase()===c.nome.toLowerCase())); return Object.assign(c,{existe:!!ex, sel:true}); });
+      const sem = IMP.filter(c=>!c.telefone).length;
+      $("#prev").innerHTML = IMP.length ? `
+        <p><b>${IMP.length}</b> contatos encontrados. ${IMP.filter(c=>c.existe).length} já cadastrados (só completo os campos vazios). ${sem?`<span class="pill warn">${sem} sem telefone</span>`:""}</p>
+        <div class="tablebox" style="max-height:340px;overflow:auto"><table><thead><tr><th><input type="checkbox" id="selAll" checked aria-label="Selecionar todos"></th><th>Nome</th><th>Telefone</th><th>Endereço encontrado</th><th>Pagamento</th></tr></thead><tbody>
+        ${IMP.map((c,i)=>`<tr><td><input type="checkbox" data-i="${i}" checked aria-label="Selecionar"></td><td>${esc(c.nome||"(sem nome)")} ${c.existe?'<span class="pill">já existe</span>':""}</td><td class="num">${fmtPhone(c.telefone)}</td><td>${esc(c.endereco||"—")}</td><td>${esc(c.pagamento||"—")}</td></tr>`).join("")}
+        </tbody></table></div>` : `<p class="banner">Não encontrei contatos nesses arquivos. Confira se é a conversa exportada em .txt, sem mídia.</p>`;
+      $("#doImp").disabled = !IMP.length;
+      const sa = $("#selAll"); if(sa) sa.onchange = () => document.querySelectorAll("#prev [data-i]").forEach(cb => { cb.checked = sa.checked; IMP[cb.dataset.i].sel = sa.checked; });
+      document.querySelectorAll("#prev [data-i]").forEach(cb => cb.onchange = () => IMP[cb.dataset.i].sel = cb.checked);
+    };
+    $("#doImp").onclick = async () => {
+      const sel = IMP.filter(c=>c.sel); const btn = $("#doImp"); btn.disabled = true; let ok = 0;
+      for(const c of sel){
+        btn.textContent = "Importando "+(ok+1)+" de "+sel.length+"...";
+        const ex = S.clientes.find(x => (c.telefone && x.telefone===c.telefone) || (!c.telefone && c.nome && (x.nome||"").toLowerCase()===c.nome.toLowerCase()));
+        const end = splitEndereco(c.endereco);
+        const novo = {nome:c.nome||fmtPhone(c.telefone), telefone:c.telefone, rua:end.rua||"", numero:end.numero||"", complemento:end.complemento||"", bairro:end.bairro||"", pagamento:c.pagamento||"", ativo:true, origem:"WhatsApp", atualizado:new Date().toISOString()};
+        let data = novo, id = c.telefone || uid();
+        if(ex){ id = ex.id; data = Object.assign({}, ex); Object.keys(novo).forEach(k => { if(!data[k] && novo[k]) data[k] = novo[k]; }); }
+        try{ await Store.set("clientes", id, data); ok++; }catch(e){ toast(erroMsg(e)); break; }
+      }
+      closeModal(); toast(ok+" clientes importados.");
+    };
+  });
+}
+
+// ----- Planos -----
+VIEWS.planos = () => {
+  const prontos = S.planos.filter(p=>p.tipo!=="personalizado"), pers = S.planos.filter(p=>p.tipo==="personalizado");
+  const uso = id => S.clientes.filter(c=>c.planoId===id && c.ativo!==false).length;
+  const card = p => `<tr class="click" data-id="${esc(p.id)}" tabindex="0"><td><b>${esc(p.nome)}</b>${p.descricao?`<div class="muted" style="font-size:.82rem">${esc(p.descricao)}</div>`:""}${p.clienteNome?`<div class="muted" style="font-size:.82rem">Para: ${esc(p.clienteNome)}</div>`:""}</td><td class="num">${p.marmitas||0}</td><td class="num">${p.porDia||1}/dia</td><td class="num">${p.duracao||"—"} dias</td><td>${(p.dias||[]).map(d=>DOW[d]).join(", ")||"—"}</td><td class="num">${brl(p.preco)}</td><td class="num">${p.marmitas?brl((p.preco||0)/p.marmitas):"—"}</td><td class="num">${uso(p.id)}</td></tr>`;
+  const tabela = (arr, vazio) => arr.length ? `<div class="tablebox"><table><thead><tr><th>Plano</th><th>Marmitas</th><th>Por dia</th><th>Duração</th><th>Dias</th><th>Preço</th><th>Por marmita</th><th>Clientes</th></tr></thead><tbody>${arr.map(card).join("")}</tbody></table></div>` : `<p class="muted">${vazio}</p>`;
+  return `
+  <div class="head"><div><h1>Planos</h1><p>Planos prontos para todos e planos montados para um cliente.</p></div>
+    <div class="row"><button class="btn" id="novoP">Plano personalizado</button><button class="btn primary" id="novoR">Novo plano pronto</button></div></div>
+  <section style="display:flex;flex-direction:column;gap:10px"><h2>Planos prontos</h2>${tabela(prontos,"Nenhum plano pronto. Crie o primeiro, por exemplo 20 marmitas no mês.")}</section>
+  <section style="display:flex;flex-direction:column;gap:10px"><h2>Planos personalizados</h2>${tabela(pers,"Nenhum plano personalizado. Use para combinar quantidade, dias e preço com um cliente.")}</section>`;
+};
+BIND.planos = () => {
+  $("#novoR").onclick = () => formPlano(null,"pronto");
+  $("#novoP").onclick = () => formPlano(null,"personalizado");
+  document.querySelectorAll("tr[data-id]").forEach(tr => { const f = () => formPlano(S.planos.find(p=>p.id===tr.dataset.id)); tr.onclick=f; tr.onkeydown=e=>{ if(e.key==="Enter") f(); }; });
+};
+function formPlano(p, tipo){
+  const novo = !p; p = p || {tipo, marmitas:20, porDia:1, duracao:30, dias:[1,2,3,4,5], preco:0};
+  openModal(`
+    <h2>${novo?(p.tipo==="personalizado"?"Novo plano personalizado":"Novo plano pronto"):"Editar plano"}</h2>
+    <form class="form" id="fp">
+      <label class="f c4">Nome do plano<input type="text" id="p_nome" value="${esc(p.nome)}" placeholder="Ex.: Mensal 20 marmitas"></label>
+      <label class="f c2">Tipo<select id="p_tipo"><option value="pronto" ${p.tipo!=="personalizado"?"selected":""}>Pronto</option><option value="personalizado" ${p.tipo==="personalizado"?"selected":""}>Personalizado</option></select></label>
+      <label class="f c2">Total de marmitas<input type="number" min="1" id="p_qtd" value="${esc(p.marmitas)}"></label>
+      <label class="f c2">Marmitas por dia<input type="number" min="1" id="p_dia" value="${esc(p.porDia)}"></label>
+      <label class="f c2">Duração (dias)<input type="number" min="1" id="p_dur" value="${esc(p.duracao)}"></label>
+      <div class="f c6">Dias de entrega<div class="row" style="font-weight:400">${DOW.map((d,i)=>`<label class="check"><input type="checkbox" class="p_d" value="${i}" ${(p.dias||[]).includes(i)?"checked":""}> ${d}</label>`).join("")}</div></div>
+      <label class="f c2">Preço total (R$)<input type="number" min="0" step="0.01" id="p_preco" value="${esc(p.preco)}"></label>
+      <div class="f c4">Preço por marmita<div id="p_unit" style="font-size:1.2rem;color:var(--fg);font-variant-numeric:tabular-nums"></div></div>
+      <label class="f c6" id="p_cliWrap">Cliente (opcional)<select id="p_cli"><option value="">Nenhum</option>${S.clientes.slice().sort((a,b)=>(a.nome||"").localeCompare(b.nome||"","pt-BR")).map(c=>`<option value="${esc(c.id)}" ${p.clienteId===c.id?"selected":""}>${esc(c.nome)}</option>`).join("")}</select></label>
+      <label class="f c6">Descrição<textarea id="p_desc" placeholder="O que está incluso, tamanho da marmita, regras">${esc(p.descricao)}</textarea></label>
+    </form>
+    <div class="foot">${novo?"":`<button class="btn danger" id="p_del">Apagar</button>`}<span style="flex:1"></span><button class="btn" data-close>Cancelar</button><button class="btn primary" id="p_save">Salvar</button></div>`,
+  () => {
+    const upd = () => { const q=Number($("#p_qtd").value)||0, v=Number($("#p_preco").value)||0; $("#p_unit").textContent = q? brl(v/q) : "—"; $("#p_cliWrap").hidden = $("#p_tipo").value!=="personalizado"; };
+    ["p_qtd","p_preco","p_tipo"].forEach(id => $("#"+id).oninput = upd); $("#p_tipo").onchange = upd; upd();
+    $("#p_save").onclick = async () => {
+      const nome = $("#p_nome").value.trim(); if(!nome){ toast("Dê um nome ao plano."); return; }
+      const cid = $("#p_tipo").value==="personalizado" ? $("#p_cli").value : "";
+      const data = {nome, tipo:$("#p_tipo").value, marmitas:Number($("#p_qtd").value)||0, porDia:Number($("#p_dia").value)||1, duracao:Number($("#p_dur").value)||0, dias:[...document.querySelectorAll(".p_d:checked")].map(x=>Number(x.value)), preco:Number($("#p_preco").value)||0, descricao:$("#p_desc").value.trim(), clienteId:cid, clienteNome:cid?(S.clientes.find(c=>c.id===cid)?.nome||""):""};
+      try{ await Store.set("planos", p.id||uid(), data); closeModal(); toast("Plano salvo."); }catch(e){ toast(erroMsg(e)); }
+    };
+    const d = $("#p_del"); if(d) d.onclick = () => {
+      const n = S.clientes.filter(c=>c.planoId===p.id).length;
+      if(d.dataset.sure){ Store.del("planos",p.id).then(()=>{closeModal();toast("Plano apagado.");}).catch(e=>toast(erroMsg(e))); }
+      else { d.dataset.sure="1"; d.textContent = n? "Usado por "+n+" clientes. Toque de novo para apagar" : "Toque de novo para apagar"; }
+    };
+  });
+}
+
+// ----- Cardápio -----
+let draft = null;
+function loadDraft(){ const c = S.cardapios[S.cardData]; draft = c ? structuredClone(c) : {itens:[{nome:"",cat:"Prato principal"},{nome:"",cat:"Guarnição"},{nome:"",cat:"Salada"}], preco:"", obs:""}; draft.itens = draft.itens||[]; }
+VIEWS.cardapio = () => {
+  if(!draft || draft._d!==S.cardData){ loadDraft(); draft._d = S.cardData; }
+  const d = parseIso(S.cardData), salvo = !!S.cardapios[S.cardData];
+  const recentes = Object.keys(S.cardapios).filter(k=>k!==S.cardData).sort().reverse().slice(0,8);
+  return `
+  <div class="head"><div><h1>Cardápio</h1><p>${DOW_LONG[d.getDay()]}, ${fmtDate(S.cardData)} ${isOpen(S.cardData)?'<span class="pill ok">aberto</span>':'<span class="pill warn">dia marcado como fechado</span>'} ${salvo?'<span class="pill ok">salvo</span>':""}</p></div>
+    <div class="row"><button class="btn" id="prevD" aria-label="Dia anterior">‹</button><input type="date" id="cDate" value="${S.cardData}" style="width:auto"><button class="btn" id="nextD" aria-label="Próximo dia">›</button></div></div>
+  <div class="grid2">
+    <section class="panel" style="display:flex;flex-direction:column;gap:12px">
+      <h2>Pratos</h2>
+      <div class="items" id="itens">${draft.itens.map((it,i)=>`<div class="item"><input type="text" data-n="${i}" value="${esc(it.nome)}" placeholder="Ex.: Frango assado com ervas" aria-label="Prato"><select data-c="${i}" aria-label="Categoria">${CATEGORIAS.map(c=>`<option ${it.cat===c?"selected":""}>${c}</option>`).join("")}</select><button class="btn small" data-r="${i}" aria-label="Remover">✕</button></div>`).join("")}</div>
+      <div class="row"><button class="btn small" id="addIt">+ Adicionar prato</button>${recentes.length?`<select id="copyFrom" style="width:auto"><option value="">Copiar de outro dia...</option>${recentes.map(k=>`<option value="${k}">${fmtDate(k)}</option>`).join("")}</select>`:""}</div>
+      <div class="form"><label class="f c2">Preço avulso (R$)<input type="number" step="0.01" min="0" id="cPreco" value="${esc(draft.preco)}"></label><label class="f c4">Observação<input type="text" id="cObs" value="${esc(draft.obs)}" placeholder="Ex.: Feijoada só até acabar"></label></div>
+      <div class="row">${salvo?'<button class="btn danger" id="cDel">Apagar</button>':""}<span style="flex:1"></span><button class="btn primary" id="cSave">Salvar cardápio</button></div>
+    </section>
+    <section class="panel" style="display:flex;flex-direction:column;gap:12px">
+      <h2>Mensagem para o WhatsApp</h2>
+      <div class="msg" id="msgPrev"></div>
+      <textarea id="msgCopy" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"></textarea>
+      <div class="row"><button class="btn primary" id="cCopy">Copiar mensagem</button><span class="muted" style="font-size:.85rem">Cole na lista de transmissão ou no status. O envio automático chega no passo 3.</span></div>
+    </section>
+  </div>`;
+};
+function syncDraft(){
+  document.querySelectorAll("[data-n]").forEach(el => draft.itens[el.dataset.n].nome = el.value);
+  document.querySelectorAll("[data-c]").forEach(el => draft.itens[el.dataset.c].cat = el.value);
+  draft.preco = $("#cPreco").value; draft.obs = $("#cObs").value;
+}
+function previewMsg(){
+  const tmp = S.cardapios[S.cardData]; S.cardapios[S.cardData] = {itens:draft.itens, preco:Number(draft.preco)||0, obs:draft.obs};
+  const t = menuText(S.cardData); if(tmp) S.cardapios[S.cardData] = tmp; else delete S.cardapios[S.cardData];
+  $("#msgPrev").textContent = t; $("#msgCopy").value = t; return t;
+}
+BIND.cardapio = () => {
+  const setDate = v => { if(!v) return; S.cardData = v; render(); };
+  $("#cDate").onchange = e => setDate(e.target.value);
+  $("#prevD").onclick = () => setDate(addDays(S.cardData,-1));
+  $("#nextD").onclick = () => setDate(addDays(S.cardData,1));
+  $("#itens").oninput = () => { syncDraft(); previewMsg(); };
+  $("#itens").onchange = () => { syncDraft(); previewMsg(); };
+  $("#cPreco").oninput = $("#cObs").oninput = () => { syncDraft(); previewMsg(); };
+  $("#itens").onclick = e => { const r = e.target.closest("[data-r]"); if(r){ syncDraft(); draft.itens.splice(Number(r.dataset.r),1); render(); } };
+  $("#addIt").onclick = () => { syncDraft(); draft.itens.push({nome:"",cat:"Prato principal"}); render(); const ins = document.querySelectorAll("[data-n]"); ins[ins.length-1].focus(); };
+  const cf = $("#copyFrom"); if(cf) cf.onchange = () => { const src = S.cardapios[cf.value]; if(src){ draft = Object.assign(structuredClone(src),{_d:S.cardData}); render(); toast("Cardápio copiado. Revise e salve."); } };
+  $("#cCopy").onclick = () => { syncDraft(); copiar(previewMsg()); };
+  $("#cSave").onclick = async () => {
+    syncDraft(); const itens = draft.itens.filter(i=>i.nome.trim()).map(i=>({nome:i.nome.trim(),cat:i.cat}));
+    if(!itens.length){ toast("Adicione pelo menos um prato."); return; }
+    try{
+      await Store.set("cardapios", S.cardData, {data:S.cardData, itens, preco:Number(draft.preco)||0, obs:draft.obs.trim(), atualizado:new Date().toISOString()});
+      if(!isOpen(S.cardData)) await saveConfig({abertos:[...S.config.abertos, S.cardData].sort()});
+      draft = null; toast("Cardápio salvo.");
+    }catch(e){ toast(erroMsg(e)); }
+  };
+  const del = $("#cDel"); if(del) del.onclick = () => { if(del.dataset.sure){ Store.del("cardapios",S.cardData).then(()=>{draft=null;toast("Cardápio apagado.");}).catch(e=>toast(erroMsg(e))); } else { del.dataset.sure="1"; del.textContent="Toque de novo para apagar"; } };
+  previewMsg();
+};
+
+// ----- Calendário -----
+VIEWS.calendario = () => {
+  const [y,m] = S.calMes.split("-").map(Number); const first = new Date(y,m-1,1); const n = new Date(y,m,0).getDate();
+  const t = today(); const abertosMes = S.config.abertos.filter(d=>d.startsWith(S.calMes)).length;
+  let cells = DOW.map(d=>`<div class="dow">${d}</div>`).join("");
+  for(let i=0;i<first.getDay();i++) cells += `<div class="day blank" aria-hidden="true"></div>`;
+  for(let d=1; d<=n; d++){
+    const k = S.calMes+"-"+pad(d); const o = isOpen(k);
+    cells += `<button class="day ${o?"open":""} ${k===t?"today":""}" data-d="${k}" aria-pressed="${o}" aria-label="${d} de ${MESES[m-1]}: ${o?"aberto":"fechado"}"><span>${d}</span>${S.cardapios[k]?'<span class="dot" title="Tem cardápio">● menu</span>':""}</button>`;
+  }
+  return `
+  <div class="head"><div><h1>Calendário</h1><p>Toque em um dia para marcar aberto ou fechado. ${abertosMes} dias abertos em ${MESES[m-1]}.</p></div>
+    <div class="row"><button class="btn" id="mPrev" aria-label="Mês anterior">‹</button><b style="min-width:150px;text-align:center;font-family:var(--display);font-size:1.1rem">${MESES[m-1][0].toUpperCase()+MESES[m-1].slice(1)} ${y}</b><button class="btn" id="mNext" aria-label="Próximo mês">›</button></div></div>
+  <section class="panel"><div class="cal">${cells}</div></section>
+  <div class="row"><span class="muted">Atalhos para ${MESES[m-1]}:</span><button class="btn small" data-fill="1,2,3,4,5">Abrir seg a sex</button><button class="btn small" data-fill="1,2,3,4,5,6">Abrir seg a sáb</button><button class="btn small danger" data-fill="">Fechar o mês todo</button></div>`;
+};
+BIND.calendario = () => {
+  const mv = k => { const [y,m] = S.calMes.split("-").map(Number); const d = new Date(y,m-1+k,1); S.calMes = d.getFullYear()+"-"+pad(d.getMonth()+1); render(); };
+  $("#mPrev").onclick = () => mv(-1); $("#mNext").onclick = () => mv(1);
+  document.querySelectorAll("[data-d]").forEach(b => b.onclick = () => {
+    const k = b.dataset.d; const set = new Set(S.config.abertos); set.has(k)? set.delete(k) : set.add(k);
+    saveConfig({abertos:[...set].sort()}); render();
+  });
+  document.querySelectorAll("[data-fill]").forEach(b => b.onclick = () => {
+    const dias = b.dataset.fill ? b.dataset.fill.split(",").map(Number) : [];
+    const [y,m] = S.calMes.split("-").map(Number); const n = new Date(y,m,0).getDate();
+    const set = new Set(S.config.abertos.filter(d=>!d.startsWith(S.calMes)));
+    for(let d=1; d<=n; d++){ const dt = new Date(y,m-1,d); if(dias.includes(dt.getDay())) set.add(iso(dt)); }
+    saveConfig({abertos:[...set].sort()}); render(); toast("Calendário atualizado.");
+  });
+};
+
+// ----- Relatórios -----
+function periodo(){
+  const t = today();
+  if(S.relPeriodo==="hoje") return [t,t];
+  if(S.relPeriodo==="7") return [addDays(t,-6),t];
+  if(S.relPeriodo==="30") return [addDays(t,-29),t];
+  if(S.relPeriodo==="mes") return [t.slice(0,8)+"01",t];
+  const d = parseIso(t.slice(0,8)+"01"); d.setDate(0); const fim = iso(d); return [fim.slice(0,8)+"01",fim];
+}
+function dadosRel(){
+  const [ini,fim] = periodo();
+  const dias = Object.keys(S.pedidos).filter(d => d>=ini && d<=fim).sort();
+  const porDia = dias.map(d => { const c = confirmadosDia(d); const pl = c.filter(x=>!x.avulso).reduce((s,x)=>s+x.qtd,0), av = c.filter(x=>x.avulso).reduce((s,x)=>s+x.qtd,0); return {d, cli:c.length, pl, av, rec:av*(Number(S.cardapios[d] && S.cardapios[d].preco)||0)}; }).filter(x => x.pl+x.av>0);
+  const porCli = {};
+  S.clientes.filter(c => c.ativo!==false && c.planoId).forEach(c => porCli[c.id] = {c, pl:0, av:0, dias:0});
+  dias.forEach(d => confirmadosDia(d).forEach(x => { const o = porCli[x.id] ||= {c:x.cliente, pl:0, av:0, dias:0}; o.dias++; if(x.avulso) o.av += x.qtd; else o.pl += x.qtd; }));
+  let cli = Object.values(porCli);
+  if(S.relTipo==="plano") cli = cli.filter(o => o.c.planoId);
+  if(S.relTipo==="avulso") cli = cli.filter(o => !o.c.planoId || o.av>0);
+  cli.sort((a,b) => (b.pl+b.av)-(a.pl+a.av) || (a.c.nome||"").localeCompare(b.c.nome||"","pt-BR"));
+  return {ini, fim, porDia, cli};
+}
+VIEWS.relatorios = () => {
+  const r = dadosRel();
+  const tPl = r.porDia.reduce((s,x)=>s+x.pl,0), tAv = r.porDia.reduce((s,x)=>s+x.av,0), tRec = r.porDia.reduce((s,x)=>s+x.rec,0);
+  const max = Math.max(1, ...r.porDia.map(x=>x.pl+x.av));
+  const planoCli = S.clientes.filter(c=>c.ativo!==false && c.planoId);
+  const saldoTotal = planoCli.reduce((s,c)=>s+Math.max(0, c.marmitasContratadas?saldo(c):0),0);
+  return `
+  <div class="head"><div><h1>Relatórios</h1><p>${fmtDate(r.ini)} a ${fmtDate(r.fim)}</p></div>
+    <div class="row">
+      <select id="relP" style="width:auto" aria-label="Período">${[["hoje","Hoje"],["7","Últimos 7 dias"],["30","Últimos 30 dias"],["mes","Este mês"],["mespass","Mês passado"]].map(([v,t])=>`<option value="${v}" ${S.relPeriodo===v?"selected":""}>${t}</option>`).join("")}</select>
+      <select id="relT" style="width:auto" aria-label="Tipo de cliente">${[["todos","Todos os clientes"],["plano","Só de plano"],["avulso","Só avulsos"]].map(([v,t])=>`<option value="${v}" ${S.relTipo===v?"selected":""}>${t}</option>`).join("")}</select>
+    </div></div>
+  <div class="stats">
+    <div class="stat"><b>${tPl+tAv}</b><span>marmitas no período</span></div>
+    <div class="stat"><b>${tPl}</b><span>de plano</span></div>
+    <div class="stat"><b>${tAv}</b><span>avulsas${tRec?" · "+brl(tRec):""}</span></div>
+    <div class="stat"><b>${saldoTotal}</b><span>marmitas ainda a entregar nos planos</span></div>
+  </div>
+  <section style="display:flex;flex-direction:column;gap:10px"><div class="row" style="justify-content:space-between"><h2>Por dia</h2><button class="btn small" id="csvDias" ${r.porDia.length?"":"disabled"}>Baixar (.csv)</button></div>
+    ${r.porDia.length ? `<div class="tablebox"><table><thead><tr><th>Dia</th><th>Clientes</th><th>Plano</th><th>Avulsas</th><th>Total</th><th style="width:30%"></th></tr></thead><tbody>
+    ${r.porDia.map(x=>{const dd=parseIso(x.d);return `<tr><td class="num">${DOW[dd.getDay()]} ${fmtDate(x.d)}</td><td class="num">${x.cli}</td><td class="num">${x.pl}</td><td class="num">${x.av}</td><td class="num"><b>${x.pl+x.av}</b></td><td><span class="bar" style="width:${x.pl/max*100}%"></span><span class="bar av" style="width:${x.av/max*100}%"></span></td></tr>`}).join("")}
+    </tbody></table></div>` : `<div class="panel empty">Nenhum pedido confirmado neste período.</div>`}
+  </section>
+  <section style="display:flex;flex-direction:column;gap:10px"><div class="row" style="justify-content:space-between"><h2>Relação de clientes</h2><button class="btn small" id="csvCli" ${r.cli.length?"":"disabled"}>Baixar (.csv)</button></div>
+    ${r.cli.length ? `<div class="tablebox"><table><thead><tr><th>Cliente</th><th>Tipo</th><th>Plano</th><th>Marmitas no período</th><th>Contratadas</th><th>Saldo</th><th>Fim</th><th>Situação</th></tr></thead><tbody>
+    ${r.cli.map(o=>{const c=o.c, s=statusCliente(c);return `<tr><td><b>${esc(c.nome)}</b><div class="muted" style="font-size:.8rem">${fmtPhone(c.telefone)}</div></td><td>${c.planoId?"Plano":"Avulso"}</td><td>${esc(plano(c.planoId)?.nome||"—")}</td><td class="num">${o.pl+o.av}${o.av&&c.planoId?` <span class="muted">(${o.av} avulsas)</span>`:""}</td><td class="num">${c.planoId?(c.marmitasContratadas||0):"—"}</td><td class="num">${c.planoId&&c.marmitasContratadas?saldo(c):"—"}</td><td class="num">${c.planoId?fmtDate(c.fim):"—"}</td><td><span class="pill ${s.k}">${s.t}</span></td></tr>`}).join("")}
+    </tbody></table></div>` : `<div class="panel empty">Nenhum cliente neste filtro.</div>`}
+  </section>
+  <textarea id="msgCopy" aria-hidden="true" tabindex="-1" style="position:absolute;left:-9999px;width:1px;height:1px"></textarea>`;
+};
+BIND.relatorios = () => {
+  $("#relP").onchange = e => { S.relPeriodo = e.target.value; render(); };
+  $("#relT").onchange = e => { S.relTipo = e.target.value; render(); };
+  const r = dadosRel();
+  const a = $("#csvDias"); if(a) a.onclick = () => baixar("marmitas-por-dia-"+r.ini+"-a-"+r.fim+".csv", toCsv([["Dia","Clientes","Plano","Avulsas","Total","Receita avulsas"], ...r.porDia.map(x=>[fmtDate(x.d),x.cli,x.pl,x.av,x.pl+x.av,String(x.rec.toFixed(2)).replace(".",",")])]));
+  const b = $("#csvCli"); if(b) b.onclick = () => baixar("clientes-"+r.ini+"-a-"+r.fim+".csv", toCsv([["Cliente","Telefone","Tipo","Plano","Marmitas no período","Avulsas","Contratadas","Saldo","Início","Fim","Situação","Pagamento","Endereço"], ...r.cli.map(o=>{const c=o.c;return [c.nome||"",fmtPhone(c.telefone),c.planoId?"Plano":"Avulso",plano(c.planoId)?.nome||"",o.pl+o.av,o.av,c.planoId?(c.marmitasContratadas||0):"",c.planoId&&c.marmitasContratadas?saldo(c):"",c.inicio?fmtDate(c.inicio):"",c.fim?fmtDate(c.fim):"",statusCliente(c).t,c.pagamento||"",enderecoTxt(c)];})]));
+};
+
+// ----- Confirmação em lote pelas respostas do WhatsApp -----
+const norm = s => String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/\s+/g," ").trim();
+function acharCliente(s){
+  const dg = String(s||"").replace(/\D/g,"");
+  if(dg.length>=8){ const fim = dg.slice(-8); const c = S.clientes.find(c => (c.telefone||"").endsWith(fim)); if(c) return c; }
+  const n = norm(s); if(n.length<3) return null;
+  let best = null;
+  S.clientes.forEach(c => { const cn = norm(c.nome); if(cn.length>=3 && (n===cn || n.includes(cn) || (n.length>=5 && cn.startsWith(n)))){ if(!best || cn.length>norm(best.nome).length) best = c; } });
+  return best;
+}
+function parseRespostas(txt){
+  const res = new Map(), semCliente = [];
+  txt.replace(/\r/g,"").replace(/[‎‏‪‬]/g,"").split("\n").forEach(raw => {
+    const line = raw.trim(); if(!line) return;
+    const m = line.match(/^\[[^\]]{4,30}\]\s*([^:]{1,60}):\s*(.*)$/) || line.match(/^\d{1,2}\/\d{1,2}\/\d{2,4},?\s\d{1,2}:\d{2}\s?[-–]\s([^:]{1,60}):\s*(.*)$/);
+    const who = m ? m[1].trim() : line, msg = m ? m[2] : line;
+    if(m && S.config.meuNomeWhats && norm(who)===norm(S.config.meuNomeWhats)) return;
+    const tel = !m && (line.match(PHONE_RE)||[])[0];
+    const c = (tel && acharCliente(tel)) || acharCliente(m ? who : line.replace(/\bx\s*\d{1,2}\b|\d{1,2}\s*(marm\w*|x\b|unid\w*)/gi,"")) || (m ? acharCliente(msg) : null);
+    if(!c){ semCliente.push(line); return; }
+    const neg = /\b(n[aã]o|cancel\w*|hoje n)/i.test(msg) && !/\bn[aã]o tem\b/i.test(msg);
+    let qm = msg.match(/(\d{1,2})\s*(?:marm|x\b|unid|quent)/i) || msg.match(/\bx\s*(\d{1,2})\b/i) || (m ? msg.match(/^\s*(\d{1,2})\s*$/) || msg.match(/\b(?:quero|manda|mande|confirmo|sim)\D{0,6}(\d{1,2})\b/i) : null);
+    const padrao = plano(c.planoId)?.porDia || 1;
+    const prev = res.get(c.id);
+    res.set(c.id, {c, qtd: qm ? Number(qm[1]) : (prev ? prev.qtd : padrao), neg: prev ? (prev.neg && neg) || (!prev.neg && neg && !!m) : neg, linha: line});
+  });
+  return {lista:[...res.values()], semCliente};
+}
+function colarRespostas(){
+  let R = {lista:[], semCliente:[]};
+  openModal(`
+    <h2>Confirmar pelas respostas do WhatsApp</h2>
+    <p class="muted" style="margin:0">No WhatsApp, segure a mensagem do cliente, toque em <b>Copiar</b> (pode marcar várias de uma vez) e cole aqui. Também aceito uma lista com um nome ou telefone por linha, por exemplo "Maria Souza 2 marmitas".</p>
+    <label class="f">Respostas<textarea id="respTxt" style="min-height:150px" placeholder="[25/10 11:02] Maria Souza: sim, quero 2&#10;João Lima&#10;(11) 98888-7777"></textarea></label>
+    <div id="respPrev"></div>
+    <div class="foot"><button class="btn" data-close>Cancelar</button><button class="btn primary" id="respOk" disabled>Confirmar selecionados</button></div>`,
+  () => {
+    let t;
+    const conf = pedido(S.diaData).confirmados||{};
+    const show = () => {
+      R = parseRespostas($("#respTxt").value);
+      $("#respPrev").innerHTML = (R.lista.length ? `<div class="tablebox" style="max-height:300px;overflow:auto"><table style="min-width:520px"><thead><tr><th></th><th>Cliente</th><th>Mensagem</th><th>Qtd</th></tr></thead><tbody>
+        ${R.lista.map((r,i)=>`<tr><td><input type="checkbox" data-ri="${i}" ${r.neg?"":"checked"} aria-label="Confirmar"></td><td><b>${esc(r.c.nome)}</b>${conf[r.c.id]&&conf[r.c.id].qtd>0?' <span class="pill ok">já confirmado</span>':""}${r.neg?' <span class="pill bad">disse não</span>':""}<div class="muted" style="font-size:.8rem">${fmtPhone(r.c.telefone)}</div></td><td style="font-size:.85rem">${esc(r.linha.slice(0,120))}</td><td><input type="number" min="1" max="50" data-rq="${i}" value="${r.qtd}" style="width:64px" aria-label="Quantidade"></td></tr>`).join("")}
+        </tbody></table></div>` : "") +
+        (R.semCliente.length ? `<p class="muted" style="font-size:.85rem">Não encontrei cliente para ${R.semCliente.length} linha(s): ${esc(R.semCliente.slice(0,4).join(" · ").slice(0,200))}${R.semCliente.length>4?"…":""}. Cadastre o cliente ou confira o nome.</p>` : "");
+      $("#respOk").disabled = !R.lista.length;
+    };
+    $("#respTxt").oninput = () => { clearTimeout(t); t = setTimeout(show, 300); };
+    $("#respOk").onclick = () => {
+      let n = 0;
+      document.querySelectorAll("#respPrev [data-ri]").forEach(cb => { if(!cb.checked) return; const r = R.lista[cb.dataset.ri]; const q = Number(document.querySelector(`[data-rq="${cb.dataset.ri}"]`).value)||1; setConf(S.diaData, r.c, q); n++; });
+      closeModal(); toast(n+" pedidos confirmados.");
+    };
+  });
+}
+
+// ----- Entregas -----
+const entregador = id => S.entregadores.find(e => e.id===id);
+const enderecoMapa = c => [[c.rua, c.numero].filter(Boolean).join(", "), c.bairro, c.cidade || S.config.cidade].filter(Boolean).join(", ");
+function patchConf(d, patch){
+  const p = S.pedidos[d]; if(!p) return;
+  const c = Object.assign({}, p.confirmados); for(const id in patch) c[id] = Object.assign({}, c[id], patch[id]);
+  S.pedidos[d] = Object.assign({}, p, {confirmados:c});
+  return enqueue(() => Store.update("pedidos", d, {confirmados:patch}));
+}
+function rotasDia(d){
+  const pc = pedido(d).confirmados||{};
+  const by = {}; S.entregadores.forEach(e => by[e.id] = []); by[""] = [];
+  confirmadosDia(d).forEach(x => { const e = (pc[x.id]||{}).entregador; x.ordem = (pc[x.id]||{}).ordem ?? 9999; (by[entregador(e) ? e : ""]).push(x); });
+  const cmp = (a,b) => a.ordem-b.ordem || norm(a.cliente.bairro).localeCompare(norm(b.cliente.bairro)) || norm(a.cliente.rua).localeCompare(norm(b.cliente.rua)) || (parseInt(a.cliente.numero)||0)-(parseInt(b.cliente.numero)||0);
+  Object.values(by).forEach(l => l.sort(cmp));
+  return by;
+}
+function distribuir(d, refazer){
+  const ents = S.entregadores.filter(e => e.ativo!==false);
+  if(!ents.length){ toast("Cadastre pelo menos um entregador."); return; }
+  const pc = pedido(d).confirmados||{}, conf = confirmadosDia(d), carga = {};
+  ents.forEach(e => carga[e.id] = 0);
+  if(!refazer) conf.forEach(x => { const e = (pc[x.id]||{}).entregador; if(e in carga) carga[e] += x.qtd; });
+  const pend = conf.filter(x => refazer || !((pc[x.id]||{}).entregador in carga));
+  if(!pend.length && !refazer){ toast("Todas as entregas já têm entregador."); return; }
+  const grupos = {}; pend.forEach(x => (grupos[norm(x.cliente.bairro)] ||= []).push(x));
+  const dono = {};
+  Object.entries(grupos).sort((a,b) => b[1].length-a[1].length).forEach(([b,l]) => {
+    let e = b && ents.find(e => String(e.bairros||"").split(",").map(norm).filter(Boolean).includes(b));
+    if(!e) e = ents.slice().sort((a,c) => carga[a.id]-carga[c.id])[0];
+    carga[e.id] += l.reduce((s,x)=>s+x.qtd,0); l.forEach(x => dono[x.id] = e.id);
+  });
+  const patch = {}, final = {};
+  conf.forEach(x => { const e = dono[x.id] || (pc[x.id]||{}).entregador; (final[e] ||= []).push(x); });
+  Object.values(final).forEach(l => {
+    l.sort((a,b) => norm(a.cliente.bairro).localeCompare(norm(b.cliente.bairro)) || norm(a.cliente.rua).localeCompare(norm(b.cliente.rua)) || (parseInt(a.cliente.numero)||0)-(parseInt(b.cliente.numero)||0));
+    l.forEach((x,i) => patch[x.id] = {entregador: dono[x.id] || (pc[x.id]||{}).entregador, ordem:i});
+  });
+  patchConf(d, patch); render(); toast("Entregas distribuídas.");
+}
+function moverParada(d, eid, id, dir){
+  const l = rotasDia(d)[eid] || []; const i = l.findIndex(x => x.id===id), j = i+dir;
+  if(i<0 || j<0 || j>=l.length) return;
+  [l[i], l[j]] = [l[j], l[i]];
+  const patch = {}; l.forEach((x,k) => patch[x.id] = {ordem:k});
+  patchConf(d, patch); render();
+}
+function mapsLinks(lista){
+  const pts = lista.map(x => enderecoMapa(x.cliente)).filter(Boolean), links = [];
+  let origem = S.config.enderecoRestaurante || "";
+  for(let i=0; i<pts.length; i+=10){
+    const ch = pts.slice(i,i+10); let o = origem, rest = ch;
+    if(!o){ o = ch[0]; rest = ch.length>1 ? ch.slice(1) : ch; }
+    const dest = rest[rest.length-1], wp = rest.slice(0,-1);
+    links.push("https://www.google.com/maps/dir/?api=1&origin="+encodeURIComponent(o)+"&destination="+encodeURIComponent(dest)+(wp.length?"&waypoints="+encodeURIComponent(wp.join("|")):"")+"&travelmode=driving");
+    origem = ch[ch.length-1];
+  }
+  return links;
+}
+function textoRota(d, e, lista){
+  const tot = lista.reduce((s,x)=>s+x.qtd,0);
+  let t = "🛵 *Rota de "+(e ? e.nome : "entregas")+" · "+fmtDate(d)+"*\n"+tot+" marmitas · "+lista.length+" entregas\n";
+  if(S.config.enderecoRestaurante) t += "Saída: "+S.config.enderecoRestaurante+"\n";
+  lista.forEach((x,i) => { const c = x.cliente;
+    t += "\n*"+(i+1)+". "+(c.nome||"")+"* ("+x.qtd+(x.qtd>1?" marmitas":" marmita")+")\n"+(enderecoTxt(c)||"sem endereço")+(c.referencia?"\nRef: "+c.referencia:"")+"\n📞 "+fmtPhone(c.telefone)+(c.pagamento?"\n💰 "+c.pagamento+(x.avulso?" (avulso, cobrar)":""):"")+(c.obs?"\n📝 "+c.obs:"")+"\n";
+  });
+  const links = mapsLinks(lista);
+  if(links.length) t += "\n🗺️ Mapa"+(links.length>1?" (em "+links.length+" partes)":"")+":\n"+links.join("\n");
+  return t;
+}
+function textoProducao(d){
+  const conf = confirmadosDia(d), tot = conf.reduce((s,x)=>s+x.qtd,0), av = conf.filter(x=>x.avulso).reduce((s,x)=>s+x.qtd,0);
+  const card = S.cardapios[d], r = rotasDia(d);
+  let t = "👩‍🍳 *Produção "+fmtDate(d)+": "+tot+" marmitas*\nPlano: "+(tot-av)+" · Avulsas: "+av+"\n";
+  if(card) t += "\nCardápio: "+(card.itens||[]).map(i=>i.nome).join(", ")+"\n";
+  const porEnt = S.entregadores.filter(e => (r[e.id]||[]).length).map(e => e.nome+": "+r[e.id].reduce((s,x)=>s+x.qtd,0));
+  if(r[""] && r[""].length) porEnt.push("Sem entregador: "+r[""].reduce((s,x)=>s+x.qtd,0));
+  if(porEnt.length) t += "\n*Separar por entregador*\n"+porEnt.join("\n")+"\n";
+  const obs = conf.filter(x => x.cliente.obs);
+  if(obs.length) t += "\n*Pedidos com observação*\n"+obs.map(x => "• "+x.cliente.nome+" ("+x.qtd+"): "+x.cliente.obs).join("\n");
+  return t;
+}
+VIEWS.entregas = () => {
+  const d = S.diaData, dt = parseIso(d), r = rotasDia(d);
+  const conf = confirmadosDia(d), tot = conf.reduce((s,x)=>s+x.qtd,0), sem = r[""]||[];
+  const ents = S.entregadores.slice().sort((a,b)=>(a.nome||"").localeCompare(b.nome||"","pt-BR"));
+  const opts = sel => `<option value="">Sem entregador</option>`+ents.filter(e=>e.ativo!==false).map(e=>`<option value="${esc(e.id)}" ${sel===e.id?"selected":""}>${esc(e.nome)}</option>`).join("");
+  const parada = (x,i,eid,n) => { const c = x.cliente; return `<tr><td class="num">${i+1}</td><td><b>${esc(c.nome)}</b> (${x.qtd})${x.avulso?' <span class="pill warn">avulso</span>':""}<div class="muted" style="font-size:.8rem">${esc(enderecoTxt(c)||"sem endereço")}${c.referencia?" · "+esc(c.referencia):""}</div></td><td>${esc(c.pagamento||"—")}</td><td><select data-mv="${esc(x.id)}" aria-label="Entregador" style="min-width:130px">${opts(eid)}</select></td><td style="white-space:nowrap">${eid?`<button class="btn small" data-up="${esc(x.id)}" data-e="${esc(eid)}" ${i===0?"disabled":""} aria-label="Subir">↑</button> <button class="btn small" data-dn="${esc(x.id)}" data-e="${esc(eid)}" ${i===n-1?"disabled":""} aria-label="Descer">↓</button>`:""}</td></tr>`; };
+  const tabela = (l,eid) => `<div class="tablebox"><table><thead><tr><th>#</th><th>Cliente e endereço</th><th>Pagamento</th><th>Entregador</th><th>Ordem</th></tr></thead><tbody>${l.map((x,i)=>parada(x,i,eid,l.length)).join("")}</tbody></table></div>`;
+  return `
+  <div class="head"><div><h1>Entregas</h1><p>${DOW_LONG[dt.getDay()]}, ${fmtDate(d)} · ${tot} marmitas · ${conf.length} entregas</p></div>
+    <div class="row"><button class="btn" id="ePrev" aria-label="Dia anterior">‹</button><input type="date" id="eDate" value="${d}" style="width:auto"><button class="btn" id="eNext" aria-label="Próximo dia">›</button></div></div>
+  <section class="panel" style="display:flex;flex-direction:column;gap:10px">
+    <div class="row" style="justify-content:space-between"><h2>Entregadores</h2><button class="btn small" id="novoEnt">+ Entregador</button></div>
+    ${ents.length ? `<div class="row">${ents.map(e=>`<button class="btn small" data-ent="${esc(e.id)}">${esc(e.nome)}${e.ativo===false?" (inativo)":""}${e.bairros?` <span class="muted" style="font-weight:400">· ${esc(e.bairros)}</span>`:""}</button>`).join("")}</div>` : `<p class="muted" style="margin:0">Cadastre os entregadores e os bairros que cada um atende. O sistema divide as entregas por bairro e equilibra a quantidade.</p>`}
+  </section>
+  ${conf.length ? `
+  <div class="row">${sem.length?`<button class="btn primary" id="distrib">${sem.length===conf.length?"Distribuir entregas":"Distribuir as "+sem.length+" sem entregador"}</button>`:""}<button class="btn" id="redistrib">Refazer tudo</button><button class="btn" id="copyProd">Copiar lista de produção</button></div>
+  ${ents.filter(e=>(r[e.id]||[]).length).map(e => { const l = r[e.id], q = l.reduce((s,x)=>s+x.qtd,0), links = mapsLinks(l), txt = textoRota(d,e,l);
+    return `<section style="display:flex;flex-direction:column;gap:10px">
+      <div class="row" style="justify-content:space-between"><h2>${esc(e.nome)} <span class="muted" style="font-size:.95rem;font-weight:400">· ${q} ${q===1?"marmita":"marmitas"} · ${l.length} ${l.length===1?"entrega":"entregas"}</span></h2>
+      <div class="row"><button class="btn small primary" data-copyrota="${esc(e.id)}">Copiar rota</button>${e.telefone?`<a class="btn small" href="https://wa.me/${esc(e.telefone)}?text=${encodeURIComponent(txt)}" target="_blank" rel="noopener">Enviar no WhatsApp</a>`:""}${links.map((u,i)=>`<a class="btn small" href="${esc(u)}" target="_blank" rel="noopener">Mapa${links.length>1?" "+(i+1):""}</a>`).join("")}</div></div>
+      ${tabela(l,e.id)}</section>`; }).join("")}
+  ${sem.length ? `<section style="display:flex;flex-direction:column;gap:10px"><h2>Sem entregador <span class="pill warn">${sem.length}</span></h2>${tabela(sem,"")}</section>` : ""}
+  ` : `<div class="panel empty"><h2>Nenhum pedido confirmado neste dia</h2><p>Confirme os pedidos na aba Dia e volte aqui para montar as rotas.</p><button class="btn primary" data-go="hoje">Ir para o Dia</button></div>`}
+  <p class="muted" style="font-size:.85rem;margin:0">A ordem das paradas segue bairro, rua e número. Ajuste com as setas. ${S.config.enderecoRestaurante?"":"Coloque o endereço do restaurante em Ajustes para o mapa sair de lá."}</p>
+  <textarea id="msgCopy" aria-hidden="true" tabindex="-1" style="position:absolute;left:-9999px;width:1px;height:1px"></textarea>`;
+};
+BIND.entregas = () => {
+  const setD = v => { if(!v) return; S.diaData = v; render(); };
+  $("#eDate").onchange = e => setD(e.target.value);
+  $("#ePrev").onclick = () => setD(addDays(S.diaData,-1));
+  $("#eNext").onclick = () => setD(addDays(S.diaData,1));
+  $("#novoEnt").onclick = () => formEntregador();
+  document.querySelectorAll("[data-ent]").forEach(b => b.onclick = () => formEntregador(entregador(b.dataset.ent)));
+  document.querySelectorAll("[data-go]").forEach(b => b.onclick = () => go(b.dataset.go));
+  const di = $("#distrib"); if(di) di.onclick = () => distribuir(S.diaData, false);
+  const rd = $("#redistrib"); if(rd) rd.onclick = () => { if(rd.dataset.sure) distribuir(S.diaData, true); else { rd.dataset.sure="1"; rd.textContent="Toque de novo para refazer"; } };
+  const cp = $("#copyProd"); if(cp) cp.onclick = () => { const t = textoProducao(S.diaData); $("#msgCopy").value = t; copiar(t); };
+  document.querySelectorAll("[data-copyrota]").forEach(b => b.onclick = () => { const e = entregador(b.dataset.copyrota); const t = textoRota(S.diaData, e, rotasDia(S.diaData)[e.id]||[]); $("#msgCopy").value = t; copiar(t); });
+  document.querySelectorAll("[data-mv]").forEach(s => s.onchange = () => { patchConf(S.diaData, {[s.dataset.mv]:{entregador:s.value, ordem:9999}}); render(); });
+  document.querySelectorAll("[data-up]").forEach(b => b.onclick = () => moverParada(S.diaData, b.dataset.e, b.dataset.up, -1));
+  document.querySelectorAll("[data-dn]").forEach(b => b.onclick = () => moverParada(S.diaData, b.dataset.e, b.dataset.dn, 1));
+};
+function formEntregador(e){
+  const novo = !e; e = e || {ativo:true};
+  openModal(`
+    <h2>${novo?"Novo entregador":"Editar entregador"}</h2>
+    <form class="form">
+      <label class="f c4">Nome<input type="text" id="e_nome" value="${esc(e.nome)}"></label>
+      <label class="f c2">Telefone (WhatsApp)<input type="tel" id="e_tel" value="${esc(e.telefone?fmtPhone(e.telefone):"")}"></label>
+      <label class="f c6">Bairros que atende (separe por vírgula)<input type="text" id="e_bairros" value="${esc(e.bairros)}" placeholder="Centro, Vila Nova, Jardim América"></label>
+      <label class="check c6"><input type="checkbox" id="e_ativo" ${e.ativo!==false?"checked":""}> Trabalhando (entra na distribuição)</label>
+    </form>
+    <div class="foot">${novo?"":`<button class="btn danger" id="e_del">Apagar</button>`}<span style="flex:1"></span><button class="btn" data-close>Cancelar</button><button class="btn primary" id="e_save">Salvar</button></div>`,
+  () => {
+    $("#e_save").onclick = async () => {
+      const nome = $("#e_nome").value.trim(); if(!nome){ toast("Preencha o nome."); return; }
+      try{ await Store.set("entregadores", e.id||uid(), {nome, telefone:normPhone($("#e_tel").value), bairros:$("#e_bairros").value.split(",").map(s=>s.trim()).filter(Boolean).join(", "), ativo:$("#e_ativo").checked}); closeModal(); toast("Entregador salvo."); }catch(err){ toast(erroMsg(err)); }
+    };
+    const d = $("#e_del"); if(d) d.onclick = () => { if(d.dataset.sure){ Store.del("entregadores", e.id).then(()=>{closeModal();toast("Entregador apagado.");}).catch(err=>toast(erroMsg(err))); } else { d.dataset.sure="1"; d.textContent="Toque de novo para apagar"; } };
+  });
+}
+
+// ----- Financeiro -----
+const CAT_VAR = ["Ingredientes","Embalagens","Gás","Entregadores"];
+const CAT_FIXO = ["Aluguel","Funcionários","Luz e água","Internet e telefone","Marketing","Impostos e taxas","Manutenção","Outros"];
+const CAT_REC = ["Plano","Avulso","Outros"];
+function lancamentos(ini, fim){
+  const out = [];
+  Object.keys(S.fin).filter(d => d>=ini && d<=fim).forEach(d => Object.entries(S.fin[d].itens||{}).forEach(([id,it]) => { if(it && !it.apagado) out.push(Object.assign({id, data:d}, it)); }));
+  return out.sort((a,b) => b.data.localeCompare(a.data) || String(b.hora||"").localeCompare(String(a.hora||"")));
+}
+const todosLanc = () => lancamentos("0000","9999");
+function addLanc(d, id, item){
+  const existed = !!S.fin[d];
+  item = Object.assign({hora:new Date().toISOString()}, item);
+  S.fin[d] = Object.assign({data:d, itens:{}}, S.fin[d]); S.fin[d] = Object.assign({}, S.fin[d], {itens:Object.assign({}, S.fin[d].itens, {[id]:item})});
+  return enqueue(() => existed ? Store.update("financeiro", d, {itens:{[id]:item}}) : Store.set("financeiro", d, S.fin[d]));
+}
+function apagarLanc(d, id){
+  const it = S.fin[d] && S.fin[d].itens[id]; if(!it) return;
+  S.fin[d] = Object.assign({}, S.fin[d], {itens:Object.assign({}, S.fin[d].itens, {[id]:Object.assign({}, it, {apagado:true})})});
+  return enqueue(() => Store.update("financeiro", d, {itens:{[id]:{apagado:true}}}));
+}
+const lancId = id => todosLanc().find(l => l.id===id);
+function periodoFin(){
+  const t = today();
+  if(S.finPeriodo==="hoje") return [t,t];
+  if(S.finPeriodo==="7") return [addDays(t,-6),t];
+  if(S.finPeriodo==="30") return [addDays(t,-29),t];
+  if(S.finPeriodo==="mes") return [t.slice(0,8)+"01",t];
+  const d = parseIso(t.slice(0,8)+"01"); d.setDate(0); const f = iso(d); return [f.slice(0,8)+"01",f];
+}
+function marmitasEntre(ini, fim){ let n = 0, av = 0; for(const d in S.pedidos){ if(d<ini||d>fim) continue; confirmadosDia(d).forEach(x => { n += x.qtd; if(x.avulso) av += x.qtd; }); } return {n, av}; }
+function custos(){
+  const t = today(), ini = addDays(t,-29), l = lancamentos(ini,t).filter(x=>x.tipo==="despesa");
+  const variavel = l.filter(x=>CAT_VAR.includes(x.cat)).reduce((s,x)=>s+x.valor,0), fixo = l.filter(x=>!CAT_VAR.includes(x.cat)).reduce((s,x)=>s+x.valor,0);
+  const m = marmitasEntre(ini,t).n;
+  const calc = m>=20 && variavel>0 ? variavel/m : 0;
+  return {
+    porMarmita: calc || Number(S.config.custoMarmita)||0, porMarmitaCalc: calc,
+    fixoMes: Number(S.config.custoFixoMensal)||fixo, fixoCalc: fixo, marmitas30: m
+  };
+}
+function previsao(){
+  const t = today(), c = custos();
+  const dias = []; for(let i=1;i<=30;i++){ const d = addDays(t,i); if(isOpen(d)) dias.push(d); }
+  const diasAbertos = dias.length || 22;
+  const hist = Object.keys(S.pedidos).filter(d => d<=t && d>=addDays(t,-28)).map(d => marmitasEntre(d,d)).filter(x=>x.n>0);
+  const mediaDia = hist.length ? hist.reduce((s,x)=>s+x.n,0)/hist.length : 0;
+  const mediaAv = hist.length ? hist.reduce((s,x)=>s+x.av,0)/hist.length : 0;
+  const precos = Object.values(S.cardapios).filter(x=>x.preco).sort((a,b)=>String(b.data).localeCompare(String(a.data))).slice(0,10).map(x=>Number(x.preco));
+  const precoAv = precos.length ? precos.reduce((s,x)=>s+x,0)/precos.length : 0;
+  const ativosPlano = S.clientes.filter(x => x.ativo!==false && x.planoId && statusCliente(x).k!=="bad");
+  const renov = S.clientes.filter(x => x.ativo!==false && x.planoId && x.fim && x.fim>=t && x.fim<=addDays(t,30)).reduce((s,x)=>s+(Number(plano(x.planoId)?.preco)||0),0);
+  const saldoTotal = ativosPlano.reduce((s,x)=>s+Math.max(0, x.marmitasContratadas?saldo(x):0),0);
+  const marmitasPrev = Math.round(mediaDia*diasAbertos);
+  const recAv = mediaAv*diasAbertos*precoAv;
+  const receita = renov + recAv, despesa = marmitasPrev*c.porMarmita + c.fixoMes;
+  const valores = ativosPlano.map(x => { const p = plano(x.planoId); return p && p.marmitas ? p.preco/p.marmitas : 0; }).filter(Boolean);
+  const precoMedio = valores.length ? valores.reduce((s,x)=>s+x,0)/valores.length : precoAv;
+  const margemUn = precoMedio - c.porMarmita;
+  return {c, diasAbertos, diasDoCalendario:dias.length>0, mediaDia, mediaAv, precoAv, renov, recAv, receita, despesa, lucro:receita-despesa, marmitasPrev, saldoTotal, custoPlanos:saldoTotal*c.porMarmita, precoMedio, margemUn, equilibrio: margemUn>0 ? Math.ceil(c.fixoMes/margemUn) : null};
+}
+function aReceber(){
+  const d = S.diaData, preco = Number(S.cardapios[d] && S.cardapios[d].preco)||0;
+  const av = confirmadosDia(d).filter(x=>x.avulso).map(x => ({tipo:"av", id:"av-"+d+"-"+x.id, c:x.cliente, valor:x.qtd*preco, desc:x.qtd+" avulsa(s) em "+fmtDate(d), d}));
+  const pl = S.clientes.filter(c => c.ativo!==false && c.planoId && c.inicio && c.inicio>=addDays(today(),-45)).map(c => ({tipo:"pl", id:"pl-"+c.id+"-"+c.inicio, c, valor:Number(plano(c.planoId)?.preco)||0, desc:"Plano "+(plano(c.planoId)?.nome||"")+" desde "+fmtDate(c.inicio)}));
+  const pagos = new Set(todosLanc().map(l=>l.id));
+  return [...av, ...pl].filter(x => !pagos.has(x.id));
+}
+VIEWS.financeiro = () => {
+  const [ini,fim] = periodoFin(), l = lancamentos(ini,fim);
+  const rec = l.filter(x=>x.tipo==="receita").reduce((s,x)=>s+x.valor,0), desp = l.filter(x=>x.tipo==="despesa").reduce((s,x)=>s+x.valor,0), luc = rec-desp;
+  const porCat = {}; l.filter(x=>x.tipo==="despesa").forEach(x => porCat[x.cat] = (porCat[x.cat]||0)+x.valor);
+  const cats = Object.entries(porCat).sort((a,b)=>b[1]-a[1]), maxC = Math.max(1,...cats.map(x=>x[1]));
+  const ar = aReceber(), arTot = ar.reduce((s,x)=>s+x.valor,0);
+  const P = previsao(), c = P.c;
+  const planosAtivos = S.planos;
+  return `
+  <div class="head"><div><h1>Financeiro</h1><p>${fmtDate(ini)} a ${fmtDate(fim)}</p></div>
+    <div class="row"><select id="finP" style="width:auto" aria-label="Período">${[["hoje","Hoje"],["7","Últimos 7 dias"],["30","Últimos 30 dias"],["mes","Este mês"],["mespass","Mês passado"]].map(([v,t])=>`<option value="${v}" ${S.finPeriodo===v?"selected":""}>${t}</option>`).join("")}</select>
+    <button class="btn" id="novaRec">+ Recebimento</button><button class="btn primary" id="novaDesp">+ Despesa</button></div></div>
+  <div class="stats">
+    <div class="stat"><b style="color:var(--ok)">${brl(rec)}</b><span>recebido</span></div>
+    <div class="stat"><b style="color:var(--bad)">${brl(desp)}</b><span>despesas</span></div>
+    <div class="stat"><b>${brl(luc)}</b><span>lucro${rec?" · margem "+Math.round(luc/rec*100)+"%":""}</span></div>
+    <div class="stat"><b style="color:var(--warn)">${brl(arTot)}</b><span>a receber (${ar.length})</span></div>
+  </div>
+  <section style="display:flex;flex-direction:column;gap:10px"><h2>A receber</h2>
+    <p class="muted" style="margin:0">Avulsos confirmados em ${fmtDate(S.diaData)} e planos iniciados nos últimos 45 dias sem pagamento lançado. Toque em Recebido quando o cliente pagar.</p>
+    ${ar.length ? `<div class="tablebox"><table><thead><tr><th>Cliente</th><th>O quê</th><th>Pagamento</th><th>Valor</th><th></th></tr></thead><tbody>
+    ${ar.map((x,i)=>`<tr><td><b>${esc(x.c.nome)}</b><div class="muted" style="font-size:.8rem">${fmtPhone(x.c.telefone)}</div></td><td>${esc(x.desc)}</td><td>${esc(x.c.pagamento||"—")}</td><td class="num">${brl(x.valor)}</td><td><button class="btn small primary" data-receber="${i}">Recebido</button></td></tr>`).join("")}
+    </tbody></table></div>` : `<div class="panel empty">Nada pendente.</div>`}
+  </section>
+  <div class="grid2">
+    <section class="panel" style="display:flex;flex-direction:column;gap:10px"><h2>Despesas por categoria</h2>
+      ${cats.length ? cats.map(([k,v])=>`<div><div class="row" style="justify-content:space-between"><span>${esc(k)} ${CAT_VAR.includes(k)?'<span class="pill">por marmita</span>':'<span class="pill">fixa</span>'}</span><b class="num">${brl(v)}</b></div><span class="bar av" style="width:${v/maxC*100}%"></span></div>`).join("") : '<p class="muted">Nenhuma despesa no período.</p>'}
+    </section>
+    <section class="panel" style="display:flex;flex-direction:column;gap:10px"><h2>Custos usados nas previsões</h2>
+      <p style="margin:0">Custo por marmita: <b>${brl(c.porMarmita)}</b> <span class="muted">${c.porMarmitaCalc?"(calculado dos últimos 30 dias: ingredientes, embalagens, gás e entregadores ÷ "+c.marmitas30+" marmitas)":"(valor de Ajustes; lance despesas para o cálculo automático)"}</span></p>
+      <p style="margin:0">Custos fixos por mês: <b>${brl(c.fixoMes)}</b> <span class="muted">${Number(S.config.custoFixoMensal)?"(valor de Ajustes)":"(somados das despesas fixas dos últimos 30 dias)"}</span></p>
+      <button class="btn small" data-go="ajustes" style="align-self:flex-start">Ajustar valores</button>
+    </section>
+  </div>
+  <section style="display:flex;flex-direction:column;gap:10px"><h2>Previsão dos próximos 30 dias</h2>
+    <div class="stats">
+      <div class="stat"><b>${brl(P.custoPlanos)}</b><span>custo para entregar as ${P.saldoTotal} marmitas já vendidas nos planos</span></div>
+      <div class="stat"><b>${brl(P.receita)}</b><span>receita prevista (renovações ${brl(P.renov)} + avulsos ${brl(P.recAv)})</span></div>
+      <div class="stat"><b>${brl(P.despesa)}</b><span>despesa prevista (${P.marmitasPrev} marmitas + fixos)</span></div>
+      <div class="stat"><b style="color:${P.lucro>=0?"var(--ok)":"var(--bad)"}">${brl(P.lucro)}</b><span>lucro previsto</span></div>
+    </div>
+    <div class="panel" style="display:flex;flex-direction:column;gap:6px;font-size:.92rem">
+      <span>• ${P.diasDoCalendario?P.diasAbertos+" dias abertos no calendário":"Sem dias marcados no calendário; usei 22 dias"}, média de ${P.mediaDia.toFixed(1)} marmitas por dia (${P.mediaAv.toFixed(1)} avulsas).</span>
+      <span>• Guarde pelo menos <b>${brl(P.custoPlanos)}</b> do que já recebeu dos planos para cobrir as marmitas que ainda faltam entregar.</span>
+      <span>• ${P.equilibrio!==null?`Ponto de equilíbrio: <b>${P.equilibrio} marmitas por mês</b> para pagar os custos fixos (lucro de ${brl(P.margemUn)} por marmita, preço médio ${brl(P.precoMedio)}).`:"Com os preços atuais, cada marmita custa mais do que rende. Revise preços ou custos."}</span>
+    </div>
+    ${planosAtivos.length && c.porMarmita ? `<div class="tablebox"><table><thead><tr><th>Plano</th><th>Preço por marmita</th><th>Custo por marmita</th><th>Lucro por marmita</th><th>Lucro no plano</th></tr></thead><tbody>
+      ${planosAtivos.map(p=>{const un=p.marmitas?p.preco/p.marmitas:0, lu=un-c.porMarmita; return `<tr><td>${esc(p.nome)}</td><td class="num">${brl(un)}</td><td class="num">${brl(c.porMarmita)}</td><td class="num" style="color:${lu>=0?"var(--ok)":"var(--bad)"}">${brl(lu)}</td><td class="num">${brl(lu*(p.marmitas||0))}</td></tr>`}).join("")}
+    </tbody></table></div>` : ""}
+    <div class="panel" id="iaBox" hidden style="display:flex;flex-direction:column;gap:8px"><div class="row" style="justify-content:space-between"><h3>Análise do Claude</h3><button class="btn small" id="iaFin">Analisar minhas finanças</button></div><div class="msg" id="iaOut" hidden></div></div>
+  </section>
+  <section style="display:flex;flex-direction:column;gap:10px"><div class="row" style="justify-content:space-between"><h2>Lançamentos</h2><button class="btn small" id="csvFin" ${l.length?"":"disabled"}>Baixar (.csv)</button></div>
+    ${l.length ? `<div class="tablebox"><table><thead><tr><th>Data</th><th>Tipo</th><th>Categoria</th><th>Descrição</th><th>Valor</th><th></th></tr></thead><tbody>
+    ${l.slice(0,300).map(x=>`<tr><td class="num">${fmtDate(x.data)}</td><td>${x.tipo==="receita"?'<span class="pill ok">Receita</span>':'<span class="pill bad">Despesa</span>'}</td><td>${esc(x.cat)}</td><td>${esc(x.desc||"")}</td><td class="num">${x.tipo==="despesa"?"− ":""}${brl(x.valor)}</td><td><button class="btn small danger" data-apagar="${esc(x.data)}|${esc(x.id)}" aria-label="Apagar">✕</button></td></tr>`).join("")}
+    </tbody></table></div>` : `<div class="panel empty">Nenhum lançamento no período. Use + Despesa para lançar as compras do dia.</div>`}
+  </section>`;
+};
+function formLanc(tipo){
+  const cats = tipo==="receita" ? CAT_REC : [...CAT_VAR, ...CAT_FIXO];
+  openModal(`
+    <h2>${tipo==="receita"?"Novo recebimento":"Nova despesa"}</h2>
+    <form class="form">
+      <label class="f c2">Data<input type="date" id="l_data" value="${today()}"></label>
+      <label class="f c2">Categoria<select id="l_cat">${cats.map(c=>`<option>${c}</option>`).join("")}</select></label>
+      <label class="f c2">Valor (R$)<input type="number" step="0.01" min="0" id="l_valor" inputmode="decimal"></label>
+      <label class="f c4">Descrição<input type="text" id="l_desc" placeholder="${tipo==="receita"?"Ex.: Plano mensal da Maria":"Ex.: Mercado, 10 kg de frango"}"></label>
+      <label class="f c2">Forma de pagamento<select id="l_pag"><option value="">—</option>${PAGAMENTOS.map(p=>`<option>${p}</option>`).join("")}</select></label>
+    </form>
+    <div class="foot"><button class="btn" data-close>Cancelar</button><button class="btn primary" id="l_save">Salvar</button></div>`,
+  () => {
+    $("#l_save").onclick = () => {
+      const valor = Number($("#l_valor").value); if(!(valor>0)){ toast("Informe o valor."); return; }
+      addLanc($("#l_data").value||today(), uid(), {tipo, cat:$("#l_cat").value, valor, desc:$("#l_desc").value.trim(), pag:$("#l_pag").value});
+      closeModal(); toast(tipo==="receita"?"Recebimento lançado.":"Despesa lançada.");
+    };
+  });
+}
+BIND.financeiro = () => {
+  $("#finP").onchange = e => { S.finPeriodo = e.target.value; render(); };
+  $("#novaRec").onclick = () => formLanc("receita");
+  $("#novaDesp").onclick = () => formLanc("despesa");
+  document.querySelectorAll("[data-go]").forEach(b => b.onclick = () => go(b.dataset.go));
+  const ar = aReceber();
+  document.querySelectorAll("[data-receber]").forEach(b => b.onclick = () => { const x = ar[b.dataset.receber]; addLanc(today(), x.id, {tipo:"receita", cat:x.tipo==="av"?"Avulso":"Plano", valor:x.valor, desc:x.c.nome+" · "+x.desc, pag:x.c.pagamento||"", clienteId:x.c.id}); render(); toast("Recebimento lançado."); });
+  document.querySelectorAll("[data-apagar]").forEach(b => b.onclick = () => { if(b.dataset.sure){ const [d,id] = b.dataset.apagar.split("|"); apagarLanc(d,id); render(); toast("Lançamento apagado."); } else { b.dataset.sure="1"; b.textContent="Apagar?"; } });
+  const [ini,fim] = periodoFin();
+  const cf = $("#csvFin"); if(cf) cf.onclick = () => baixar("financeiro-"+ini+"-a-"+fim+".csv", toCsv([["Data","Tipo","Categoria","Descrição","Forma de pagamento","Valor"], ...lancamentos(ini,fim).map(x=>[fmtDate(x.data), x.tipo==="receita"?"Receita":"Despesa", x.cat, x.desc||"", x.pag||"", (x.tipo==="despesa"?-x.valor:x.valor).toFixed(2).replace(".",",")])]));
+  iaSetup();
+};
+async function getSample(){ try{ return window.claude && window.claude.use ? await window.claude.use("sample") : null; }catch(e){ return null; } }
+const iaErro = e => ({not_granted:"Você não permitiu o uso do Claude nesta página.", rate_limited:"Muitos pedidos seguidos. Tente de novo em um minuto.", cancelled:""}[e && e.code] ?? "Não foi possível falar com o Claude agora.");
+async function iaSetup(){
+  const sample = await getSample(); const box = $("#iaBox"); if(!sample || !box) return;
+  box.hidden = false;
+  $("#iaFin").onclick = async () => {
+    const out = $("#iaOut"), btn = $("#iaFin"); out.hidden = false; out.textContent = "Pensando..."; btn.disabled = true;
+    const P = previsao(), [ini,fim] = [addDays(today(),-29), today()], l = lancamentos(ini,fim);
+    const porCat = {}; l.forEach(x => { const k = x.tipo+": "+x.cat; porCat[k] = (porCat[k]||0)+x.valor; });
+    const dados = {ultimos30dias:{lancamentosPorCategoria:porCat, marmitas:marmitasEntre(ini,fim)}, custoPorMarmita:P.c.porMarmita, custosFixosMes:P.c.fixoMes, previsao30dias:{receita:P.receita, despesa:P.despesa, lucro:P.lucro, marmitas:P.marmitasPrev, diasAbertos:P.diasAbertos}, marmitasAEntregarNosPlanos:P.saldoTotal, custoParaCobrirPlanos:P.custoPlanos, pontoEquilibrioMarmitasMes:P.equilibrio, planos:S.planos.map(p=>({nome:p.nome, marmitas:p.marmitas, preco:p.preco, clientes:S.clientes.filter(c=>c.planoId===p.id && c.ativo!==false).length})), clientesAtivos:S.clientes.filter(c=>c.ativo!==false).length};
+    try{
+      await sample("Você é consultor financeiro de um pequeno restaurante de marmitas no Brasil que vende planos e marmitas avulsas e entrega com motoboys. Com os dados abaixo (valores em reais), escreva em português simples, sem jargão, no máximo 12 linhas: 1) como está a saúde financeira, 2) três ações práticas para aumentar o lucro ou reduzir custos, 3) se os preços dos planos cobrem os custos. Se faltarem dados, diga quais lançar. Não use tabelas.\n\nDados:\n"+JSON.stringify(dados), {onText:({text}) => { out.textContent = text; }});
+    }catch(e){ out.textContent = (e && e.text) || iaErro(e); }
+    btn.disabled = false;
+  };
+}
+
+// ----- Marketing -----
+function ultimoPedido(c){ let u = ""; for(const d in S.pedidos){ const v = (S.pedidos[d].confirmados||{})[c.id]; if(v && v.qtd>0 && d>u) u = d; } return u; }
+const codigoIndicacao = c => (norm((c.nome||"").split(" ")[0]).replace(/[^a-z]/g,"").toUpperCase().slice(0,8)||"CLIENTE")+(c.telefone||"").slice(-4);
+function oportunidades(){
+  const t = today(), ini = addDays(t,-30);
+  const avFreq = S.clientes.filter(c => c.ativo!==false).map(c => { let n = 0; for(const d in S.pedidos){ if(d<ini) continue; const v = (S.pedidos[d].confirmados||{})[c.id]; if(v && v.qtd>0 && v.avulso) n++; } return {c, n}; }).filter(x => x.n>=3 && !x.c.planoId).sort((a,b)=>b.n-a.n);
+  const sumidos = S.clientes.filter(c => c.ativo!==false && c.telefone).map(c => ({c, u:ultimoPedido(c)})).filter(x => !x.u || x.u < addDays(t,-21)).filter(x => !(x.c.planoId && statusCliente(x.c).k==="ok"));
+  const ind = {}; S.clientes.forEach(c => { if(c.indicadoPor) (ind[c.indicadoPor] ||= []).push(c); });
+  const ranking = Object.entries(ind).map(([id,l]) => ({c:S.clientes.find(x=>x.id===id), l})).filter(x=>x.c).sort((a,b)=>b.l.length-a.l.length);
+  return {avFreq, sumidos, ranking};
+}
+const linkWhats = () => { const t = normPhone(S.config.telefoneRestaurante); return t ? "https://wa.me/"+t+"?text="+encodeURIComponent("Olá! Vi vocês no Instagram e quero conhecer o cardápio e os planos de marmita.") : ""; };
+const TEMPLATES = {
+  novos:{whatsapp:"Olá! 👋 Aqui é da {rest}. Fazemos marmitas caseiras todo dia, entregues quentinhas na sua casa ou trabalho. Temos planos a partir de {preco} por marmita. Quer receber o cardápio do dia? Responda SIM!", instagram:"🍱 Comida caseira de verdade, todo dia, na sua porta.\n\nNa {rest} você escolhe um plano e esquece a preocupação com o almoço. Planos a partir de {preco} por marmita.\n\n👉 Peça pelo link da bio e receba o cardápio do dia no WhatsApp.\n\n#marmita #marmitafit #comidacaseira #almoço #delivery"},
+  reativar:{whatsapp:"Oi, {nome}! Sentimos sua falta aqui na {rest} 😊 Esta semana o cardápio está caprichado. Quer que eu separe uma marmita para você amanhã?", instagram:"Tem saudade de comida caseira? 🍲 Volta pra {rest}! Esta semana tem cardápio especial. Chama no WhatsApp pelo link da bio."},
+  plano:{whatsapp:"Oi, {nome}! Vi que você tem pedido bastante com a gente 🙌 Com um plano você paga menos por marmita ({preco}) e não precisa pedir todo dia. Quer que eu te mande as opções?", instagram:"💡 Quem pede todo dia economiza com plano!\n\nNos planos da {rest} a marmita sai a partir de {preco}. Escolha os dias, a quantidade e receba sem preocupação.\n\nChama no WhatsApp pelo link da bio."},
+  indicacao:{whatsapp:"Oi, {nome}! Indique a {rest} para um amigo: quando ele fechar um plano informando o código {codigo}, você ganha {premio}. 🎁", instagram:"🎁 Indique e ganhe!\n\nIndicou um amigo para a {rest} e ele fechou um plano? Você ganha {premio}.\n\nPeça seu código pelo WhatsApp (link na bio)."}
+};
+function precoMinimo(){ const v = S.planos.filter(p=>p.marmitas&&p.preco).map(p=>p.preco/p.marmitas); return v.length ? brl(Math.min(...v)) : "um preço especial"; }
+function preencher(t, c){ return t.replace(/\{rest\}/g, S.config.restaurante||"nossa cozinha").replace(/\{preco\}/g, precoMinimo()).replace(/\{nome\}/g, c ? (c.nome||"").split(" ")[0] : "tudo bem").replace(/\{codigo\}/g, c ? codigoIndicacao(c) : "SEUCODIGO").replace(/\{premio\}/g, S.config.premioIndicacao||"1 marmita grátis"); }
+VIEWS.marketing = () => {
+  const o = oportunidades(), lw = linkWhats();
+  return `
+  <div class="head"><div><h1>Marketing</h1><p>Atrair clientes novos e trazer de volta os que sumiram.</p></div></div>
+  <section class="panel" style="display:flex;flex-direction:column;gap:10px"><h2>Link para Instagram e anúncios</h2>
+    ${lw ? `<p style="margin:0" class="muted">Coloque na bio do Instagram e nos anúncios. Quem tocar cai no seu WhatsApp com a mensagem pronta.</p><div class="msg" style="word-break:break-all">${esc(lw)}</div><div class="row"><button class="btn small primary" id="copyLink">Copiar link</button></div>`
+      : `<p class="muted" style="margin:0">Coloque o telefone do restaurante em Ajustes para criar o link.</p><button class="btn small" data-go="ajustes" style="align-self:flex-start">Abrir Ajustes</button>`}
+  </section>
+  <section class="panel" style="display:flex;flex-direction:column;gap:10px"><h2>Criar campanha</h2>
+    <div class="form">
+      <label class="f c2">Objetivo<select id="mkObj"><option value="novos">Clientes novos</option><option value="reativar">Trazer de volta quem sumiu</option><option value="plano">Vender planos para avulsos</option><option value="indicacao">Indique e ganhe</option></select></label>
+      <label class="f c2">Onde vai postar<select id="mkCanal"><option value="whatsapp">WhatsApp (lista ou status)</option><option value="instagram">Instagram (post ou anúncio)</option></select></label>
+      <label class="f c2">Detalhe (opcional)<input type="text" id="mkDet" placeholder="Ex.: feijoada no sábado"></label>
+    </div>
+    <div class="msg" id="mkOut"></div>
+    <div class="row"><button class="btn small primary" id="mkCopy">Copiar texto</button><button class="btn small" id="mkIA" hidden>Criar outro texto com o Claude</button></div>
+  </section>
+  <div class="grid2">
+    <section style="display:flex;flex-direction:column;gap:10px"><h2>Avulsos que pedem muito <span class="pill">${o.avFreq.length}</span></h2>
+      <p class="muted" style="margin:0">3 ou mais pedidos avulsos nos últimos 30 dias. Ofereça um plano.</p>
+      ${o.avFreq.length ? `<div class="tablebox"><table style="min-width:0"><tbody>${o.avFreq.slice(0,50).map(x=>`<tr><td><b>${esc(x.c.nome)}</b><div class="muted" style="font-size:.8rem">${x.n} pedidos · ${fmtPhone(x.c.telefone)}</div></td><td style="text-align:right">${x.c.telefone?`<a class="btn small" href="https://wa.me/${esc(x.c.telefone)}?text=${encodeURIComponent(preencher(TEMPLATES.plano.whatsapp,x.c))}" target="_blank" rel="noopener">Oferecer plano</a>`:""}</td></tr>`).join("")}</tbody></table></div>` : `<div class="panel empty">Ninguém por enquanto.</div>`}
+    </section>
+    <section style="display:flex;flex-direction:column;gap:10px"><h2>Clientes que sumiram <span class="pill">${o.sumidos.length}</span></h2>
+      <p class="muted" style="margin:0">Sem pedido há mais de 21 dias. Mande uma mensagem de volta.</p>
+      ${o.sumidos.length ? `<div class="row"><button class="btn small" id="copySum">Copiar telefones (${Math.min(256,o.sumidos.length)})</button><button class="btn small" id="copySumMsg">Copiar mensagem</button></div>
+      <div class="tablebox" style="max-height:320px;overflow:auto"><table style="min-width:0"><tbody>${o.sumidos.slice(0,100).map(x=>`<tr><td><b>${esc(x.c.nome)}</b><div class="muted" style="font-size:.8rem">${x.u?"último pedido "+fmtDate(x.u):"sem pedidos recentes"}</div></td><td style="text-align:right"><a class="btn small" href="https://wa.me/${esc(x.c.telefone)}?text=${encodeURIComponent(preencher(TEMPLATES.reativar.whatsapp,x.c))}" target="_blank" rel="noopener">Chamar</a></td></tr>`).join("")}</tbody></table></div>` : `<div class="panel empty">Ninguém sumido.</div>`}
+    </section>
+  </div>
+  <section style="display:flex;flex-direction:column;gap:10px"><h2>Indicações</h2>
+    <p class="muted" style="margin:0">Prêmio: <b>${esc(S.config.premioIndicacao||"1 marmita grátis")}</b>. Ao cadastrar um cliente novo, escolha quem indicou no campo "Indicado por". Cada cliente tem um código, como ${esc(S.clientes[0]?codigoIndicacao(S.clientes[0]):"MARIA4321")}.</p>
+    ${o.ranking.length ? `<div class="tablebox"><table style="min-width:0"><thead><tr><th>Cliente</th><th>Código</th><th>Indicações</th></tr></thead><tbody>${o.ranking.slice(0,30).map(x=>`<tr><td><b>${esc(x.c.nome)}</b><div class="muted" style="font-size:.8rem">${x.l.map(y=>esc(y.nome)).join(", ")}</div></td><td class="num">${esc(codigoIndicacao(x.c))}</td><td class="num"><b>${x.l.length}</b></td></tr>`).join("")}</tbody></table></div>` : `<div class="panel empty">Nenhuma indicação registrada ainda.</div>`}
+  </section>
+  <textarea id="msgCopy" aria-hidden="true" tabindex="-1" style="position:absolute;left:-9999px;width:1px;height:1px"></textarea>`;
+};
+BIND.marketing = () => {
+  document.querySelectorAll("[data-go]").forEach(b => b.onclick = () => go(b.dataset.go));
+  const cl = $("#copyLink"); if(cl) cl.onclick = () => { $("#msgCopy").value = linkWhats(); copiar(linkWhats()); };
+  const out = $("#mkOut");
+  const base = () => { const t = TEMPLATES[$("#mkObj").value][$("#mkCanal").value]; const det = $("#mkDet").value.trim(); return preencher(t, null) + (det ? "\n\n✨ Destaque: "+det : ""); };
+  const upd = () => { out.textContent = base(); };
+  $("#mkObj").onchange = $("#mkCanal").onchange = upd; $("#mkDet").oninput = upd; upd();
+  $("#mkCopy").onclick = () => { $("#msgCopy").value = out.textContent; copiar(out.textContent); };
+  const o = oportunidades();
+  const cs = $("#copySum"); if(cs) cs.onclick = () => { const t = o.sumidos.slice(0,256).map(x=>"+"+x.c.telefone).join("\n"); $("#msgCopy").value = t; copiar(t); };
+  const cm = $("#copySumMsg"); if(cm) cm.onclick = () => { const t = preencher(TEMPLATES.reativar.whatsapp, null).replace("Oi, tudo bem!","Oi!"); $("#msgCopy").value = t; copiar(t); };
+  getSample().then(sample => {
+    const b = $("#mkIA"); if(!sample || !b) return; b.hidden = false;
+    b.onclick = async () => {
+      b.disabled = true; out.textContent = "Pensando...";
+      const obj = $("#mkObj").selectedOptions[0].text, canal = $("#mkCanal").selectedOptions[0].text, det = $("#mkDet").value.trim();
+      const planos = S.planos.map(p => p.nome+": "+p.marmitas+" marmitas por "+brl(p.preco)).join("; ");
+      const card = S.cardapios[today()] ? (S.cardapios[today()].itens||[]).map(i=>i.nome).join(", ") : "";
+      try{
+        await sample("Escreva um texto de marketing em português do Brasil para um restaurante de marmitas caseiras chamado \""+(S.config.restaurante||"nosso restaurante")+"\".\nObjetivo: "+obj+".\nOnde será publicado: "+canal+".\n"+(det?"Destaque pedido pelo dono: "+det+".\n":"")+(planos?"Planos: "+planos+".\n":"")+(card?"Cardápio de hoje: "+card+".\n":"")+(S.config.premioIndicacao?"Prêmio de indicação: "+S.config.premioIndicacao+".\n":"")+"Regras: tom simpático e direto, frases curtas, no máximo 90 palavras, termine com uma chamada para pedir pelo WhatsApp. Para Instagram, inclua até 6 hashtags no final. Responda só com o texto, sem comentários.", {onText:({text}) => { out.textContent = text; }, cache:false});
+      }catch(e){ out.textContent = (e && e.text) || iaErro(e) || base(); }
+      b.disabled = false;
+    };
+  });
+};
+
+// ----- Ajustes -----
+VIEWS.ajustes = () => `
+  <div class="head"><div><h1>Ajustes</h1><p>Ligue só os módulos que você usa. Os desligados somem do menu.</p></div></div>
+  <section class="panel" style="display:flex;flex-direction:column;gap:12px"><h2>Restaurante</h2>
+    <div class="form">
+      <label class="f c3">Nome do restaurante<input type="text" id="a_nome" value="${esc(S.config.restaurante)}"></label>
+      <label class="f c3">Seu nome no WhatsApp<input type="text" id="a_wa" value="${esc(S.config.meuNomeWhats)}"></label>
+      <label class="f c2">Horário limite para pedidos<input type="text" id="a_hora" value="${esc(S.config.horarioLimite)}" placeholder="10:30"></label>
+      <label class="f c4">Endereço do restaurante (saída das rotas)<input type="text" id="a_end" value="${esc(S.config.enderecoRestaurante)}" placeholder="Rua, número, bairro, cidade"></label>
+      <label class="f c2">Cidade<input type="text" id="a_cid" value="${esc(S.config.cidade)}"></label>
+      <label class="f c2">Telefone do restaurante (WhatsApp)<input type="tel" id="a_tel" value="${esc(S.config.telefoneRestaurante)}"></label>
+      <label class="f c2">Custo por marmita (R$)<input type="number" step="0.01" min="0" id="a_custo" value="${esc(S.config.custoMarmita||"")}" placeholder="Calculado das despesas"></label>
+      <label class="f c2">Custos fixos por mês (R$)<input type="number" step="0.01" min="0" id="a_fixo" value="${esc(S.config.custoFixoMensal||"")}" placeholder="Calculado das despesas"></label>
+      <label class="f c6">Prêmio por indicação<input type="text" id="a_premio" value="${esc(S.config.premioIndicacao)}"></label>
+      <label class="f c2">Avisar quando restarem (marmitas)<input type="number" min="0" id="a_alerta" value="${esc(S.config.alertaSaldo)}"></label>
+      <label class="f c2">Ou quando o plano acabar em (dias)<input type="number" min="0" id="a_alertaDias" value="${esc(S.config.alertaDias)}"></label>
+      <label class="f c6">Mensagem de aviso de fim de plano<textarea id="a_msg">${esc(S.config.msgAlerta)}</textarea><span style="font-weight:400">Use {nome}, {saldo}, {plano} e {fim}.</span></label>
+    </div>
+    <div class="row"><button class="btn primary" id="a_save">Salvar</button></div>
+  </section>
+  <section class="panel" style="display:flex;flex-direction:column;gap:12px"><h2>Módulos</h2>
+    <div class="mods">${MODULOS.filter(m=>!m.fixo).map(m=>`<div class="mod"><div><b>${esc(m.nome)}</b> ${m.breve?'<span class="pill">em breve</span>':""}<p>${esc(m.desc)}</p></div><input type="checkbox" data-m="${m.id}" ${m.breve?"disabled":""} ${!m.breve && S.config.modulos[m.id]!==false?"checked":""} aria-label="Ligar ${esc(m.nome)}" style="width:22px;height:22px"></div>`).join("")}</div>
+  </section>
+  <p class="muted" style="font-size:.85rem">${S.mode==="cloud"?"Os dados ficam salvos no seu Firebase e aparecem iguais no celular e no computador.":"Modo de teste: dados só neste navegador."}</p>
+  ${window.__auth?`<div class="row"><span class="muted">Conectado como ${esc((window.__auth.currentUser||{}).email||"")}</span><button class="btn small" id="sairBtn">Sair</button></div>`:""}`;
+BIND.ajustes = () => {
+  $("#a_save").onclick = () => { saveConfig({restaurante:$("#a_nome").value.trim(), meuNomeWhats:$("#a_wa").value.trim(), horarioLimite:$("#a_hora").value.trim()||"10:30", enderecoRestaurante:$("#a_end").value.trim(), cidade:$("#a_cid").value.trim(), telefoneRestaurante:$("#a_tel").value.trim(), custoMarmita:Number($("#a_custo").value)||0, custoFixoMensal:Number($("#a_fixo").value)||0, premioIndicacao:$("#a_premio").value.trim()||"1 marmita grátis", alertaSaldo:Number($("#a_alerta").value)||0, alertaDias:Number($("#a_alertaDias").value)||0, msgAlerta:$("#a_msg").value.trim()||DEFAULT_CONFIG.msgAlerta}).then(()=>{ render(); toast("Ajustes salvos."); }); };
+  document.querySelectorAll("[data-m]").forEach(cb => cb.onchange = () => { saveConfig({modulos:Object.assign({}, S.config.modulos, {[cb.dataset.m]:cb.checked})}); render(); });
+};
+
+// ---------- boot ----------
+function rerenderSafe(){
+  // keep an open modal and typed input intact; only re-render the page behind it
+  if($("#ov")) { renderNav(); return; }
+  if(S.tab==="hoje" && document.activeElement && document.activeElement.id==="confBusca"){ renderConfirmados(); renderBuscaConf(); return; }
+  const a = document.activeElement; if(a && a.closest && a.closest("#view") && /INPUT|TEXTAREA|SELECT/.test(a.tagName) && a.type!=="checkbox") return;
+  render();
+}
+async function boot(){
+  const h = (location.hash||"").slice(1); if(MODULOS.some(m=>m.id===h)) S.tab = h;
+  render();
+  await Store.init();
+  Store.watch("clientes", docs => { S.clientes = docs; rerenderSafe(); });
+  Store.watch("planos", docs => { S.planos = docs; rerenderSafe(); });
+  Store.watch("cardapios", docs => { S.cardapios = Object.fromEntries(docs.map(d=>[d.id,d])); rerenderSafe(); });
+  Store.watch("pedidos", docs => { S.pedidos = Object.fromEntries(docs.map(d=>[d.id,d])); rerenderSafe(); }, addDays(today(),-150));
+  Store.watch("financeiro", docs => { S.fin = Object.fromEntries(docs.map(d=>[d.id,d])); rerenderSafe(); }, addDays(today(),-400));
+  Store.watch("entregadores", docs => { S.entregadores = docs; rerenderSafe(); });
+  Store.watch("config", docs => { const g = docs.find(d=>d.id==="geral"); S.config = Object.assign(structuredClone(DEFAULT_CONFIG), g||{}); S.config.modulos = Object.assign({}, DEFAULT_CONFIG.modulos, (g&&g.modulos)||{}); delete S.config.id; rerenderSafe(); });
+  render();
+}
+window.__startApp = boot;
+})();
+</script>
+
+<div id="gate" class="overlay" style="background:var(--bg);align-items:center">
+  <div class="modal gbox" style="max-width:420px"><p class="muted">Carregando...</p></div>
+</div>
+<script>
+(function(){
+"use strict";
+// Depois de criar o projeto no Firebase, você pode colar a configuração aqui
+// para não precisar colar em cada aparelho. Exemplo: const FIREBASE_CONFIG = {apiKey:"...", authDomain:"...", projectId:"...", appId:"..."};
+const FIREBASE_CONFIG = null;
+
+const gate = document.getElementById("gate"), box = gate.querySelector(".gbox");
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let started = false;
+function getCfg(){
+  if(FIREBASE_CONFIG) return FIREBASE_CONFIG;
+  try{ return JSON.parse(localStorage.getItem("marmitex-fb")||"null"); }catch(e){ return null; }
+}
+function parseCfg(t){
+  const o = {}; String(t).replace(/["']?(\w+)["']?\s*:\s*["']([^"']+)["']/g, (m,k,v) => { o[k] = v; });
+  return o.apiKey && o.projectId ? o : null;
+}
+function show(html){ gate.hidden = false; box.innerHTML = html; const f = box.querySelector("input,textarea"); f && f.focus(); }
+function setupScreen(msg){
+  show(`<h2>Configurar o Marmitex</h2>
+    <p class="muted" style="margin:0">No Firebase, abra <b>Configurações do projeto &gt; Seus apps</b>, copie o bloco <b>firebaseConfig</b> e cole aqui. Isso é feito uma vez em cada aparelho.</p>
+    <label class="f">Configuração do Firebase<textarea id="g_cfg" style="min-height:160px" placeholder='const firebaseConfig = {&#10;  apiKey: "AIza...",&#10;  authDomain: "marmitex-xxxx.firebaseapp.com",&#10;  projectId: "marmitex-xxxx",&#10;  ...&#10;};'></textarea></label>
+    <p id="g_err" style="color:var(--bad);margin:0">${esc(msg||"")}</p>
+    <div class="foot"><button class="btn" id="g_test">Usar sem Firebase (teste)</button><button class="btn primary" id="g_save">Salvar</button></div>`);
+  document.getElementById("g_save").onclick = () => {
+    const cfg = parseCfg(document.getElementById("g_cfg").value);
+    if(!cfg){ document.getElementById("g_err").textContent = "Não reconheci a configuração. Copie o bloco inteiro, com apiKey e projectId."; return; }
+    try{ localStorage.setItem("marmitex-fb", JSON.stringify(cfg)); }catch(e){}
+    location.reload();
+  };
+  document.getElementById("g_test").onclick = () => { gate.hidden = true; if(!started){ started = true; window.__startApp(); } };
+}
+const AUTH_ERR = {
+  "auth/invalid-credential":"E-mail ou senha incorretos.", "auth/wrong-password":"E-mail ou senha incorretos.", "auth/user-not-found":"E-mail ou senha incorretos.",
+  "auth/invalid-email":"Esse e-mail não é válido.", "auth/email-already-in-use":"Esse e-mail já tem acesso. Use Entrar.",
+  "auth/weak-password":"A senha precisa ter pelo menos 6 caracteres.", "auth/too-many-requests":"Muitas tentativas. Espere alguns minutos.",
+  "auth/operation-not-allowed":"Ative o login por E-mail/senha no Firebase (Authentication > Método de login).",
+  "auth/network-request-failed":"Sem internet. Confira a conexão.", "auth/unauthorized-domain":"Adicione este endereço em Authentication > Configurações > Domínios autorizados."
+};
+function loginScreen(msg){
+  show(`<h2>Marmitex Gestão</h2>
+    <p class="muted" style="margin:0">Entre com seu e-mail e senha.</p>
+    <form id="g_form" class="form" style="grid-template-columns:1fr">
+      <label class="f">E-mail<input type="text" id="g_email" autocomplete="username" inputmode="email"></label>
+      <label class="f">Senha<input type="password" id="g_pass" autocomplete="current-password"></label>
+    </form>
+    <p id="g_err" style="color:var(--bad);margin:0">${esc(msg||"")}</p>
+    <div class="foot" style="justify-content:space-between"><button class="btn small" id="g_reset">Esqueci a senha</button><span style="flex:1"></span><button class="btn" id="g_new">Criar acesso</button><button class="btn primary" id="g_in">Entrar</button></div>
+    <p class="muted" style="font-size:.8rem;margin:0">Primeira vez? Digite e-mail e uma senha e toque em Criar acesso. <button class="btn small" id="g_cfgchg" style="margin-left:4px">Trocar configuração</button></p>`);
+  const em = () => document.getElementById("g_email").value.trim(), pw = () => document.getElementById("g_pass").value;
+  const err = e => { document.getElementById("g_err").textContent = AUTH_ERR[e && e.code] || ("Não foi possível entrar ("+((e && e.code)||"erro")+")."); };
+  const auth = firebase.auth();
+  document.getElementById("g_in").onclick = () => auth.signInWithEmailAndPassword(em(), pw()).catch(err);
+  document.getElementById("g_form").onsubmit = e => { e.preventDefault(); auth.signInWithEmailAndPassword(em(), pw()).catch(err); };
+  document.getElementById("g_pass").onkeydown = e => { if(e.key==="Enter"){ e.preventDefault(); auth.signInWithEmailAndPassword(em(), pw()).catch(err); } };
+  document.getElementById("g_new").onclick = () => auth.createUserWithEmailAndPassword(em(), pw()).catch(err);
+  document.getElementById("g_reset").onclick = () => { if(!em()){ document.getElementById("g_err").textContent = "Digite seu e-mail primeiro."; return; } auth.sendPasswordResetEmail(em()).then(() => { document.getElementById("g_err").textContent = "Enviamos um e-mail para trocar a senha."; }).catch(err); };
+  document.getElementById("g_cfgchg").onclick = () => { if(FIREBASE_CONFIG) return; try{ localStorage.removeItem("marmitex-fb"); }catch(e){} location.reload(); };
+}
+function start(){
+  const cfg = getCfg();
+  if(!cfg) return setupScreen();
+  if(!window.firebase){ show(`<h2>Sem conexão</h2><p class="muted">Não consegui carregar o sistema. Confira a internet e abra de novo.</p><div class="foot"><button class="btn primary" onclick="location.reload()">Tentar de novo</button></div>`); return; }
+  try{ firebase.initializeApp(cfg); }catch(e){ return setupScreen("Configuração inválida: "+e.message); }
+  const fs = firebase.firestore();
+  try{ fs.settings({ignoreUndefinedProperties:true, merge:true}); }catch(e){}
+  fs.enablePersistence({synchronizeTabs:true}).catch(() => {});
+  firebase.auth().onAuthStateChanged(u => {
+    if(u){
+      gate.hidden = true; window.__fs = fs; window.__auth = firebase.auth();
+      if(!started){ started = true; window.__startApp(); }
+    } else {
+      if(started){ location.reload(); return; }
+      loginScreen();
+    }
+  });
+}
+document.addEventListener("click", e => { if(e.target && e.target.id==="sairBtn" && window.__auth) window.__auth.signOut(); });
+start();
+})();
+</script>
+
+</body>
+</html>
