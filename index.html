@@ -1403,7 +1403,14 @@ window.__startApp = boot;
 "use strict";
 // Depois de criar o projeto no Firebase, você pode colar a configuração aqui
 // para não precisar colar em cada aparelho. Exemplo: const FIREBASE_CONFIG = {apiKey:"...", authDomain:"...", projectId:"...", appId:"..."};
-const FIREBASE_CONFIG = null;
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyD35S_8juHbOlb8DLssGdbuvhqzvuBE1bo",
+  authDomain: "marmitex-148de.firebaseapp.com",
+  projectId: "marmitex-148de",
+  storageBucket: "marmitex-148de.firebasestorage.app",
+  messagingSenderId: "162985128880",
+  appId: "1:162985128880:web:492aa9289d5301d1b71c75"
+};
 
 const gate = document.getElementById("gate"), box = gate.querySelector(".gbox");
 const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));

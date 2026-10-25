@@ -15,7 +15,7 @@ Funciona no celular e no computador. Os dados ficam no Firebase (Google), no pla
 ## 2. Abrir o sistema
 
 1. Abra o endereço do sistema: <https://juninhocienciacomputacao-sys.github.io/Marmitex/>
-2. Na primeira vez, cole o bloco `firebaseConfig` e toque em **Salvar**. (Para não precisar colar em cada aparelho, peça ao Claude para gravar a configuração no arquivo `index.html`.)
+2. A configuração do Firebase já está gravada no `index.html`, então não precisa colar nada.
 3. Digite seu e-mail e uma senha (6 caracteres ou mais) e toque em **Criar acesso**. Das próximas vezes, use **Entrar**.
 4. **Celular:** no menu do navegador, toque em **Adicionar à tela inicial**. O sistema vira um ícone como um aplicativo.
 
