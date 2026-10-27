@@ -35,10 +35,18 @@ A mensagem do cardápio (botão **Copiar mensagem** na aba Dia) já leva o link 
 - Pedido de telefone não cadastrado aparece num aviso com o botão **Cadastrar**.
 - Para desligar a confirmação automática de plano: **Ajustes**.
 
+## Backup (faça toda semana)
+
+Em **Ajustes > Backup**, toque em **Baixar backup agora**. O sistema baixa um arquivo `backup-marmitex-DATA.json` com tudo: clientes, planos, cardápios, pedidos, financeiro e configurações. Guarde no computador e no Google Drive.
+
+- A tela **Dia** avisa quando o último backup tem mais de 7 dias.
+- Para voltar um backup, abra **Restaurar de um arquivo de backup**, escolha o arquivo e toque duas vezes em **Restaurar**. O que está no arquivo volta como era; o resto não é apagado.
+
 ## Limites do plano gratuito do Firebase
 
 - 50 mil leituras e 20 mil gravações por dia, 1 GB de dados.
 - Com cerca de 1000 clientes, cada vez que o sistema é aberto num aparelho novo ele lê todos os clientes. O sistema guarda os dados no aparelho para economizar leituras, então o uso diário normal cabe no plano gratuito.
+- Os pedidos feitos pelo link são apagados do banco assim que entram na lista do dia, e as telas só carregam os últimos 75 dias de pedidos e 100 dias de financeiro. Isso economiza leituras.
 - Se um dia passar do limite, o sistema para de salvar até o dia seguinte. Nada é cobrado sem você cadastrar um cartão.
 
 ## Arquivos

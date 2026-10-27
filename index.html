@@ -284,10 +284,20 @@ async function copiar(text){
 const plano = id => S.planos.find(p => p.id===id);
 const isOpen = d => S.config.abertos.includes(d);
 const pedido = d => S.pedidos[d] || {data:d, confirmados:{}};
-const confirmadosDia = d => Object.entries(pedido(d).confirmados||{}).filter(([id,v]) => v && v.qtd>0).map(([id,v]) => ({id, qtd:v.qtd, avulso:!!v.avulso, origem:v.origem||"", cliente:S.clientes.find(c=>c.id===id) || {id, nome:"(cliente apagado)"}}));
+// Índices recalculados quando os dados mudam (deixa as telas rápidas com milhares de clientes)
+let IDX = null;
+function idx(){
+  if(IDX) return IDX;
+  const porId = new Map(), porTel = new Map(), uso = {};
+  S.clientes.forEach(c => { porId.set(c.id, c); if(c.telefone) porTel.set(c.telefone, c); });
+  for(const d in S.pedidos){ const conf = S.pedidos[d].confirmados||{}; for(const id in conf){ const v = conf[id]; if(v && v.qtd>0 && !v.avulso) (uso[id] ||= []).push([d, v.qtd]); } }
+  return IDX = {porId, porTel, uso};
+}
+const invalidar = () => { IDX = null; };
+const confirmadosDia = d => Object.entries(pedido(d).confirmados||{}).filter(([id,v]) => v && v.qtd>0).map(([id,v]) => ({id, qtd:v.qtd, avulso:!!v.avulso, origem:v.origem||"", cliente:idx().porId.get(id) || {id, nome:"(cliente apagado)"}}));
 function usadas(c){
   if(!c.planoId) return 0; let n = 0;
-  for(const d in S.pedidos){ if(c.inicio && d < c.inicio) continue; if(c.fim && d > c.fim) continue; const v = (S.pedidos[d].confirmados||{})[c.id]; if(v && v.qtd>0 && !v.avulso) n += v.qtd; }
+  (idx().uso[c.id]||[]).forEach(([d,q]) => { if(c.inicio && d < c.inicio) return; if(c.fim && d > c.fim) return; n += q; });
   return n;
 }
 const saldo = c => (Number(c.marmitasContratadas)||0) - usadas(c);
@@ -306,13 +316,14 @@ function msgAlerta(c){
 }
 // one write at a time, in order, so a day's document is created before it is merged into
 let wq = Promise.resolve();
-const enqueue = fn => (wq = wq.then(fn).catch(e => toast(erroMsg(e))));
+const FALHOU = Symbol("falhou");
+const enqueue = fn => (wq = wq.then(fn).catch(e => { toast(erroMsg(e)); return FALHOU; }));
 function setConf(d, c, qtd, extra){
   const prev = (pedido(d).confirmados||{})[c.id];
   const avulso = prev && prev.qtd>0 ? !!prev.avulso : (!c.planoId || statusCliente(c).k==="bad");
   const entry = Object.assign({qtd:Math.max(0,qtd), avulso, hora:new Date().toISOString()}, extra||{});
   const local = Object.assign({}, prev, entry);
-  const existed = !!S.pedidos[d];
+  const existed = !!S.pedidos[d]; invalidar();
   S.pedidos[d] = Object.assign({data:d, enviado:false}, S.pedidos[d], {confirmados:Object.assign({}, pedido(d).confirmados, {[c.id]:local})});
   return enqueue(() => existed ? Store.update("pedidos", d, {confirmados:{[c.id]:entry}}) : Store.set("pedidos", d, S.pedidos[d]));
 }
@@ -320,16 +331,20 @@ function linkPedido(d){
   if(!window.__fs) return "";
   try{ return new URL("pedido.html", location.href).href.split("#")[0] + "?d=" + d; }catch(e){ return ""; }
 }
+// depois de lançado no pedido do dia, o pedido do link é apagado (o sistema não precisa ler de novo)
+const apagando = new Set();
+function apagarResposta(r){ if(apagando.has(r.id)) return; apagando.add(r.id); enqueue(() => Store.del("respostas", r.id)); }
 const prontos = (...cols) => cols.every(c => S.ready[c]);
 // Pedidos feitos pelo link: aplica cada resposta nova ou alterada ao pedido do dia
 function processarRespostas(){
   if(!window.__fs || !prontos("clientes","pedidos","respostas")) return;
   S.respostas.forEach(r => {
-    if(!r.data || r.data < today()) return;
-    const c = S.clientes.find(x => x.telefone && x.telefone===r.telefone); if(!c) return;
+    if(!r.data) return;
+    if(r.data < today()){ apagarResposta(r); return; }
+    const c = idx().porTel.get(r.telefone); if(!c) return;
     const cur = (pedido(r.data).confirmados||{})[c.id];
-    if(cur && cur.respHora===r.hora) return;
-    setConf(r.data, c, Number(r.qtd)||0, {respHora:r.hora, origem:"link"});
+    if(cur && cur.respHora===r.hora){ apagarResposta(r); return; }
+    setConf(r.data, c, Number(r.qtd)||0, {respHora:r.hora, origem:"link"}).then(res => { if(res!==FALHOU) apagarResposta(r); });
   });
 }
 // Clientes de plano entram sozinhos nos dias abertos em que recebem
@@ -384,6 +399,7 @@ function renderNav(){
 }
 function go(tab){ S.tab = tab; try{ history.replaceState(null,"","#"+tab); }catch(e){} render(); window.scrollTo(0,0); }
 function render(){
+  invalidar();
   if(!modOn(S.tab)) S.tab = "hoje";
   renderNav();
   const v = $("#view");
@@ -440,6 +456,7 @@ VIEWS.hoje = () => {
     <div class="stat"><b>${tot-av}</b><span>de plano</span></div>
     <div class="stat"><b>${av}</b><span>avulsas${preco?" · "+brl(av*preco):""}</span></div>
   </div>
+  ${window.__fs && (diasDesdeBackup()===null || diasDesdeBackup()>7) && S.ready.config ? `<div class="banner row" style="justify-content:space-between">Faça o backup semanal para não correr risco de perder dados. <button class="btn small" data-go="ajustes">Fazer backup</button></div>` : ""}
   <section class="panel"><div class="steps">
     ${step(1,"Lançar o cardápio do dia", !!card, card
       ? `<p>${(card.itens||[]).map(i=>esc(i.nome)).join(" · ")}</p><div class="row"><button class="btn small" data-go="cardapio">Editar cardápio</button></div>`
@@ -477,10 +494,11 @@ VIEWS.hoje = () => {
 };
 function renderConfirmados(){
   const el = $("#confTab"); if(!el) return;
-  const conf = confOrdenados(S.diaData);
-  el.innerHTML = conf.length ? `<div class="tablebox"><table><thead><tr><th>Cliente</th><th>Bairro</th><th>Endereço</th><th>Qtd</th><th>Tipo</th><th>Pagamento</th><th>Saldo</th></tr></thead><tbody>
+  const todos = confOrdenados(S.diaData), conf = todos.slice(0, S.confMostrar||200);
+  el.innerHTML = (todos.length>conf.length ? `<p class="muted" style="margin:0 0 8px">Mostrando ${conf.length} de ${todos.length}. Use a busca acima para achar um cliente. <button class="btn small" id="confTodos">Mostrar todos</button></p>` : "") + (conf.length ? `<div class="tablebox"><table><thead><tr><th>Cliente</th><th>Bairro</th><th>Endereço</th><th>Qtd</th><th>Tipo</th><th>Pagamento</th><th>Saldo</th></tr></thead><tbody>
     ${conf.map(x=>{const c=x.cliente;return `<tr><td><b>${esc(c.nome)}</b><div class="muted" style="font-size:.8rem">${fmtPhone(c.telefone)}</div></td><td>${esc(c.bairro||"—")}</td><td>${esc(enderecoTxt(c)||"—")}</td><td><span class="qty"><button class="btn small" data-q="${esc(x.id)}" data-v="${x.qtd-1}" aria-label="Menos uma">−</button><b>${x.qtd}</b><button class="btn small" data-q="${esc(x.id)}" data-v="${x.qtd+1}" aria-label="Mais uma">+</button></span></td><td>${x.avulso?'<span class="pill warn">Avulso</span>':'<span class="pill ok">Plano</span>'}${x.origem==="link"?' <span class="pill">pelo link</span>':x.origem==="plano"?' <span class="pill bad">sem confirmação</span>':""}</td><td>${esc(c.pagamento||"—")}</td><td class="num">${c.planoId&&c.marmitasContratadas?saldo(c):"—"}</td></tr>`}).join("")}
-  </tbody></table></div>` : `<div class="panel empty">Nenhum pedido confirmado neste dia ainda.</div>`;
+  </tbody></table></div>` : `<div class="panel empty">Nenhum pedido confirmado neste dia ainda.</div>`);
+  const ct = $("#confTodos"); if(ct) ct.onclick = () => { S.confMostrar = 100000; renderConfirmados(); };
 }
 function renderBuscaConf(){
   const el = $("#confRes"); if(!el) return;
@@ -568,7 +586,7 @@ function lembrete(d, c){
   return "Oi, "+((c && c.nome)||"").split(" ")[0]+"! Sua marmita do plano de "+DOW_LONG[dt.getDay()]+" está separada. Pode confirmar? "+(link ? "Toque aqui: "+link+" (se não quiser hoje, escolha Não quero hoje)." : "Responda SIM ou NÃO.");
 }
 function desconhecidos(d){
-  return S.respostas.filter(r => r.data===d && Number(r.qtd)>0 && !S.clientes.some(c => c.telefone && c.telefone===r.telefone));
+  return S.respostas.filter(r => r.data===d && Number(r.qtd)>0 && !idx().porTel.has(r.telefone));
 }
 function formCliente(c, pre){
   const novo = !c; c = c || Object.assign({ativo:true, inicio:today(), pagamento:"Pix"}, pre||{});
@@ -1413,12 +1431,83 @@ VIEWS.ajustes = () => `
     </div>
     <div class="row"><button class="btn primary" id="a_save">Salvar</button></div>
   </section>
-  ${window.__fs ? viewUsuarios() : ""}
+  ${window.__fs ? viewBackup() + viewUsuarios() : ""}
   <section class="panel" style="display:flex;flex-direction:column;gap:12px"><h2>Módulos</h2>
     <div class="mods">${MODULOS.filter(m=>!m.fixo).map(m=>`<div class="mod"><div><b>${esc(m.nome)}</b> ${m.breve?'<span class="pill">em breve</span>':""}<p>${esc(m.desc)}</p></div><input type="checkbox" data-m="${m.id}" ${m.breve?"disabled":""} ${!m.breve && S.config.modulos[m.id]!==false?"checked":""} aria-label="Ligar ${esc(m.nome)}" style="width:22px;height:22px"></div>`).join("")}</div>
   </section>
   <p class="muted" style="font-size:.85rem">${S.mode==="cloud"?"Os dados ficam salvos no seu Firebase e aparecem iguais no celular e no computador.":"Modo de teste: dados só neste navegador."}</p>
   ${window.__auth?`<div class="row"><span class="muted">Conectado como ${esc((window.__auth.currentUser||{}).email||"")}</span><button class="btn small" id="sairBtn">Sair</button></div>`:""}`;
+// ----- Backup (versão com Firebase) -----
+const COLS_BACKUP = ["clientes","planos","cardapios","pedidos","financeiro","entregadores","config","acesso","publico","respostas"];
+const diasDesdeBackup = () => S.config.ultimoBackup ? Math.floor((parseIso(today()) - parseIso(S.config.ultimoBackup.slice(0,10)))/86400000) : null;
+function viewBackup(){
+  const dd = diasDesdeBackup();
+  return `<section class="panel" style="display:flex;flex-direction:column;gap:12px"><h2>Backup</h2>
+    <p class="muted" style="margin:0">Baixe uma cópia de tudo (clientes, planos, pedidos, financeiro...) num arquivo e guarde no computador ou no Google Drive. Faça pelo menos uma vez por semana.</p>
+    <p style="margin:0">${dd===null ? '<span class="pill warn">Nenhum backup feito ainda</span>' : `Último backup: <b>${fmtDate(S.config.ultimoBackup.slice(0,10))}</b> ${dd>7?'<span class="pill warn">faça um novo</span>':'<span class="pill ok">em dia</span>'}`}</p>
+    <div class="row"><button class="btn primary" id="bkBaixar">Baixar backup agora</button></div>
+    <details><summary style="cursor:pointer;font-weight:700">Restaurar de um arquivo de backup</summary>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
+        <p class="muted" style="margin:0">Grava de volta tudo o que está no arquivo. O que existe hoje e também está no arquivo volta a ficar como no backup; o resto não é apagado.</p>
+        <input type="file" id="bkArq" accept=".json,application/json">
+        <div id="bkInfo"></div>
+      </div>
+    </details>
+  </section>`;
+}
+function baixarArquivo(nome, texto, tipo){
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([texto], {type:tipo})); a.download = nome;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+}
+async function gerarBackup(){
+  const out = {sistema:"Marmitex Gestão", versao:1, criadoEm:new Date().toISOString(), dados:{}};
+  for(const col of COLS_BACKUP){
+    try{ const snap = await window.__fs.collection(col).get(); out.dados[col] = {}; snap.forEach(d => { out.dados[col][d.id] = d.data(); }); }
+    catch(e){ if(col!=="acesso") throw e; }
+  }
+  return out;
+}
+async function restaurarBackup(b, progresso){
+  let n = 0; const total = Object.values(b.dados).reduce((s,o)=>s+Object.keys(o).length,0);
+  for(const col of COLS_BACKUP){
+    if(col==="acesso" && !souAdmin()) continue;
+    const ent = Object.entries(b.dados[col]||{});
+    for(let i=0; i<ent.length; i+=400){
+      const lote = window.__fs.batch();
+      ent.slice(i,i+400).forEach(([id,data]) => lote.set(window.__fs.collection(col).doc(id), data));
+      await lote.commit(); n += Math.min(400, ent.length-i); progresso(n, total);
+    }
+  }
+  return n;
+}
+function bindBackup(){
+  const bb = $("#bkBaixar"); if(!bb) return;
+  bb.onclick = async () => {
+    bb.disabled = true; bb.textContent = "Preparando...";
+    try{
+      const b = await gerarBackup();
+      const qtd = Object.values(b.dados).reduce((s,o)=>s+Object.keys(o).length,0);
+      baixarArquivo("backup-marmitex-"+today()+".json", JSON.stringify(b), "application/json");
+      await saveConfig({ultimoBackup:new Date().toISOString()});
+      toast("Backup baixado: "+qtd+" registros."); render();
+    }catch(e){ toast("Não foi possível fazer o backup ("+((e&&e.code)||"erro")+")."); bb.disabled = false; bb.textContent = "Baixar backup agora"; }
+  };
+  $("#bkArq").onchange = async e => {
+    const f = e.target.files[0]; const info = $("#bkInfo"); if(!f) return;
+    let b; try{ b = JSON.parse(await f.text()); }catch(err){ info.innerHTML = '<p class="banner">Esse arquivo não é um backup do sistema.</p>'; return; }
+    if(!b || !b.dados || b.sistema!=="Marmitex Gestão"){ info.innerHTML = '<p class="banner">Esse arquivo não é um backup do sistema.</p>'; return; }
+    const cont = Object.entries(b.dados).map(([k,o]) => k+": "+Object.keys(o).length).join(" · ");
+    info.innerHTML = `<p style="margin:0">Backup de <b>${esc(new Date(b.criadoEm).toLocaleString("pt-BR"))}</b><br><span class="muted">${esc(cont)}</span></p><button class="btn danger" id="bkRest">Restaurar este backup</button>`;
+    const br = $("#bkRest");
+    br.onclick = async () => {
+      if(!br.dataset.sure){ br.dataset.sure = "1"; br.textContent = "Toque de novo para confirmar"; return; }
+      br.disabled = true;
+      try{ const n = await restaurarBackup(b, (a,t) => { br.textContent = "Restaurando "+a+" de "+t+"..."; }); toast(n+" registros restaurados."); if(b.criadoEm) saveConfig({ultimoBackup:b.criadoEm}); info.innerHTML = '<p class="muted" style="margin:0">Restauração concluída.</p>'; }
+      catch(err){ toast("A restauração parou ("+((err&&err.code)||"erro")+"). Tente de novo."); br.disabled = false; br.textContent = "Restaurar este backup"; delete br.dataset.sure; }
+    };
+  };
+}
+
 // ----- Usuários do sistema (versão com Firebase) -----
 const meuEmail = () => String(((window.__auth && window.__auth.currentUser) || {}).email || "").toLowerCase();
 const souAdmin = () => !S.acesso.emails.includes(meuEmail());
@@ -1474,13 +1563,15 @@ function bindUsuarios(){
   });
 }
 BIND.ajustes = () => {
-  if(window.__fs) bindUsuarios();
+  if(window.__fs){ bindUsuarios(); bindBackup(); }
   $("#a_save").onclick = () => { saveConfig({restaurante:$("#a_nome").value.trim(), meuNomeWhats:$("#a_wa").value.trim(), horarioLimite:$("#a_hora").value.trim()||"10:30", enderecoRestaurante:$("#a_end").value.trim(), cidade:$("#a_cid").value.trim(), telefoneRestaurante:$("#a_tel").value.trim(), custoMarmita:Number($("#a_custo").value)||0, custoFixoMensal:Number($("#a_fixo").value)||0, premioIndicacao:$("#a_premio").value.trim()||"1 marmita grátis", alertaSaldo:Number($("#a_alerta").value)||0, alertaDias:Number($("#a_alertaDias").value)||0, msgAlerta:$("#a_msg").value.trim()||DEFAULT_CONFIG.msgAlerta, autoPlano:$("#a_auto").checked}).then(()=>{ render(); toast("Ajustes salvos."); }); };
   document.querySelectorAll("[data-m]").forEach(cb => cb.onchange = () => { saveConfig({modulos:Object.assign({}, S.config.modulos, {[cb.dataset.m]:cb.checked})}); render(); });
 };
 
 // ---------- boot ----------
-function rerenderSafe(){
+let rrT;
+function rerenderSafe(){ invalidar(); clearTimeout(rrT); rrT = setTimeout(rerenderNow, 120); }
+function rerenderNow(){
   // keep an open modal and typed input intact; only re-render the page behind it
   if($("#ov")) { renderNav(); return; }
   if(S.tab==="hoje" && document.activeElement && document.activeElement.id==="confBusca"){ renderConfirmados(); renderBuscaConf(); return; }
@@ -1496,9 +1587,9 @@ async function boot(){
   Store.watch("clientes", (docs, m) => { S.clientes = docs; marcar("clientes", m); rerenderSafe(); automacoes(); });
   Store.watch("planos", (docs, m) => { S.planos = docs; marcar("planos", m); rerenderSafe(); automacoes(); });
   Store.watch("cardapios", docs => { S.cardapios = Object.fromEntries(docs.map(d=>[d.id,d])); rerenderSafe(); });
-  Store.watch("pedidos", (docs, m) => { S.pedidos = Object.fromEntries(docs.map(d=>[d.id,d])); marcar("pedidos", m); rerenderSafe(); automacoes(); }, addDays(today(),-150));
+  Store.watch("pedidos", (docs, m) => { S.pedidos = Object.fromEntries(docs.map(d=>[d.id,d])); marcar("pedidos", m); rerenderSafe(); automacoes(); }, addDays(today(),-75));
   if(window.__fs) Store.watch("respostas", (docs, m) => { S.respostas = docs; marcar("respostas", m); rerenderSafe(); automacoes(); }, addDays(today(),-1));
-  Store.watch("financeiro", docs => { S.fin = Object.fromEntries(docs.map(d=>[d.id,d])); rerenderSafe(); }, addDays(today(),-400));
+  Store.watch("financeiro", docs => { S.fin = Object.fromEntries(docs.map(d=>[d.id,d])); rerenderSafe(); }, addDays(today(),-100));
   Store.watch("entregadores", docs => { S.entregadores = docs; rerenderSafe(); });
   if(window.__fs) Store.watch("acesso", docs => { const u = docs.find(d => d.id==="usuarios") || {}; S.acesso = {emails:Array.isArray(u.emails)?u.emails:[], info:u.info||{}}; rerenderSafe(); });
   Store.watch("config", (docs, m) => { const g = docs.find(d=>d.id==="geral"); S.config = Object.assign(structuredClone(DEFAULT_CONFIG), g||{}); S.config.modulos = Object.assign({}, DEFAULT_CONFIG.modulos, (g&&g.modulos)||{}); delete S.config.id; marcar("config", m); rerenderSafe(); automacoes(); });
@@ -1516,7 +1607,14 @@ window.__startApp = boot;
 "use strict";
 // Depois de criar o projeto no Firebase, você pode colar a configuração aqui
 // para não precisar colar em cada aparelho. Exemplo: const FIREBASE_CONFIG = {apiKey:"...", authDomain:"...", projectId:"...", appId:"..."};
-const FIREBASE_CONFIG = {apiKey:"...", authDomain:"...", projectId:"...", appId:"..."};
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyD35S_8juHbOlb8DLssGdbuvhqzvuBE1bo",
+  authDomain: "marmitex-148de.firebaseapp.com",
+  projectId: "marmitex-148de",
+  storageBucket: "marmitex-148de.firebasestorage.app",
+  messagingSenderId: "162985128880",
+  appId: "1:162985128880:web:492aa9289d5301d1b71c75"
+};
 
 const gate = document.getElementById("gate"), box = gate.querySelector(".gbox");
 const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
