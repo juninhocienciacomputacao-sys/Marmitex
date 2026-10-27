@@ -23,6 +23,10 @@ Funciona no celular e no computador. Os dados ficam no Firebase (Google), no pla
 
 No repositório, abra **Settings > Pages**. Em **Branch**, escolha `main` e a pasta `/ (root)` e toque em **Save**. Em 1 ou 2 minutos o endereço acima fica no ar.
 
+## Usuários do sistema
+
+O administrador é o e-mail escrito no arquivo de regras (`SEU-EMAIL-AQUI`). Os outros usuários são cadastrados dentro do sistema, em **Ajustes > Usuários do sistema**: nome, e-mail e uma senha inicial. Para tirar o acesso de alguém, toque em **Remover**.
+
 ## Pedidos pelo link
 
 A mensagem do cardápio (botão **Copiar mensagem** na aba Dia) já leva o link `pedido.html`. O cliente toca, digita o WhatsApp, escolhe a quantidade e confirma. O pedido entra sozinho na aba Dia.

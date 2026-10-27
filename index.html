@@ -212,7 +212,7 @@ const icon = id => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" s
 // ---------- state ----------
 const DEFAULT_CONFIG = {restaurante:"", meuNomeWhats:"", horarioLimite:"10:30", alertaSaldo:3, alertaDias:5, msgAlerta:"Olá {nome}! Restam {saldo} marmitas no seu plano {plano}, que vai até {fim}. Quer renovar?", enderecoRestaurante:"", cidade:"", custoMarmita:0, custoFixoMensal:0, telefoneRestaurante:"", premioIndicacao:"1 marmita grátis", autoPlano:true, abertos:[], modulos:{clientes:true,planos:true,cardapio:true,calendario:true,relatorios:true,entregas:true,financeiro:true,marketing:true}};
 const S = {clientes:[], planos:[], cardapios:{}, config:structuredClone(DEFAULT_CONFIG), tab:"hoje", loaded:{}, mode:"loading",
-  busca:"", filtro:"todos", mostrar:100, cardData:today(), calMes:today().slice(0,7), pedidos:{}, respostas:[], ready:{}, entregadores:[], fin:{}, finPeriodo:"mes", diaData:today(), confBusca:"", relPeriodo:"7", relTipo:"todos"};
+  busca:"", filtro:"todos", mostrar:100, cardData:today(), calMes:today().slice(0,7), pedidos:{}, respostas:[], ready:{}, acesso:{emails:[], info:{}}, entregadores:[], fin:{}, finPeriodo:"mes", diaData:today(), confBusca:"", relPeriodo:"7", relTipo:"todos"};
 
 // ---------- store (shared db, or this-browser fallback) ----------
 const Store = {
@@ -1413,12 +1413,68 @@ VIEWS.ajustes = () => `
     </div>
     <div class="row"><button class="btn primary" id="a_save">Salvar</button></div>
   </section>
+  ${window.__fs ? viewUsuarios() : ""}
   <section class="panel" style="display:flex;flex-direction:column;gap:12px"><h2>Módulos</h2>
     <div class="mods">${MODULOS.filter(m=>!m.fixo).map(m=>`<div class="mod"><div><b>${esc(m.nome)}</b> ${m.breve?'<span class="pill">em breve</span>':""}<p>${esc(m.desc)}</p></div><input type="checkbox" data-m="${m.id}" ${m.breve?"disabled":""} ${!m.breve && S.config.modulos[m.id]!==false?"checked":""} aria-label="Ligar ${esc(m.nome)}" style="width:22px;height:22px"></div>`).join("")}</div>
   </section>
   <p class="muted" style="font-size:.85rem">${S.mode==="cloud"?"Os dados ficam salvos no seu Firebase e aparecem iguais no celular e no computador.":"Modo de teste: dados só neste navegador."}</p>
   ${window.__auth?`<div class="row"><span class="muted">Conectado como ${esc((window.__auth.currentUser||{}).email||"")}</span><button class="btn small" id="sairBtn">Sair</button></div>`:""}`;
+// ----- Usuários do sistema (versão com Firebase) -----
+const meuEmail = () => String(((window.__auth && window.__auth.currentUser) || {}).email || "").toLowerCase();
+const souAdmin = () => !S.acesso.emails.includes(meuEmail());
+function viewUsuarios(){
+  const admin = souAdmin(), lista = S.acesso.emails.slice().sort();
+  return `<section class="panel" style="display:flex;flex-direction:column;gap:12px"><h2>Usuários do sistema</h2>
+    <p class="muted" style="margin:0">${admin ? `Você é o administrador (${esc(meuEmail())}). Cadastre aqui quem pode entrar no sistema.` : `Você entrou como ${esc(meuEmail())}. Só o administrador cadastra usuários.`}</p>
+    ${lista.length ? `<div class="tablebox"><table style="min-width:0"><thead><tr><th>Nome</th><th>E-mail</th>${admin?"<th></th>":""}</tr></thead><tbody>${lista.map(e=>`<tr><td>${esc((S.acesso.info[e.replace(/\./g,",")]||{}).nome||"—")}</td><td style="word-break:break-all">${esc(e)}</td>${admin?`<td style="white-space:nowrap;text-align:right"><button class="btn small" data-uReset="${esc(e)}">Trocar senha</button> <button class="btn small danger" data-uDel="${esc(e)}">Remover</button></td>`:""}</tr>`).join("")}</tbody></table></div>` : `<p class="muted" style="margin:0">Nenhum usuário cadastrado além do administrador.</p>`}
+    ${admin ? `<div class="form">
+      <label class="f c2">Nome<input type="text" id="u_nome" placeholder="Ex.: Carla (cozinha)"></label>
+      <label class="f c2">E-mail<input type="text" id="u_email" inputmode="email" autocomplete="off"></label>
+      <label class="f c2">Senha inicial (6 ou mais)<input type="text" id="u_senha" autocomplete="off"></label>
+    </div>
+    <div class="row"><button class="btn primary" id="u_add">Adicionar usuário</button><span class="muted" style="font-size:.85rem">Passe o e-mail e a senha para a pessoa. Ela entra pela mesma tela de login.</span></div>` : ""}
+  </section>`;
+}
+async function salvarAcesso(emails, info){
+  try{ await Store.set("acesso", "usuarios", {emails, info}); return true; }
+  catch(e){ toast(e && (e.code==="permission-denied" || e.code==="invalid_argument") ? "Só o administrador pode mudar os usuários. Confira se as regras novas do Firebase foram publicadas." : erroMsg(e)); return false; }
+}
+async function criarConta(email, senha){
+  const app = firebase.apps.find(a => a.name==="cadastro") || firebase.initializeApp(firebase.app().options, "cadastro");
+  try{ await app.auth().createUserWithEmailAndPassword(email, senha); await app.auth().signOut(); return "criada"; }
+  catch(e){ if(e && e.code==="auth/email-already-in-use") return "existente"; throw e; }
+}
+function bindUsuarios(){
+  const add = $("#u_add"); if(!add) return;
+  add.onclick = async () => {
+    const nome = $("#u_nome").value.trim(), email = $("#u_email").value.trim().toLowerCase(), senha = $("#u_senha").value;
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ toast("Digite um e-mail válido."); return; }
+    if(email===meuEmail()){ toast("Esse é o seu e-mail de administrador."); return; }
+    if(S.acesso.emails.includes(email)){ toast("Esse e-mail já está cadastrado."); return; }
+    if(senha.length<6){ toast("A senha inicial precisa ter 6 ou mais caracteres."); return; }
+    add.disabled = true; add.textContent = "Cadastrando...";
+    let conta;
+    try{ conta = await criarConta(email, senha); }
+    catch(e){ toast(e && e.code==="auth/invalid-email" ? "Esse e-mail não é válido." : e && e.code==="auth/weak-password" ? "Senha muito fraca. Use 6 ou mais caracteres." : "Não foi possível criar a conta ("+((e&&e.code)||"erro")+")."); add.disabled = false; add.textContent = "Adicionar usuário"; return; }
+    const info = Object.assign({}, S.acesso.info, {[email.replace(/\./g,",")]:{nome, desde:today()}});
+    if(await salvarAcesso([...S.acesso.emails, email], info)){
+      S.acesso = {emails:Array.from(new Set([...S.acesso.emails, email])), info}; render();
+      toast(conta==="existente" ? "Usuário liberado. Esse e-mail já tinha conta e entra com a senha que já existe. Se não foi a pessoa que criou, remova e fale comigo." : "Usuário cadastrado. Passe o e-mail e a senha para a pessoa.");
+    } else { add.disabled = false; add.textContent = "Adicionar usuário"; }
+  };
+  document.querySelectorAll("[data-uDel]").forEach(b => b.onclick = async () => {
+    const email = b.dataset.udel;
+    if(!b.dataset.sure){ b.dataset.sure = "1"; b.textContent = "Toque de novo para remover"; return; }
+    const info = Object.assign({}, S.acesso.info); delete info[email.replace(/\./g,",")];
+    const emails = S.acesso.emails.filter(e => e!==email);
+    if(await salvarAcesso(emails, info)){ S.acesso = {emails, info}; render(); toast(email+" não entra mais no sistema."); }
+  });
+  document.querySelectorAll("[data-uReset]").forEach(b => b.onclick = () => {
+    window.__auth.sendPasswordResetEmail(b.dataset.ureset).then(() => toast("Enviamos um e-mail para "+b.dataset.ureset+" criar uma nova senha.")).catch(e => toast("Não foi possível enviar ("+((e&&e.code)||"erro")+")."));
+  });
+}
 BIND.ajustes = () => {
+  if(window.__fs) bindUsuarios();
   $("#a_save").onclick = () => { saveConfig({restaurante:$("#a_nome").value.trim(), meuNomeWhats:$("#a_wa").value.trim(), horarioLimite:$("#a_hora").value.trim()||"10:30", enderecoRestaurante:$("#a_end").value.trim(), cidade:$("#a_cid").value.trim(), telefoneRestaurante:$("#a_tel").value.trim(), custoMarmita:Number($("#a_custo").value)||0, custoFixoMensal:Number($("#a_fixo").value)||0, premioIndicacao:$("#a_premio").value.trim()||"1 marmita grátis", alertaSaldo:Number($("#a_alerta").value)||0, alertaDias:Number($("#a_alertaDias").value)||0, msgAlerta:$("#a_msg").value.trim()||DEFAULT_CONFIG.msgAlerta, autoPlano:$("#a_auto").checked}).then(()=>{ render(); toast("Ajustes salvos."); }); };
   document.querySelectorAll("[data-m]").forEach(cb => cb.onchange = () => { saveConfig({modulos:Object.assign({}, S.config.modulos, {[cb.dataset.m]:cb.checked})}); render(); });
 };
@@ -1444,6 +1500,7 @@ async function boot(){
   if(window.__fs) Store.watch("respostas", (docs, m) => { S.respostas = docs; marcar("respostas", m); rerenderSafe(); automacoes(); }, addDays(today(),-1));
   Store.watch("financeiro", docs => { S.fin = Object.fromEntries(docs.map(d=>[d.id,d])); rerenderSafe(); }, addDays(today(),-400));
   Store.watch("entregadores", docs => { S.entregadores = docs; rerenderSafe(); });
+  if(window.__fs) Store.watch("acesso", docs => { const u = docs.find(d => d.id==="usuarios") || {}; S.acesso = {emails:Array.isArray(u.emails)?u.emails:[], info:u.info||{}}; rerenderSafe(); });
   Store.watch("config", (docs, m) => { const g = docs.find(d=>d.id==="geral"); S.config = Object.assign(structuredClone(DEFAULT_CONFIG), g||{}); S.config.modulos = Object.assign({}, DEFAULT_CONFIG.modulos, (g&&g.modulos)||{}); delete S.config.id; marcar("config", m); rerenderSafe(); automacoes(); });
   render();
 }
@@ -1459,14 +1516,7 @@ window.__startApp = boot;
 "use strict";
 // Depois de criar o projeto no Firebase, você pode colar a configuração aqui
 // para não precisar colar em cada aparelho. Exemplo: const FIREBASE_CONFIG = {apiKey:"...", authDomain:"...", projectId:"...", appId:"..."};
-const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyD35S_8juHbOlb8DLssGdbuvhqzvuBE1bo",
-  authDomain: "marmitex-148de.firebaseapp.com",
-  projectId: "marmitex-148de",
-  storageBucket: "marmitex-148de.firebasestorage.app",
-  messagingSenderId: "162985128880",
-  appId: "1:162985128880:web:492aa9289d5301d1b71c75"
-};
+const FIREBASE_CONFIG = {apiKey:"...", authDomain:"...", projectId:"...", appId:"..."};
 
 const gate = document.getElementById("gate"), box = gate.querySelector(".gbox");
 const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));

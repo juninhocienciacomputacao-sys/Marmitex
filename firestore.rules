@@ -2,15 +2,29 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Troque SEU-EMAIL-AQUI pelo(s) e-mail(s) de quem pode usar o sistema.
-    // Para mais de uma pessoa: ['voce@gmail.com', 'funcionario@gmail.com']
+    // Administrador: troque SEU-EMAIL-AQUI pelo seu e-mail (só uma vez).
+    // Os outros usuários você cadastra dentro do sistema, em Ajustes > Usuários do sistema.
     function dono() {
       return request.auth != null && request.auth.token.email in ['SEU-EMAIL-AQUI'];
     }
+    function usuarios() {
+      return /databases/$(database)/documents/acesso/usuarios;
+    }
+    function membro() {
+      return dono() || (request.auth != null && exists(usuarios())
+        && request.auth.token.email in get(usuarios()).data.emails);
+    }
 
-    // O sistema: só quem está na lista acima lê e grava.
-    match /{document=**} {
-      allow read, write: if dono();
+    // O sistema: administrador e usuários cadastrados leem e gravam.
+    match /{col}/{document=**} {
+      allow read: if membro();
+      allow write: if membro() && col != 'acesso';
+    }
+
+    // Lista de usuários: todos os usuários veem, só o administrador muda.
+    match /acesso/{doc} {
+      allow read: if membro();
+      allow write: if dono();
     }
 
     // Página de pedido: qualquer pessoa vê o cardápio e o nome do restaurante.
