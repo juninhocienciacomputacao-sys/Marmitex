@@ -9,7 +9,7 @@ Funciona no celular e no computador. Os dados ficam no Firebase (Google), no pla
 1. Entre em <https://console.firebase.google.com> com sua conta Google e toque em **Criar um projeto**. Dê o nome `marmitex`. Pode desativar o Google Analytics.
 2. **Login:** no menu, abra **Criação > Authentication > Vamos começar**. Em **Método de login**, escolha **E-mail/senha**, ative a primeira opção e salve.
 3. **Banco de dados:** abra **Criação > Firestore Database > Criar banco de dados**. Local: `southamerica-east1 (São Paulo)`. Escolha **Iniciar no modo de produção**.
-4. **Regras:** ainda no Firestore, abra a aba **Regras**, apague tudo e cole o conteúdo do arquivo [`firestore.rules`](firestore.rules). Troque `seu-email@gmail.com` pelo seu e-mail (para mais pessoas: `['voce@gmail.com', 'funcionario@gmail.com']`). Toque em **Publicar**.
+4. **Regras:** ainda no Firestore, abra a aba **Regras**, apague tudo e cole o conteúdo do arquivo [`firestore.rules`](firestore.rules). Troque `SEU-EMAIL-AQUI` pelo seu e-mail (para mais pessoas: `['voce@gmail.com', 'funcionario@gmail.com']`). Toque em **Publicar**.
 5. **Configuração:** toque na engrenagem ao lado de **Visão geral do projeto > Configurações do projeto**. Em **Seus apps**, toque no ícone **`</>`** (Web), dê o apelido `marmitex` e toque em **Registrar app**. Copie o bloco `firebaseConfig` que aparece.
 
 ## 2. Abrir o sistema
@@ -23,6 +23,14 @@ Funciona no celular e no computador. Os dados ficam no Firebase (Google), no pla
 
 No repositório, abra **Settings > Pages**. Em **Branch**, escolha `main` e a pasta `/ (root)` e toque em **Save**. Em 1 ou 2 minutos o endereço acima fica no ar.
 
+## Pedidos pelo link
+
+A mensagem do cardápio (botão **Copiar mensagem** na aba Dia) já leva o link `pedido.html`. O cliente toca, digita o WhatsApp, escolhe a quantidade e confirma. O pedido entra sozinho na aba Dia.
+
+- Clientes de plano entram sozinhos nos dias abertos em que recebem. Quem ainda não confirmou aparece no alerta **Plano sem confirmação**, com botão para lembrar no WhatsApp.
+- Pedido de telefone não cadastrado aparece num aviso com o botão **Cadastrar**.
+- Para desligar a confirmação automática de plano: **Ajustes**.
+
 ## Limites do plano gratuito do Firebase
 
 - 50 mil leituras e 20 mil gravações por dia, 1 GB de dados.
@@ -32,5 +40,6 @@ No repositório, abra **Settings > Pages**. Em **Branch**, escolha `main` e a pa
 ## Arquivos
 
 - `index.html`: o sistema inteiro.
+- `pedido.html`: página onde o cliente faz o pedido.
 - `firestore.rules`: regras de segurança do banco (quem pode ler e gravar).
 - `manifest.json`, `icon-192.png`, `icon-512.png`: ícone e nome para a tela inicial do celular.
