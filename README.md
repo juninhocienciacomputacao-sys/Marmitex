@@ -35,6 +35,14 @@ A mensagem do cardápio (botão **Copiar mensagem** na aba Dia) já leva o link 
 - Pedido de telefone não cadastrado aparece num aviso com o botão **Cadastrar**.
 - Para desligar a confirmação automática de plano: **Ajustes**.
 
+## Cardápio pronto
+
+Na aba **Cardápio**, escolha um dos cardápios fit prontos ou toque em **Sugerir sem repetir** (o sistema evita repetir a proteína da semana). Ao digitar um prato aparecem sugestões da biblioteca fit e dos pratos que você já usou. **Planejar a semana** cria de uma vez os cardápios dos dias abertos dos próximos 7 dias; depois é só ajustar conforme os ingredientes.
+
+## Preços e promoções
+
+Na aba **Preços** você cadastra os tamanhos de marmita, adicionais, bebidas e a taxa de entrega (há uma tabela fit de exemplo para carregar e ajustar). As promoções têm período e dias da semana; as que valem no dia entram sozinhas na mensagem do cardápio. **Copiar tabela para o WhatsApp** junta preços, planos, congeladas e promoções numa mensagem.
+
 ## Congeladas
 
 Na aba **Congeladas** você cadastra os pacotes (ex.: Kit 10 congeladas fit), lança as encomendas de cada cliente com o dia da entrega e controla o estoque.

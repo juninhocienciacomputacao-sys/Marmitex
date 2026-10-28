@@ -184,12 +184,42 @@ function fmtPhone(d){
   return "+"+d;
 }
 const PAGAMENTOS = ["Pix","Dinheiro","Cartão de débito","Cartão de crédito","Vale-refeição","Boleto","Outro"];
-const CATEGORIAS = ["Prato principal","Guarnição","Salada","Sobremesa","Bebida","Opção vegetariana"];
+const CATEGORIAS = ["Prato principal","Carboidrato","Guarnição","Legumes","Salada","Opção low carb","Opção vegetariana","Sobremesa","Bebida"];
+// Biblioteca de pratos fitness (sugestões ao digitar; tudo pode ser editado)
+const PRATOS_FIT = {
+  "Prato principal":["Frango grelhado com ervas","Peito de frango ao molho de mostarda","Frango desfiado com açafrão","Strogonoff fit de frango","Frango xadrez fit","Frango ao curry com leite de coco","Frango à parmegiana fit (assado)","Sobrecoxa assada sem pele","Filé de tilápia grelhado","Tilápia ao molho de limão","Salmão grelhado","Merluza assada com tomate","Patinho moído refogado","Carne de panela magra (patinho)","Iscas de patinho aceboladas","Almôndegas de patinho ao sugo","Kafta de patinho","Carne moída com abobrinha","Lombo suíno magro assado","Peito de peru assado","Escondidinho fit de frango com batata-doce","Omelete de forno com legumes"],
+  "Carboidrato":["Arroz integral","Arroz branco","Arroz com brócolis","Arroz com cenoura","Batata-doce assada","Purê de batata-doce","Purê de mandioquinha","Mandioca cozida","Inhame cozido","Macarrão integral ao sugo","Quinoa com legumes","Cuscuz de milho","Feijão carioca","Feijão preto","Lentilha refogada","Grão-de-bico temperado"],
+  "Guarnição":["Farofa fit de aveia","Purê de abóbora","Batata rústica assada","Creme de espinafre fit","Vinagrete"],
+  "Legumes":["Mix de legumes no vapor (brócolis, cenoura e vagem)","Brócolis no alho","Abobrinha grelhada","Cenoura e vagem refogadas","Legumes assados com alecrim","Couve-flor gratinada fit","Abóbora cabotiá assada","Berinjela grelhada","Chuchu refogado","Repolho refogado","Quiabo refogado","Espinafre refogado","Couve refogada"],
+  "Salada":["Salada verde (alface, rúcula e tomate)","Repolho com cenoura ralada","Tomate com cebola roxa","Pepino com hortelã","Mix de folhas com grão-de-bico","Beterraba ralada"],
+  "Opção low carb":["Frango grelhado com legumes (sem arroz)","Tilápia com purê de couve-flor","Patinho com abobrinha e berinjela","Omelete com espinafre e salada","Escondidinho de couve-flor com carne","Arroz de couve-flor com frango"],
+  "Opção vegetariana":["Grão-de-bico ao curry","Hambúrguer de lentilha","Omelete de legumes","Tofu grelhado com legumes","Quibe de abóbora","Strogonoff de cogumelos"],
+  "Sobremesa":["Mousse de maracujá fit","Gelatina zero","Salada de frutas","Banana assada com canela","Doce de abóbora sem açúcar"],
+  "Bebida":["Suco detox (couve, limão e gengibre)","Suco de laranja natural","Água de coco","Chá gelado de hibisco"]
+};
+// Cardápios completos prontos (escolhe num toque e ajusta conforme os ingredientes do dia)
+const CARDAPIOS_FIT = [
+  {nome:"Frango com batata-doce", itens:[["Prato principal","Frango grelhado com ervas"],["Carboidrato","Batata-doce assada"],["Carboidrato","Feijão carioca"],["Legumes","Brócolis no alho"],["Salada","Salada verde (alface, rúcula e tomate)"]]},
+  {nome:"Strogonoff fit", itens:[["Prato principal","Strogonoff fit de frango"],["Carboidrato","Arroz integral"],["Legumes","Mix de legumes no vapor (brócolis, cenoura e vagem)"],["Salada","Repolho com cenoura ralada"]]},
+  {nome:"Tilápia com purê", itens:[["Prato principal","Tilápia ao molho de limão"],["Carboidrato","Purê de mandioquinha"],["Legumes","Abobrinha grelhada"],["Salada","Tomate com cebola roxa"],["Opção low carb","Tilápia com purê de couve-flor"]]},
+  {nome:"Carne de panela", itens:[["Prato principal","Carne de panela magra (patinho)"],["Carboidrato","Arroz integral"],["Carboidrato","Feijão preto"],["Legumes","Cenoura e vagem refogadas"],["Salada","Salada verde (alface, rúcula e tomate)"]]},
+  {nome:"Frango ao curry", itens:[["Prato principal","Frango ao curry com leite de coco"],["Carboidrato","Arroz com cenoura"],["Legumes","Abóbora cabotiá assada"],["Salada","Pepino com hortelã"],["Opção vegetariana","Grão-de-bico ao curry"]]},
+  {nome:"Almôndegas ao sugo", itens:[["Prato principal","Almôndegas de patinho ao sugo"],["Carboidrato","Macarrão integral ao sugo"],["Legumes","Brócolis no alho"],["Salada","Mix de folhas com grão-de-bico"]]},
+  {nome:"Escondidinho fit", itens:[["Prato principal","Escondidinho fit de frango com batata-doce"],["Legumes","Legumes assados com alecrim"],["Salada","Salada verde (alface, rúcula e tomate)"],["Opção low carb","Escondidinho de couve-flor com carne"]]},
+  {nome:"Patinho acebolado", itens:[["Prato principal","Iscas de patinho aceboladas"],["Carboidrato","Arroz branco"],["Carboidrato","Feijão carioca"],["Legumes","Couve refogada"],["Salada","Beterraba ralada"]]},
+  {nome:"Frango xadrez", itens:[["Prato principal","Frango xadrez fit"],["Carboidrato","Arroz integral"],["Legumes","Mix de legumes no vapor (brócolis, cenoura e vagem)"],["Salada","Repolho com cenoura ralada"],["Opção low carb","Arroz de couve-flor com frango"]]},
+  {nome:"Salmão com quinoa", itens:[["Prato principal","Salmão grelhado"],["Carboidrato","Quinoa com legumes"],["Legumes","Abobrinha grelhada"],["Salada","Mix de folhas com grão-de-bico"]]},
+  {nome:"Kafta com mandioca", itens:[["Prato principal","Kafta de patinho"],["Carboidrato","Mandioca cozida"],["Guarnição","Vinagrete"],["Legumes","Berinjela grelhada"],["Salada","Salada verde (alface, rúcula e tomate)"]]},
+  {nome:"Parmegiana fit", itens:[["Prato principal","Frango à parmegiana fit (assado)"],["Carboidrato","Arroz integral"],["Carboidrato","Purê de batata-doce"],["Legumes","Cenoura e vagem refogadas"],["Salada","Tomate com cebola roxa"]]},
+  {nome:"Peixe com legumes", itens:[["Prato principal","Merluza assada com tomate"],["Carboidrato","Arroz com brócolis"],["Legumes","Chuchu refogado"],["Salada","Pepino com hortelã"]]},
+  {nome:"Lombo assado", itens:[["Prato principal","Lombo suíno magro assado"],["Carboidrato","Purê de mandioquinha"],["Carboidrato","Feijão preto"],["Legumes","Couve refogada"],["Salada","Beterraba ralada"]]}
+].map(m => ({nome:m.nome, itens:m.itens.map(([cat,nome]) => ({cat, nome}))}));
 const MODULOS = [
   {id:"hoje",nome:"Dia",desc:"Passo a passo do dia: cardápio, envio, confirmações e lista de entrega.",fixo:true},
   {id:"clientes",nome:"Clientes",desc:"Cadastro e importação do WhatsApp."},
   {id:"planos",nome:"Planos",desc:"Planos prontos e personalizados."},
   {id:"congeladas",nome:"Congeladas",desc:"Pacotes de congeladas: encomendas, estoque, cobrança e entrega junto com as rotas."},
+  {id:"precos",nome:"Preços",desc:"Tabela de preços (tamanhos, adicionais, entrega) e promoções com validade."},
   {id:"cardapio",nome:"Cardápio",desc:"Cardápio do dia e mensagem pronta para o WhatsApp."},
   {id:"calendario",nome:"Calendário",desc:"Dias em que o restaurante abre."},
   {id:"relatorios",nome:"Relatórios",desc:"Clientes de plano e avulsos, saldos e totais por dia, semana e mês."},
@@ -204,6 +234,7 @@ const ICONS = {
   planos:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>',
   cardapio:'<path d="M3 13h18a9 9 0 0 1-18 0Z"/><path d="M12 4v5M8 6v3M16 6v3"/>',
   congeladas:'<path d="M12 2v20M3.3 7l17.4 10M20.7 7 3.3 17"/><path d="M9 3.5 12 6l3-2.5M9 20.5l3-2.5 3 2.5"/>',
+  precos:'<path d="M3 12V4h8l10 10-8 8L3 12Z"/><circle cx="7.5" cy="8.5" r="1.5"/>',
   calendario:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
   relatorios:'<path d="M4 20V11M10 20V5M16 20v-6M21 20H3"/>',
   entregas:'<circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M9 17h6M6 14l3-7h4l2 4h3l3 3M13 7h-2"/>',
@@ -214,9 +245,9 @@ const ICONS = {
 const icon = id => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(ICONS[id]||"")+'</svg>';
 
 // ---------- state ----------
-const DEFAULT_CONFIG = {restaurante:"", meuNomeWhats:"", horarioLimite:"10:30", alertaSaldo:3, alertaDias:5, msgAlerta:"Olá {nome}! Restam {saldo} marmitas no seu plano {plano}, que vai até {fim}. Quer renovar?", enderecoRestaurante:"", cidade:"", custoMarmita:0, custoFixoMensal:0, telefoneRestaurante:"", premioIndicacao:"1 marmita grátis", autoPlano:true, abertos:[], feriadosLocais:"", estoqueCong:0, estoqueMinCong:0, movCong:[], modulos:{clientes:true,planos:true,congeladas:true,cardapio:true,calendario:true,relatorios:true,entregas:true,financeiro:true,marketing:true}};
+const DEFAULT_CONFIG = {restaurante:"", meuNomeWhats:"", horarioLimite:"10:30", alertaSaldo:3, alertaDias:5, msgAlerta:"Olá {nome}! Restam {saldo} marmitas no seu plano {plano}, que vai até {fim}. Quer renovar?", enderecoRestaurante:"", cidade:"", custoMarmita:0, custoFixoMensal:0, telefoneRestaurante:"", premioIndicacao:"1 marmita grátis", autoPlano:true, abertos:[], feriadosLocais:"", estoqueCong:0, estoqueMinCong:0, movCong:[], modulos:{clientes:true,planos:true,congeladas:true,precos:true,cardapio:true,calendario:true,relatorios:true,entregas:true,financeiro:true,marketing:true}};
 const S = {clientes:[], planos:[], cardapios:{}, config:structuredClone(DEFAULT_CONFIG), tab:"hoje", loaded:{}, mode:"loading",
-  busca:"", filtro:"todos", mostrar:100, cardData:today(), calMes:today().slice(0,7), pedidos:{}, respostas:[], ready:{}, acesso:{emails:[], info:{}}, entregadores:[], pacotes:[], encomendas:[], cgFiltro:"abertas", fin:{}, finPeriodo:"mes", diaData:today(), confBusca:"", relPeriodo:"7", relTipo:"todos"};
+  busca:"", filtro:"todos", mostrar:100, cardData:today(), calMes:today().slice(0,7), pedidos:{}, respostas:[], ready:{}, acesso:{emails:[], info:{}}, entregadores:[], pacotes:[], encomendas:[], precos:[], promocoes:[], cgFiltro:"abertas", fin:{}, finPeriodo:"mes", diaData:today(), confBusca:"", relPeriodo:"7", relTipo:"todos"};
 
 // ---------- store (shared db, or this-browser fallback) ----------
 const Store = {
@@ -409,7 +440,11 @@ function menuText(dataIso){
     const its = (c.itens||[]).filter(i => i.cat===cat && i.nome);
     if(its.length){ t += "\n*"+cat+"*\n" + its.map(i=>"• "+i.nome).join("\n") + "\n"; }
   });
-  if(c.preco) t += "\n💰 Marmita avulsa: "+brl(c.preco)+"\n";
+  const tab = modOn("precos") ? linhasPrecos(dataIso, ["Marmita"]) : "";
+  if(tab) t += "\n💰 *Preços*\n"+tab+"\n";
+  else if(c.preco) t += "\n💰 Marmita avulsa: "+brl(c.preco)+"\n";
+  const pr = modOn("precos") ? promosDia(dataIso) : [];
+  if(pr.length) t += "\n🔥 *Promoções*\n"+pr.map(p => "• "+textoPromo(p)).join("\n")+"\n";
   if(c.obs) t += "\n"+c.obs+"\n";
   const link = linkPedido(dataIso);
   if(link){
@@ -837,18 +872,41 @@ function formPlano(p, tipo){
 
 // ----- Cardápio -----
 let draft = null;
-function loadDraft(){ const c = S.cardapios[S.cardData]; draft = c ? structuredClone(c) : {itens:[{nome:"",cat:"Prato principal"},{nome:"",cat:"Guarnição"},{nome:"",cat:"Salada"}], preco:"", obs:""}; draft.itens = draft.itens||[]; }
+function ultimoPreco(){ const pp = precoPadrao(); if(pp) return pp; const k = Object.keys(S.cardapios).filter(k => S.cardapios[k].preco).sort().pop(); return k ? S.cardapios[k].preco : ""; }
+function loadDraft(){ const c = S.cardapios[S.cardData]; draft = c ? structuredClone(c) : {itens:[{nome:"",cat:"Prato principal"},{nome:"",cat:"Carboidrato"},{nome:"",cat:"Legumes"},{nome:"",cat:"Salada"}], preco:ultimoPreco(), obs:""}; draft.itens = draft.itens||[]; }
+// Pratos sugeridos por categoria: os da biblioteca + os que você já usou
+function pratosCat(cat){
+  const set = new Set(PRATOS_FIT[cat]||[]);
+  Object.values(S.cardapios).forEach(c => (c.itens||[]).forEach(i => { if(i.cat===cat && i.nome) set.add(i.nome); }));
+  return [...set].sort((a,b) => a.localeCompare(b,"pt-BR"));
+}
+// Pratos principais usados perto da data (para não repetir)
+function usadosPerto(d, dias, extra){
+  const u = new Set(extra||[]);
+  for(let i=-dias; i<=dias; i++){ if(!i) continue; const c = S.cardapios[addDays(d,i)]; if(c) (c.itens||[]).forEach(x => { if(x.cat==="Prato principal") u.add(x.nome); }); }
+  return u;
+}
+const sortear = l => l[Math.floor(Math.random()*l.length)];
+function sugerirCardapio(d, evitar){
+  const u = usadosPerto(d, 6, evitar);
+  const prontos = CARDAPIOS_FIT.filter(m => !m.itens.some(i => i.cat==="Prato principal" && u.has(i.nome)));
+  const m = sortear(prontos.length ? prontos : CARDAPIOS_FIT);
+  return {nome:m.nome, itens:m.itens.map(i => Object.assign({}, i))};
+}
 VIEWS.cardapio = () => {
   if(!draft || draft._d!==S.cardData){ loadDraft(); draft._d = S.cardData; }
   const d = parseIso(S.cardData), salvo = !!S.cardapios[S.cardData];
+  if(!salvo && !draft.preco) draft.preco = ultimoPreco();
   const recentes = Object.keys(S.cardapios).filter(k=>k!==S.cardData).sort().reverse().slice(0,8);
   return `
   <div class="head"><div><h1>Cardápio</h1><p>${DOW_LONG[d.getDay()]}, ${fmtDate(S.cardData)} ${isOpen(S.cardData)?'<span class="pill ok">aberto</span>':'<span class="pill warn">dia marcado como fechado</span>'} ${salvo?'<span class="pill ok">salvo</span>':""}</p></div>
-    <div class="row"><button class="btn" id="prevD" aria-label="Dia anterior">‹</button><input type="date" id="cDate" value="${S.cardData}" style="width:auto"><button class="btn" id="nextD" aria-label="Próximo dia">›</button></div></div>
+    <div class="row"><button class="btn" id="cSemana" title="Cria cardápios para os dias abertos dos próximos 7 dias que ainda não têm">Planejar a semana</button><button class="btn" id="prevD" aria-label="Dia anterior">‹</button><input type="date" id="cDate" value="${S.cardData}" style="width:auto"><button class="btn" id="nextD" aria-label="Próximo dia">›</button></div></div>
   <div class="grid2">
     <section class="panel" style="display:flex;flex-direction:column;gap:12px">
       <h2>Pratos</h2>
-      <div class="items" id="itens">${draft.itens.map((it,i)=>`<div class="item"><input type="text" data-n="${i}" value="${esc(it.nome)}" placeholder="Ex.: Frango assado com ervas" aria-label="Prato"><select data-c="${i}" aria-label="Categoria">${CATEGORIAS.map(c=>`<option ${it.cat===c?"selected":""}>${c}</option>`).join("")}</select><button class="btn small" data-r="${i}" aria-label="Remover">✕</button></div>`).join("")}</div>
+      <div class="row"><select id="cPronto" style="width:auto;flex:1 1 220px" aria-label="Cardápio pronto"><option value="">Usar um cardápio fit pronto...</option>${CARDAPIOS_FIT.map((m,i)=>`<option value="${i}">${esc(m.nome)}: ${esc(m.itens.filter(x=>x.cat!=="Prato principal").map(x=>x.nome.replace(/ \(.*\)/,"")).slice(0,3).join(", "))}</option>`).join("")}</select><button class="btn small" id="cSugerir">Sugerir sem repetir</button></div>
+      ${CATEGORIAS.map((c,k)=>`<datalist id="dl${k}">${pratosCat(c).map(n=>`<option value="${esc(n)}">`).join("")}</datalist>`).join("")}
+      <div class="items" id="itens">${draft.itens.map((it,i)=>`<div class="item"><input type="text" data-n="${i}" value="${esc(it.nome)}" list="dl${Math.max(0,CATEGORIAS.indexOf(it.cat))}" placeholder="Toque para ver sugestões" aria-label="Prato"><select data-c="${i}" aria-label="Categoria">${CATEGORIAS.map(c=>`<option ${it.cat===c?"selected":""}>${c}</option>`).join("")}</select><button class="btn small" data-r="${i}" aria-label="Remover">✕</button></div>`).join("")}</div>
       <div class="row"><button class="btn small" id="addIt">+ Adicionar prato</button>${recentes.length?`<select id="copyFrom" style="width:auto"><option value="">Copiar de outro dia...</option>${recentes.map(k=>`<option value="${k}">${fmtDate(k)}</option>`).join("")}</select>`:""}</div>
       <div class="form"><label class="f c2">Preço avulso (R$)<input type="number" step="0.01" min="0" id="cPreco" value="${esc(draft.preco)}"></label><label class="f c4">Observação<input type="text" id="cObs" value="${esc(draft.obs)}" placeholder="Ex.: Feijoada só até acabar"></label></div>
       <div class="row">${salvo?'<button class="btn danger" id="cDel">Apagar</button>':""}<span style="flex:1"></span><button class="btn primary" id="cSave">Salvar cardápio</button></div>
@@ -877,7 +935,20 @@ BIND.cardapio = () => {
   $("#prevD").onclick = () => setDate(addDays(S.cardData,-1));
   $("#nextD").onclick = () => setDate(addDays(S.cardData,1));
   $("#itens").oninput = () => { syncDraft(); previewMsg(); };
-  $("#itens").onchange = () => { syncDraft(); previewMsg(); };
+  $("#itens").onchange = e => { syncDraft(); previewMsg(); const c = e.target.closest("[data-c]"); if(c){ const inp = document.querySelector(`[data-n="${c.dataset.c}"]`); inp && inp.setAttribute("list","dl"+Math.max(0,CATEGORIAS.indexOf(c.value))); } };
+  const usar = (m, msg) => { syncDraft(); draft = Object.assign({}, draft, {itens:m.itens.map(i=>Object.assign({},i)), _d:S.cardData}); if(!draft.preco) draft.preco = ultimoPreco(); render(); toast(msg); };
+  $("#cPronto").onchange = e => { const m = CARDAPIOS_FIT[e.target.value]; if(m) usar(m, "Cardápio \""+m.nome+"\" carregado. Troque o que faltar e salve."); };
+  $("#cSugerir").onclick = () => { const m = sugerirCardapio(S.cardData); usar(m, "Sugestão: "+m.nome+". Ajuste e salve."); };
+  const sem = $("#cSemana"); sem.onclick = async () => {
+    const dias = []; for(let i=0;i<7;i++){ const k = addDays(today(),i); if(isOpen(k) && !S.cardapios[k]) dias.push(k); }
+    if(!dias.length){ toast("Os dias abertos dos próximos 7 dias já têm cardápio."); return; }
+    if(!sem.dataset.sure){ sem.dataset.sure = "1"; sem.textContent = "Criar "+dias.length+(dias.length>1?" cardápios":" cardápio")+"? Toque de novo"; return; }
+    sem.disabled = true; const preco = Number(ultimoPreco())||0, usados = [];
+    try{
+      for(const k of dias){ const m = sugerirCardapio(k, usados); usados.push(...m.itens.filter(i=>i.cat==="Prato principal").map(i=>i.nome)); const doc = {data:k, itens:m.itens, preco, obs:"", atualizado:new Date().toISOString()}; S.cardapios[k] = Object.assign({id:k}, doc); await Store.set("cardapios", k, doc); }
+      draft = null; render(); toast(dias.length+(dias.length>1?" cardápios criados":" cardápio criado")+". Confira cada dia e ajuste o que precisar.");
+    }catch(e){ toast(erroMsg(e)); sem.disabled = false; }
+  };
   $("#cPreco").oninput = $("#cObs").oninput = () => { syncDraft(); previewMsg(); };
   $("#itens").onclick = e => { const r = e.target.closest("[data-r]"); if(r){ syncDraft(); draft.itens.splice(Number(r.dataset.r),1); render(); } };
   $("#addIt").onclick = () => { syncDraft(); draft.itens.push({nome:"",cat:"Prato principal"}); render(); const ins = document.querySelectorAll("[data-n]"); ins[ins.length-1].focus(); };
@@ -895,6 +966,123 @@ BIND.cardapio = () => {
   const del = $("#cDel"); if(del) del.onclick = () => { if(del.dataset.sure){ Store.del("cardapios",S.cardData).then(()=>{draft=null;toast("Cardápio apagado.");}).catch(e=>toast(erroMsg(e))); } else { del.dataset.sure="1"; del.textContent="Toque de novo para apagar"; } };
   previewMsg();
 };
+
+// ----- Preços e promoções -----
+const CAT_PRECO = ["Marmita","Congelada","Adicional","Bebida","Sobremesa","Taxa de entrega","Outro"];
+const EXEMPLO_PRECOS = [["Marmita","Marmita fit P","300 g",19.9,true],["Marmita","Marmita fit M","400 g",22.9],["Marmita","Marmita fit G","500 g",26.9],["Marmita","Marmita low carb","400 g, sem carboidrato",24.9],["Adicional","Proteína extra","100 g",7],["Adicional","Ovo cozido","unidade",2],["Bebida","Suco detox","300 ml",8],["Sobremesa","Doce fit","pote",7],["Taxa de entrega","Entrega","bairros próximos",0]];
+const precoItem = id => S.precos.find(p => p.id===id);
+const promoAtiva = (p, d) => p.ativo!==false && (!p.inicio || d>=p.inicio) && (!p.fim || d<=p.fim) && (!(p.dias||[]).length || p.dias.includes(parseIso(d).getDay()));
+const promosDia = d => S.promocoes.filter(p => promoAtiva(p, d));
+function alvoPromo(p){ if(!p.alvo) return "Tudo"; if(p.alvo.startsWith("cat:")) return "Toda a categoria "+p.alvo.slice(4); const i = precoItem(p.alvo); return i ? i.nome : "(item apagado)"; }
+function valePara(p, it){ return !p.alvo || p.alvo===it.id || p.alvo==="cat:"+it.cat; }
+function precoNoDia(it, d){
+  let v = Number(it.preco)||0, best = v;
+  promosDia(d).filter(p => valePara(p, it) && p.tipo!=="texto").forEach(p => { const n = p.tipo==="preco" ? Number(p.valor)||v : v*(1-(Number(p.valor)||0)/100); if(n < best) best = n; });
+  return Math.round(best*100)/100;
+}
+function precoPadrao(){ const l = S.precos.filter(p => p.ativo!==false && p.cat==="Marmita"); const it = l.find(p => p.padrao) || l[0]; return it ? precoNoDia(it, S.cardData||today()) : 0; }
+function linhasPrecos(d, cats){
+  return S.precos.filter(p => p.ativo!==false && (!cats || cats.includes(p.cat))).sort((a,b) => CAT_PRECO.indexOf(a.cat)-CAT_PRECO.indexOf(b.cat) || (a.preco||0)-(b.preco||0))
+    .map(p => { const h = precoNoDia(p, d), cheio = Number(p.preco)||0; return "• "+p.nome+(p.descricao?" ("+p.descricao+")":"")+": "+(h<cheio ? "~"+brl(cheio)+"~ *"+brl(h)+"*" : (cheio ? brl(cheio) : "grátis")); }).join("\n");
+}
+function textoPromo(p){
+  const desc = p.tipo==="pct" ? (Number(p.valor)||0)+"% de desconto" : p.tipo==="preco" ? "por "+brl(p.valor) : "";
+  const dias = (p.dias||[]).length && p.dias.length<7 ? " (só "+p.dias.map(i=>DOW[i]).join(", ")+")" : "";
+  return p.nome+(desc?": "+desc+(p.alvo?" em "+alvoPromo(p).replace("Toda a categoria ",""):""):"")+(p.descricao?". "+p.descricao:"")+dias+(p.fim?" · até "+fmtDate(p.fim).slice(0,5):"");
+}
+function statusPromo(p){ const t = today(); if(p.ativo===false) return ["pausada",""]; if(p.fim && p.fim<t) return ["encerrada",""]; if(p.inicio && p.inicio>t) return ["começa "+fmtDate(p.inicio).slice(0,5),"warn"]; return promoAtiva(p,t) ? ["valendo hoje","ok"] : ["fora do dia","warn"]; }
+function textoTabela(){
+  const d = today(); let t = "💰 *Tabela de preços"+(S.config.restaurante?" · "+S.config.restaurante:"")+"*\n";
+  CAT_PRECO.forEach(c => { const l = linhasPrecos(d, [c]); if(l) t += "\n*"+c+"*\n"+l+"\n"; });
+  const pl = S.planos.filter(p => p.tipo!=="personalizado" && p.preco);
+  if(pl.length) t += "\n*Planos*\n"+pl.map(p => "• "+p.nome+" ("+(p.marmitas||0)+" marmitas): "+brl(p.preco)+(p.marmitas?" · "+brl(p.preco/p.marmitas)+" cada":"")).join("\n")+"\n";
+  if(modOn("congeladas") && S.pacotes.some(p=>p.ativo!==false)) t += "\n*Pacotes de congeladas*\n"+listaPacotes()+"\n";
+  const pr = promosDia(d); if(pr.length) t += "\n🔥 *Promoções*\n"+pr.map(p => "• "+textoPromo(p)).join("\n")+"\n";
+  return t+"\n🛵 Entregamos na sua casa ou no trabalho.";
+}
+VIEWS.precos = () => {
+  const t = today();
+  const linha = p => { const h = precoNoDia(p, t), cheio = Number(p.preco)||0;
+    return `<tr class="click" data-pr="${esc(p.id)}" tabindex="0"><td><b>${esc(p.nome)}</b>${p.padrao?' <span class="pill ok">padrão</span>':""}${p.ativo===false?' <span class="pill">pausado</span>':""}${p.descricao?`<div class="muted" style="font-size:.8rem">${esc(p.descricao)}</div>`:""}</td><td>${esc(p.cat)}</td><td class="num">${cheio?brl(cheio):"grátis"}</td><td class="num">${h<cheio?`<b style="color:var(--ok)">${brl(h)}</b>`:"—"}</td></tr>`; };
+  const promos = S.promocoes.slice().sort((a,b) => String(b.inicio||"").localeCompare(String(a.inicio||"")));
+  const lp = p => { const [st,cl] = statusPromo(p); return `<tr class="click" data-pm="${esc(p.id)}" tabindex="0"><td><b>${esc(p.nome)}</b><div class="muted" style="font-size:.8rem">${esc(textoPromo(p))}</div></td><td>${esc(alvoPromo(p))}</td><td style="white-space:nowrap">${p.inicio?fmtDate(p.inicio).slice(0,5):"—"} a ${p.fim?fmtDate(p.fim).slice(0,5):"sem fim"}</td><td><span class="pill ${cl}">${esc(st)}</span></td></tr>`; };
+  const lista = S.precos.slice().sort((a,b) => CAT_PRECO.indexOf(a.cat)-CAT_PRECO.indexOf(b.cat) || (a.preco||0)-(b.preco||0));
+  return `
+  <div class="head"><div><h1>Preços e promoções</h1><p>A tabela e as promoções do dia entram sozinhas na mensagem do cardápio.</p></div>
+    <div class="row"><button class="btn" id="prCopiar">Copiar tabela para o WhatsApp</button></div></div>
+  <section class="panel" style="display:flex;flex-direction:column;gap:10px">
+    <div class="row" style="justify-content:space-between"><h2>Tabela de preços</h2><div class="row">${S.precos.length?"":`<button class="btn small" id="prExemplo">Carregar tabela fit de exemplo</button>`}<button class="btn small primary" id="prNovo">+ Preço</button></div></div>
+    ${lista.length ? `<div class="tablebox"><table style="min-width:0"><thead><tr><th>Item</th><th>Tipo</th><th>Preço</th><th>Hoje com promoção</th></tr></thead><tbody>${lista.map(linha).join("")}</tbody></table></div>` : `<p class="muted" style="margin:0">Cadastre os tamanhos de marmita, adicionais, bebidas e a taxa de entrega. Ou carregue a tabela de exemplo e ajuste os valores.</p>`}
+    <p class="muted" style="margin:0;font-size:.85rem">A marmita marcada como <b>padrão</b> vira o preço avulso do cardápio. Planos e pacotes de congeladas têm os preços nas abas deles e também entram na tabela copiada.</p>
+  </section>
+  <section class="panel" style="display:flex;flex-direction:column;gap:10px">
+    <div class="row" style="justify-content:space-between"><h2>Promoções</h2><button class="btn small primary" id="pmNovo">+ Promoção</button></div>
+    ${promos.length ? `<div class="tablebox"><table style="min-width:0"><thead><tr><th>Promoção</th><th>Vale para</th><th>Período</th><th>Situação</th></tr></thead><tbody>${promos.map(lp).join("")}</tbody></table></div>` : `<p class="muted" style="margin:0">Ex.: "Terça fit: marmita M por R$ 19,90" só às terças, ou "10% em todas as marmitas" de 01 a 15/11.</p>`}
+  </section>
+  <textarea id="msgCopy" aria-hidden="true" tabindex="-1" style="position:absolute;left:-9999px;width:1px;height:1px"></textarea>`;
+};
+BIND.precos = () => {
+  $("#prNovo").onclick = () => formPreco();
+  $("#pmNovo").onclick = () => formPromo();
+  $("#prCopiar").onclick = () => { const t = textoTabela(); $("#msgCopy").value = t; copiar(t); };
+  const ex = $("#prExemplo"); if(ex) ex.onclick = async () => { ex.disabled = true; try{ for(const [cat,nome,descricao,preco,padrao] of EXEMPLO_PRECOS) await Store.set("precos", uid(), {cat, nome, descricao, preco, padrao:!!padrao, ativo:true}); toast("Tabela de exemplo carregada. Toque em cada item para ajustar o preço."); }catch(e){ toast(erroMsg(e)); ex.disabled = false; } };
+  document.querySelectorAll("[data-pr]").forEach(r => { r.onclick = () => formPreco(precoItem(r.dataset.pr)); r.onkeydown = e => { if(e.key==="Enter") r.onclick(); }; });
+  document.querySelectorAll("[data-pm]").forEach(r => { r.onclick = () => formPromo(S.promocoes.find(p => p.id===r.dataset.pm)); r.onkeydown = e => { if(e.key==="Enter") r.onclick(); }; });
+};
+function formPreco(p){
+  const novo = !p; p = p || {cat:"Marmita", ativo:true};
+  openModal(`<h2>${novo?"Novo preço":"Editar preço"}</h2>
+    <form class="form">
+      <label class="f c4">Nome<input type="text" id="pr_nome" value="${esc(p.nome)}" placeholder="Marmita fit M"></label>
+      <label class="f c2">Tipo<select id="pr_cat">${CAT_PRECO.map(c=>`<option ${p.cat===c?"selected":""}>${c}</option>`).join("")}</select></label>
+      <label class="f c4">Detalhe (peso, tamanho)<input type="text" id="pr_desc" value="${esc(p.descricao)}" placeholder="400 g"></label>
+      <label class="f c2">Preço (R$)<input type="number" min="0" step="0.01" id="pr_preco" value="${esc(p.preco ?? "")}"></label>
+      <label class="check c6"><input type="checkbox" id="pr_padrao" ${p.padrao?"checked":""}> Preço padrão da marmita avulsa no cardápio</label>
+      <label class="check c6"><input type="checkbox" id="pr_ativo" ${p.ativo!==false?"checked":""}> À venda</label>
+    </form>
+    <div class="foot">${novo?"":`<button class="btn danger" id="pr_del">Apagar</button>`}<span style="flex:1"></span><button class="btn" data-close>Cancelar</button><button class="btn primary" id="pr_save">Salvar</button></div>`,
+  () => {
+    $("#pr_save").onclick = async () => {
+      const nome = $("#pr_nome").value.trim(); if(!nome){ toast("Preencha o nome."); return; }
+      const id = p.id||uid(), padrao = $("#pr_padrao").checked;
+      try{
+        if(padrao) for(const o of S.precos.filter(o => o.padrao && o.id!==id)) await Store.update("precos", o.id, {padrao:false});
+        await Store.set("precos", id, {nome, cat:$("#pr_cat").value, descricao:$("#pr_desc").value.trim(), preco:Number($("#pr_preco").value)||0, padrao, ativo:$("#pr_ativo").checked});
+        closeModal(); toast("Preço salvo.");
+      }catch(e){ toast(erroMsg(e)); }
+    };
+    const d = $("#pr_del"); if(d) d.onclick = () => { if(d.dataset.sure){ Store.del("precos", p.id).then(()=>{closeModal();toast("Preço apagado.");}).catch(e=>toast(erroMsg(e))); } else { d.dataset.sure="1"; d.textContent="Toque de novo para apagar"; } };
+  });
+}
+function formPromo(p){
+  const novo = !p; p = p || {tipo:"pct", ativo:true, inicio:today(), dias:[]};
+  const alvos = [["","Tudo"], ...CAT_PRECO.filter(c => S.precos.some(x=>x.cat===c)).map(c => ["cat:"+c, "Toda a categoria "+c]), ...S.precos.map(x => [x.id, x.nome+(x.descricao?" ("+x.descricao+")":"")])];
+  openModal(`<h2>${novo?"Nova promoção":"Editar promoção"}</h2>
+    <form class="form">
+      <label class="f c6">Nome<input type="text" id="pm_nome" value="${esc(p.nome)}" placeholder="Terça fit"></label>
+      <label class="f c3">Vale para<select id="pm_alvo">${alvos.map(([v,n])=>`<option value="${esc(v)}" ${(p.alvo||"")===v?"selected":""}>${esc(n)}</option>`).join("")}</select></label>
+      <label class="f c2">Desconto<select id="pm_tipo"><option value="pct" ${p.tipo==="pct"?"selected":""}>% de desconto</option><option value="preco" ${p.tipo==="preco"?"selected":""}>Preço fixo (R$)</option><option value="texto" ${p.tipo==="texto"?"selected":""}>Só texto (brinde, combo)</option></select></label>
+      <label class="f c1" style="grid-column:span 1">Valor<input type="number" min="0" step="0.01" id="pm_valor" value="${esc(p.valor ?? "")}"></label>
+      <label class="f c3">Começa em<input type="date" id="pm_ini" value="${esc(p.inicio||"")}"></label>
+      <label class="f c3">Termina em (vazio = sem fim)<input type="date" id="pm_fim" value="${esc(p.fim||"")}"></label>
+      <div class="c6"><div style="font-weight:700;font-size:.85rem;color:var(--muted);margin-bottom:6px">Só nos dias (nenhum marcado = todos)</div><div class="row">${DOW.map((n,i)=>`<label class="check" style="font-weight:400"><input type="checkbox" data-pmd="${i}" ${(p.dias||[]).includes(i)?"checked":""}> ${n}</label>`).join("")}</div></div>
+      <label class="f c6">Detalhes (aparece na mensagem)<input type="text" id="pm_desc" value="${esc(p.descricao)}" placeholder="Ex.: na compra de 2, a terceira sai grátis"></label>
+      <label class="check c6"><input type="checkbox" id="pm_ativo" ${p.ativo!==false?"checked":""}> Promoção ligada</label>
+    </form>
+    <p class="muted" id="pm_prev" style="margin:0"></p>
+    <div class="foot">${novo?"":`<button class="btn danger" id="pm_del">Apagar</button>`}<span style="flex:1"></span><button class="btn" data-close>Cancelar</button><button class="btn primary" id="pm_save">Salvar</button></div>`,
+  () => {
+    const ler = () => ({nome:$("#pm_nome").value.trim(), alvo:$("#pm_alvo").value, tipo:$("#pm_tipo").value, valor:Number($("#pm_valor").value)||0, inicio:$("#pm_ini").value, fim:$("#pm_fim").value, dias:[...document.querySelectorAll("[data-pmd]:checked")].map(x=>Number(x.dataset.pmd)), descricao:$("#pm_desc").value.trim(), ativo:$("#pm_ativo").checked});
+    const prev = () => { const x = ler(); $("#pm_prev").textContent = x.nome ? "Na mensagem: "+textoPromo(x) : ""; };
+    document.querySelector("#ov form").oninput = document.querySelector("#ov form").onchange = prev; prev();
+    $("#pm_save").onclick = async () => {
+      const x = ler(); if(!x.nome){ toast("Dê um nome para a promoção."); return; }
+      if(x.fim && x.inicio && x.fim < x.inicio){ toast("A data de término é antes do começo."); return; }
+      try{ await Store.set("promocoes", p.id||uid(), x); closeModal(); toast("Promoção salva."); }catch(e){ toast(erroMsg(e)); }
+    };
+    const d = $("#pm_del"); if(d) d.onclick = () => { if(d.dataset.sure){ Store.del("promocoes", p.id).then(()=>{closeModal();toast("Promoção apagada.");}).catch(e=>toast(erroMsg(e))); } else { d.dataset.sure="1"; d.textContent="Toque de novo para apagar"; } };
+  });
+}
 
 // ----- Congeladas -----
 const pacote = id => S.pacotes.find(p => p.id===id);
@@ -1640,7 +1828,7 @@ VIEWS.ajustes = () => `
   <p class="muted" style="font-size:.85rem">${S.mode==="cloud"?"Os dados ficam salvos no seu Firebase e aparecem iguais no celular e no computador.":"Modo de teste: dados só neste navegador."}</p>
   ${window.__auth?`<div class="row"><span class="muted">Conectado como ${esc((window.__auth.currentUser||{}).email||"")}</span><button class="btn small" id="sairBtn">Sair</button></div>`:""}`;
 // ----- Backup (versão com Firebase) -----
-const COLS_BACKUP = ["clientes","planos","pacotes","encomendas","cardapios","pedidos","financeiro","entregadores","config","acesso","publico","respostas"];
+const COLS_BACKUP = ["clientes","planos","pacotes","encomendas","precos","promocoes","cardapios","pedidos","financeiro","entregadores","config","acesso","publico","respostas"];
 const diasDesdeBackup = () => S.config.ultimoBackup ? Math.floor((parseIso(today()) - parseIso(S.config.ultimoBackup.slice(0,10)))/86400000) : null;
 function viewBackup(){
   const dd = diasDesdeBackup();
@@ -1794,6 +1982,8 @@ async function boot(){
   Store.watch("financeiro", docs => { S.fin = Object.fromEntries(docs.map(d=>[d.id,d])); rerenderSafe(); }, addDays(today(),-100));
   Store.watch("entregadores", docs => { S.entregadores = docs; rerenderSafe(); });
   Store.watch("pacotes", docs => { S.pacotes = docs; rerenderSafe(); });
+  Store.watch("precos", docs => { S.precos = docs; rerenderSafe(); });
+  Store.watch("promocoes", docs => { S.promocoes = docs; rerenderSafe(); });
   Store.watch("encomendas", docs => { S.encomendas = docs; rerenderSafe(); }, addDays(today(),-100));
   if(window.__fs) Store.watch("acesso", docs => { const u = docs.find(d => d.id==="usuarios") || {}; S.acesso = {emails:Array.isArray(u.emails)?u.emails:[], info:u.info||{}}; rerenderSafe(); });
   Store.watch("config", (docs, m) => { const g = docs.find(d=>d.id==="geral"); S.config = Object.assign(structuredClone(DEFAULT_CONFIG), g||{}); S.config.modulos = Object.assign({}, DEFAULT_CONFIG.modulos, (g&&g.modulos)||{}); delete S.config.id; marcar("config", m); rerenderSafe(); automacoes(); });
