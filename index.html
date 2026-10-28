@@ -156,7 +156,7 @@ a.btn.primary{color:var(--brand-fg)}
 <script>
 (function(){
 "use strict";
-window.__RULES = "rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n\n    // Administrador: troque SEU-EMAIL-AQUI pelo seu e-mail (s\u00f3 uma vez).\n    // Os outros usu\u00e1rios voc\u00ea cadastra dentro do sistema, em Ajustes > Usu\u00e1rios do sistema.\n    function dono() {\n      return request.auth != null && request.auth.token.email in ['SEU-EMAIL-AQUI'];\n    }\n    function usuarios() {\n      return /databases/$(database)/documents/acesso/usuarios;\n    }\n    function membro() {\n      return dono() || (request.auth != null && exists(usuarios())\n        && request.auth.token.email in get(usuarios()).data.emails);\n    }\n\n    // O sistema: administrador e usu\u00e1rios cadastrados leem e gravam.\n    match /{col}/{document=**} {\n      allow read: if membro();\n      allow write: if membro() && col != 'acesso';\n    }\n\n    // Lista de usu\u00e1rios: todos os usu\u00e1rios veem, s\u00f3 o administrador muda.\n    match /acesso/{doc} {\n      allow read: if membro();\n      allow write: if dono();\n    }\n\n    // P\u00e1gina de pedido: qualquer pessoa v\u00ea o card\u00e1pio e o nome do restaurante.\n    match /cardapios/{dia} {\n      allow read: if true;\n    }\n    match /publico/{doc} {\n      allow read: if true;\n    }\n    // P\u00e1gina de pedido: confere se o telefone (em c\u00f3digo, sem dados pessoais) j\u00e1 tem endere\u00e7o cadastrado.\n    // S\u00f3 pode consultar um c\u00f3digo por vez; ningu\u00e9m de fora consegue listar.\n    match /conhecidos/{h} {\n      allow get: if true;\n    }\n\n    // Assinatura de plano pela p\u00e1gina de atendimento: qualquer pessoa envia, ningu\u00e9m de fora l\u00ea.\n    match /assinaturas/{id} {\n      allow create, update: if\n        request.resource.data.keys().hasOnly(['telefone','nome','planoId','inicio','endereco','entrega','obs','hora','pago'])\n        && request.resource.data.keys().hasAll(['telefone','nome','planoId','inicio','endereco','entrega','obs','hora','pago'])\n        && request.resource.data.telefone is string\n        && request.resource.data.telefone.matches('[0-9]{12,13}')\n        && id == request.resource.data.telefone\n        && request.resource.data.nome is string && request.resource.data.nome.size() <= 80\n        && request.resource.data.planoId is string && request.resource.data.planoId.size() <= 40\n        && request.resource.data.inicio is string && request.resource.data.inicio.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')\n        && request.resource.data.endereco is string && request.resource.data.endereco.size() <= 300\n        && request.resource.data.entrega in ['casa', 'portaria', 'maos']\n        && request.resource.data.obs is string && request.resource.data.obs.size() <= 300\n        && request.resource.data.hora is string && request.resource.data.hora.size() <= 30\n        && request.resource.data.pago in ['', 'informado'];\n    }\n\n    // Pedidos pelo link: qualquer pessoa envia o pr\u00f3prio pedido, ningu\u00e9m de fora l\u00ea.\n    match /respostas/{id} {\n      allow create, update: if\n        request.resource.data.keys().hasOnly(['data','telefone','nome','qtd','obs','endereco','hora','entrega','pago'])\n        && request.resource.data.keys().hasAll(['data','telefone','nome','qtd','obs','endereco','hora'])\n        && request.resource.data.data is string && request.resource.data.data.size() == 10\n        && request.resource.data.telefone is string\n        && request.resource.data.telefone.matches('[0-9]{12,13}')\n        && request.resource.data.data.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')\n        && id == request.resource.data.data + '_' + request.resource.data.telefone\n        // s\u00f3 aceita pedido para dia com card\u00e1pio publicado e ainda aberto\n        && exists(/databases/$(database)/documents/cardapios/$(request.resource.data.data))\n        && get(/databases/$(database)/documents/cardapios/$(request.resource.data.data)).data.get('fechado', false) != true\n        && request.resource.data.qtd is int && request.resource.data.qtd >= 0 && request.resource.data.qtd <= 20\n        && request.resource.data.nome is string && request.resource.data.nome.size() <= 80\n        && request.resource.data.obs is string && request.resource.data.obs.size() <= 300\n        && request.resource.data.endereco is string && request.resource.data.endereco.size() <= 300\n        && request.resource.data.hora is string && request.resource.data.hora.size() <= 30\n        && (!('entrega' in request.resource.data) || request.resource.data.entrega in ['', 'casa', 'portaria', 'maos'])\n        && (!('pago' in request.resource.data) || request.resource.data.pago in ['', 'informado']);\n    }\n  }\n}\n";
+window.__RULES = "rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n\n    // Administrador: troque SEU-EMAIL-AQUI pelo seu e-mail (s\u00f3 uma vez).\n    // Os outros usu\u00e1rios voc\u00ea cadastra dentro do sistema, em Ajustes > Usu\u00e1rios do sistema.\n    function dono() {\n      return request.auth != null && request.auth.token.email in ['SEU-EMAIL-AQUI'];\n    }\n    function usuarios() {\n      return /databases/$(database)/documents/acesso/usuarios;\n    }\n    function membro() {\n      return dono() || (request.auth != null && exists(usuarios())\n        && request.auth.token.email in get(usuarios()).data.emails);\n    }\n\n    // O sistema: administrador e usu\u00e1rios cadastrados leem e gravam.\n    match /{col}/{document=**} {\n      allow read: if membro();\n      allow write: if membro() && col != 'acesso';\n    }\n\n    // Lista de usu\u00e1rios: todos os usu\u00e1rios veem, s\u00f3 o administrador muda.\n    match /acesso/{doc} {\n      allow read: if membro();\n      allow write: if dono();\n    }\n\n    // P\u00e1gina de pedido: qualquer pessoa v\u00ea o card\u00e1pio e o nome do restaurante.\n    match /cardapios/{dia} {\n      allow read: if true;\n    }\n    match /publico/{doc} {\n      allow read: if true;\n    }\n    // P\u00e1gina de pedido: confere se o telefone (em c\u00f3digo, sem dados pessoais) j\u00e1 tem endere\u00e7o cadastrado.\n    // S\u00f3 pode consultar um c\u00f3digo por vez; ningu\u00e9m de fora consegue listar.\n    match /conhecidos/{h} {\n      allow get: if true;\n    }\n    // P\u00e1gina de pedido: mostra ao cliente quantas marmitas ele j\u00e1 pediu no dia (c\u00f3digo de telefone+dia, sem dados pessoais)\n    match /pedidosPub/{h} {\n      allow get: if true;\n    }\n\n    // Assinatura de plano pela p\u00e1gina de atendimento: qualquer pessoa envia, ningu\u00e9m de fora l\u00ea.\n    match /assinaturas/{id} {\n      allow create, update: if\n        request.resource.data.keys().hasOnly(['telefone','nome','planoId','inicio','endereco','entrega','obs','hora','pago'])\n        && request.resource.data.keys().hasAll(['telefone','nome','planoId','inicio','endereco','entrega','obs','hora','pago'])\n        && request.resource.data.telefone is string\n        && request.resource.data.telefone.matches('[0-9]{12,13}')\n        && id == request.resource.data.telefone\n        && request.resource.data.nome is string && request.resource.data.nome.size() <= 80\n        && request.resource.data.planoId is string && request.resource.data.planoId.size() <= 40\n        && request.resource.data.inicio is string && request.resource.data.inicio.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')\n        && request.resource.data.endereco is string && request.resource.data.endereco.size() <= 300\n        && request.resource.data.entrega in ['casa', 'portaria', 'maos']\n        && request.resource.data.obs is string && request.resource.data.obs.size() <= 300\n        && request.resource.data.hora is string && request.resource.data.hora.size() <= 30\n        && request.resource.data.pago in ['', 'informado'];\n    }\n\n    // Pedidos pelo link: qualquer pessoa envia o pr\u00f3prio pedido, ningu\u00e9m de fora l\u00ea.\n    match /respostas/{id} {\n      allow create, update: if\n        request.resource.data.keys().hasOnly(['data','telefone','nome','qtd','obs','endereco','hora','entrega','pago'])\n        && request.resource.data.keys().hasAll(['data','telefone','nome','qtd','obs','endereco','hora'])\n        && request.resource.data.data is string && request.resource.data.data.size() == 10\n        && request.resource.data.telefone is string\n        && request.resource.data.telefone.matches('[0-9]{12,13}')\n        && request.resource.data.data.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')\n        && id == request.resource.data.data + '_' + request.resource.data.telefone\n        // s\u00f3 aceita pedido para dia com card\u00e1pio publicado e ainda aberto\n        && exists(/databases/$(database)/documents/cardapios/$(request.resource.data.data))\n        && get(/databases/$(database)/documents/cardapios/$(request.resource.data.data)).data.get('fechado', false) != true\n        && request.resource.data.qtd is int && request.resource.data.qtd >= 0 && request.resource.data.qtd <= 20\n        && request.resource.data.nome is string && request.resource.data.nome.size() <= 80\n        && request.resource.data.obs is string && request.resource.data.obs.size() <= 300\n        && request.resource.data.endereco is string && request.resource.data.endereco.size() <= 300\n        && request.resource.data.hora is string && request.resource.data.hora.size() <= 30\n        && (!('entrega' in request.resource.data) || request.resource.data.entrega in ['', 'casa', 'portaria', 'maos'])\n        && (!('pago' in request.resource.data) || request.resource.data.pago in ['', 'informado']);\n    }\n  }\n}\n";
 // ---------- helpers ----------
 const $ = s => document.querySelector(s);
 const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -408,7 +408,8 @@ function idx(){
   for(const d in S.pedidos){ const conf = S.pedidos[d].confirmados||{}; for(const id in conf){ const v = conf[id]; if(v && v.qtd>0 && !v.avulso) (uso[id] ||= []).push([d, v.qtd]); } }
   return IDX = {porId, porTel, uso};
 }
-const invalidar = () => { IDX = null; };
+let AVPG = null;
+const invalidar = () => { IDX = null; AVPG = null; };
 function clienteDoDia(id, v){
   const c = idx().porId.get(id) || {id, nome:"(cliente apagado)"};
   if(!v.endEntrega && !v.obsDia && !v.entrega) return c;
@@ -471,7 +472,7 @@ function apagarRespostas(lista){
   enqueue(async () => {
     if(!window.__fs){ for(const id of ids) await Store.del("respostas", id); return; }
     for(let i=0; i<ids.length; i+=400){ const b = window.__fs.batch(); ids.slice(i, i+400).forEach(id => b.delete(window.__fs.collection("respostas").doc(id))); await b.commit(); }
-  });
+  }).then(() => setTimeout(() => ids.forEach(id => apagando.delete(id)), 5000));
 }
 const prontos = (...cols) => cols.every(c => S.ready[c]);
 // Pedidos feitos pelo link: aplica cada resposta nova ou alterada ao pedido do dia
@@ -497,7 +498,9 @@ function processarRespostas(){
       if(r.pago==="informado" && !cur.pixInformado) patchConf(r.data, {[c.id]:{pixInformado:true}});
       lixo.push(r); return;
     }
-    (() => { const end = String(r.endereco||"").trim(); if(end && !c.rua && !c.endereco){ const e = splitEndereco(end); const patch = {rua:e.rua||end, numero:e.numero||"", complemento:e.complemento||""}; if(e.bairro && !c.bairro) patch.bairro = e.bairro; enqueue(() => Store.update("clientes", c.id, patch)); } })(),
+    (() => { const end = String(r.endereco||"").trim(); if(end && !c.rua && !c.endereco){ const e = splitEndereco(end); const patch = {rua:e.rua||end, numero:e.numero||"", complemento:e.complemento||""}; if(e.bairro && !c.bairro) patch.bairro = e.bairro; enqueue(() => Store.update("clientes", c.id, patch)); } })();
+    const comp = /^Complemento \+\d+/.test(String(r.obs||"")) && cur && cur.qtd>0;
+    if(comp){ (lote[r.data] ||= {itens:[], resps:[]}); lote[r.data].itens.push([c, Number(r.qtd)||0, {respHora:r.hora, origem:"link", obsDia:[cur.obsDia, String(r.obs).trim()].filter(Boolean).join(" | ").slice(0,600), pixInformado:r.pago==="informado"}]); lote[r.data].resps.push(r); toast((c.nome||"Cliente")+" complementou o pedido: agora "+(Number(r.qtd)||0)); return; }
     (lote[r.data] ||= {itens:[], resps:[]}); lote[r.data].itens.push([c, Number(r.qtd)||0, {respHora:r.hora, origem:"link", endEntrega:(c.rua||c.endereco) && String(r.endereco||"").trim()!==(c.endLink||"") ? String(r.endereco||"").trim() : "", obsDia:String(r.obs||"").trim(), entrega:String(r.entrega||""), pixInformado:r.pago==="informado"}]); lote[r.data].resps.push(r);
   });
   apagarRespostas(lixo);
@@ -513,7 +516,12 @@ function autoPlanoDia(d){
 }
 let autoT;
 // ----- Fechar os pedidos do dia e avisar os clientes -----
-const avPago = (d, id) => !!lancId("av-"+d+"-"+id);
+// Quanto o cliente avulso já pagou no dia (soma o pagamento e os complementos)
+function avPagoValor(d, id){
+  if(!AVPG){ AVPG = new Map(); for(const l of todosLanc()){ const m = /^av-(\d{4}-\d{2}-\d{2})-([^-]+)/.exec(l.id||""); if(m && !l.apagado){ const k = m[1]+"|"+m[2]; AVPG.set(k, (AVPG.get(k)||0) + (Number(l.valor)||0)); } } }
+  return AVPG.get(d+"|"+id)||0;
+}
+const avPago = (d, id) => { const v = avPagoValor(d, id); if(!(v>0)) return false; const x = (pedido(d).confirmados||{})[id], preco = Number(S.cardapios[d] && S.cardapios[d].preco)||0; return !x || !preco || v >= x.qtd*preco - 0.009; };
 function fecharLote(d, fechar){
   setPedidoCampos(d, {fechado:fechar, fechadoEm:fechar?new Date().toISOString():""});
   if(S.cardapios[d]) enqueue(() => Store.update("cardapios", d, {fechado:fechar}));
@@ -616,7 +624,36 @@ async function syncConhecidos(){
   }catch(e){ /* tenta de novo na próxima mudança */ }
   syncCon = false;
 }
-function automacoes(){ clearTimeout(autoT); autoT = setTimeout(() => { syncInfo(); syncCatalogo(); processarAssinaturas(); syncConhecidos(); fecharFeriados(); autoPlanoDia(today()); autoPlanoDia(S.diaData); processarRespostas(); }, 400); }
+// Página de pedido: mostra ao cliente o que ele já pediu no dia (só um código de telefone+dia, sem dados pessoais)
+let syncPP = false;
+const HSH = new Map();
+async function hashTxt(t){ if(HSH.has(t)) return HSH.get(t); const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)); const h = [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join(""); if(HSH.size>20000) HSH.clear(); HSH.set(t, h); return h; }
+async function syncPedidosPub(){
+  if(syncPP || !window.__fs || !window.crypto || !crypto.subtle || !prontos("clientes","pedidos","config")) return;
+  syncPP = true;
+  try{
+    let feitos = {}; try{ feitos = JSON.parse(localStorage.getItem("marmitex-pp")||"{}"); }catch(e){}
+    const quer = {};
+    for(const d of Object.keys(S.pedidos).filter(d => d>=today()).sort().slice(0,10)){
+      for(const x of confirmadosDia(d)){
+        if(!x.cliente || !x.cliente.telefone || String(x.id).startsWith("cg:")) continue;
+        const raw = (pedido(d).confirmados||{})[x.id]||{};
+        const v = {q:x.qtd, t:String(raw.hora||""), pg:x.avulso && avPago(d, x.id) ? 1 : 0};
+        quer[await hashTxt("marmitex:"+d+":"+x.cliente.telefone)] = v;
+      }
+    }
+    const novos = Object.keys(quer).filter(h => JSON.stringify(feitos[h])!==JSON.stringify(quer[h])), velhos = Object.keys(feitos).filter(h => !quer[h]);
+    const ops = [...novos.map(h => [h, quer[h]]), ...velhos.map(h => [h, null])];
+    for(let i=0; i<ops.length; i+=400){
+      const b = window.__fs.batch();
+      ops.slice(i, i+400).forEach(([h,v]) => { const ref = window.__fs.collection("pedidosPub").doc(h); v ? b.set(ref, v) : b.delete(ref); });
+      await b.commit();
+    }
+    try{ localStorage.setItem("marmitex-pp", JSON.stringify(quer)); }catch(e){}
+  }catch(e){}
+  syncPP = false;
+}
+function automacoes(){ clearTimeout(autoT); autoT = setTimeout(() => { syncInfo(); syncCatalogo(); syncPedidosPub(); processarAssinaturas(); syncConhecidos(); fecharFeriados(); autoPlanoDia(today()); autoPlanoDia(S.diaData); processarRespostas(); }, 400); }
 function setPedidoCampos(d, patch){
   const existed = !!S.pedidos[d];
   S.pedidos[d] = Object.assign({data:d, confirmados:{}}, S.pedidos[d], patch);
@@ -2002,7 +2039,7 @@ function previsao(){
 }
 function aReceber(){
   const d = S.diaData, preco = Number(S.cardapios[d] && S.cardapios[d].preco)||0;
-  const av = confirmadosDia(d).filter(x=>x.avulso).map(x => ({tipo:"av", id:"av-"+d+"-"+x.id, c:x.cliente, valor:x.qtd*preco, desc:x.qtd+" avulsa(s) em "+fmtDate(d), d}));
+  const av = confirmadosDia(d).filter(x=>x.avulso && x.qtd>0).map(x => { const pago = avPagoValor(d, x.id), falta = Math.round((x.qtd*preco - pago)*100)/100; return falta<=0.009 ? null : {tipo:"av", id:"av-"+d+"-"+x.id+(pago>0?"-"+x.qtd:""), c:x.cliente, valor:falta, desc:(pago>0?"Complemento: ":"")+x.qtd+" avulsa(s) em "+fmtDate(d)+(pago>0?" (já pago "+brl(pago)+")":""), d}; }).filter(Boolean);
   const pl = S.clientes.filter(c => c.ativo!==false && c.planoId && c.inicio && c.inicio>=addDays(today(),-45)).map(c => ({tipo:"pl", id:"pl-"+c.id+"-"+c.inicio, c, valor:Number(plano(c.planoId)?.preco)||0, desc:"Plano "+(plano(c.planoId)?.nome||"")+" desde "+fmtDate(c.inicio)}));
   const cg = modOn("congeladas") ? S.encomendas.filter(e => !e.pago && e.data<=addDays(today(),7)).map(e => ({tipo:"cg", id:"cg-"+e.id, enc:e, c:idx().porId.get(e.clienteId)||{nome:"(cliente apagado)"}, valor:Number(e.valor)||0, desc:"Congeladas: "+descEnc(e)+" · entrega "+fmtDate(e.data)})) : [];
   const pagos = new Set(todosLanc().map(l=>l.id));

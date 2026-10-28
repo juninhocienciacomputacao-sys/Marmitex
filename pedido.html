@@ -43,6 +43,10 @@ button{font:inherit;cursor:pointer}
 #qr{align-self:center;background:#fff;padding:10px;border-radius:8px}
 .ok{background:var(--brand-soft);border-radius:12px;padding:18px;text-align:center}
 .banner{background:var(--warn-soft);border-radius:10px;padding:10px 12px}
+.ja{background:var(--brand-soft);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.modos{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.modos button{border:2px solid var(--brand);background:var(--surface);color:var(--brand);border-radius:10px;padding:12px 8px;font-weight:700;font-size:.95rem}
+.modos button[aria-pressed="true"]{background:var(--brand);color:var(--brand-fg)}
 button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
 </style>
 </head>
@@ -54,10 +58,12 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
   <section class="card" id="formBox" hidden>
     <label>Seu WhatsApp (com DDD)<input type="tel" id="tel" inputmode="tel" autocomplete="tel" placeholder="(11) 91234-5678"></label>
     <label>Seu nome<input type="text" id="nome" autocomplete="name"></label>
-    <div><div style="font-weight:700;font-size:.9rem;color:var(--muted);margin-bottom:6px">Quantas marmitas?</div>
+    <div class="ja" id="jaBox" hidden><div>Você já pediu <b id="jaQ"></b> para este dia. O que deseja fazer?</div>
+      <div class="modos"><button type="button" id="mAlt" aria-pressed="false">Alterar quantidade</button><button type="button" id="mComp" aria-pressed="false">Complementar pedido</button></div></div>
+    <div id="qBox"><div style="font-weight:700;font-size:.9rem;color:var(--muted);margin-bottom:6px" id="qTit">Quantas marmitas?</div>
       <div class="qty"><button type="button" id="menos" aria-label="Menos uma">−</button><b id="q">1</b><button type="button" id="mais" aria-label="Mais uma">+</button></div></div>
     <label>Observação (opcional)<input type="text" id="obs" placeholder="Ex.: sem cebola"></label>
-    <div><div style="font-weight:700;font-size:.9rem;color:var(--muted);margin-bottom:6px">Como entregar?</div>
+    <div id="entBox"><div style="font-weight:700;font-size:.9rem;color:var(--muted);margin-bottom:6px">Como entregar?</div>
       <div class="opts" role="radiogroup">
         <label class="opt"><input type="radio" name="ent" value="casa"> Casa (entregar na porta)</label>
         <label class="opt"><input type="radio" name="ent" value="portaria"> Apartamento: pode deixar na portaria ou recepção</label>
@@ -129,6 +135,36 @@ function pixCode(chave, valor, nome, cidade, txid){
   return p + crc16(p);
 }
 let cardapio = null, ehPlano = false, ultimo = null;
+// Pedido que o cliente já fez para este dia: escolhe entre alterar a quantidade ou complementar
+let ja = null, modo = "";
+const memPed = tel => { try{ return JSON.parse(localStorage.getItem("pedido-q-"+d+"-"+tel)||"null"); }catch(e){ return null; } };
+const guardaPed = (tel, o) => { try{ localStorage.setItem("pedido-q-"+d+"-"+tel, JSON.stringify(o)); }catch(e){} };
+function plural(n){ return n+(n>1?" marmitas":" marmita"); }
+function setModo(m){
+  modo = m;
+  $("#mAlt").setAttribute("aria-pressed", m==="alterar"); $("#mComp").setAttribute("aria-pressed", m==="comp");
+  const comp = m==="comp";
+  $("#qTit").textContent = comp ? "Quantas marmitas a mais?" : (ja ? "Quantas marmitas no total?" : "Quantas marmitas?");
+  setQ(comp ? 1 : (ja && ja.q ? ja.q : 1));
+  $("#entBox").hidden = comp; $("#obs").placeholder = comp ? "Ex.: a extra sem arroz" : "Ex.: sem cebola";
+  $("#enviar").textContent = comp ? "Adicionar ao pedido" : (ja && ja.q ? "Confirmar alteração" : "Confirmar pedido");
+  $("#nao").textContent = ja && ja.q ? "Cancelar meu pedido" : "Não quero hoje";
+  mostrarEndereco();
+}
+function mostrarJa(){
+  $("#jaBox").hidden = !(ja && ja.q>0);
+  if(ja && ja.q>0){ $("#jaQ").textContent = plural(ja.q)+(ja.pg?" (já pago)":""); setModo(modo||"comp"); }
+  else setModo("");
+}
+$("#mAlt").onclick = () => setModo("alterar"); $("#mComp").onclick = () => setModo("comp");
+async function buscarJa(tel){
+  let pub = null;
+  try{ const r = await fs.collection("pedidosPub").doc(await hashTxt("marmitex:"+d+":"+tel)).get(); if(r.exists) pub = r.data(); }catch(e){}
+  const loc = memPed(tel);
+  if(normPhone($("#tel").value)!==tel) return;
+  ja = loc && (!pub || String(loc.t||"") > String(pub.t||"")) ? Object.assign({pg:pub&&pub.pg}, loc) : pub;
+  mostrarJa();
+}
 Promise.all([fs.collection("publico").doc("info").get().catch(()=>null), fs.collection("cardapios").doc(d).get().catch(()=>null)]).then(([pi, cd]) => {
   info = pi && pi.exists ? pi.data() : {};
   if(info.restaurante){ $("#rest").textContent = info.restaurante; document.title = "Pedido · "+info.restaurante; }
@@ -151,15 +187,17 @@ Promise.all([fs.collection("publico").doc("info").get().catch(()=>null), fs.coll
 });
 // Cliente já cadastrado com endereço: o sistema guarda só um código do telefone (sem dados pessoais)
 let conhecido = null, chkT, ultimoTel = "";
-async function hashTel(t){ const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("marmitex:"+t)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join(""); }
+async function hashTxt(t){ const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join(""); }
+const hashTel = t => hashTxt("marmitex:"+t);
 function mostrarEndereco(){
-  const usa = conhecido===true && $("#usar").checked;
-  $("#usarBox").hidden = conhecido!==true; $("#endLbl").hidden = usa;
+  const usa = conhecido===true && $("#usar").checked, comp = modo==="comp";
+  $("#usarBox").hidden = conhecido!==true || comp; $("#endLbl").hidden = usa || comp;
   $("#endTit").textContent = conhecido===true ? "Outro endereço, só para este pedido" : "Endereço para entrega";
 }
 async function checarCliente(){
   const tel = normPhone($("#tel").value); if(tel===ultimoTel) return; ultimoTel = tel;
-  if(tel.length<12 || tel.length>13 || !window.crypto || !crypto.subtle){ conhecido = null; mostrarEndereco(); return; }
+  if(tel.length<12 || tel.length>13 || !window.crypto || !crypto.subtle){ conhecido = null; ja = null; mostrarJa(); return; }
+  buscarJa(tel);
   try{ const d = await fs.collection("conhecidos").doc(await hashTel(tel)).get(); if(normPhone($("#tel").value)!==tel) return; conhecido = d.exists; ehPlano = !!(d.exists && d.data().p); if(conhecido) $("#usar").checked = true; }
   catch(e){ conhecido = null; }
   mostrarEndereco();
@@ -172,19 +210,26 @@ async function enviar(q){
   $("#err").textContent = "";
   if(tel.length<12 || tel.length>13){ $("#err").textContent = "Digite seu WhatsApp com DDD, por exemplo (11) 91234-5678."; $("#tel").focus(); return; }
   if(!nome){ $("#err").textContent = "Digite seu nome."; $("#nome").focus(); return; }
-  const endereco = conhecido===true && $("#usar").checked ? "" : $("#end").value.trim();
-  if(q>0 && conhecido===false && !endereco){ $("#err").textContent = "Digite o endereço de entrega."; $("#end").focus(); return; }
-  const entR = document.querySelector('input[name="ent"]:checked'), entrega = entR ? entR.value : "";
-  if(q>0 && !entrega){ $("#err").textContent = "Escolha como entregar (casa, portaria ou em mãos)."; return; }
+  const comp = q>0 && modo==="comp" && ja && ja.q>0, antes = ja && ja.q>0 ? ja.q : 0;
+  const total = comp ? Math.min(20, antes+q) : q;
+  if(comp && antes+q>20){ $("#err").textContent = "O máximo por pedido é 20 marmitas. Fale com a gente pelo WhatsApp."; return; }
+  const endereco = comp || (conhecido===true && $("#usar").checked) ? "" : $("#end").value.trim();
+  if(q>0 && !comp && conhecido===false && !endereco){ $("#err").textContent = "Digite o endereço de entrega."; $("#end").focus(); return; }
+  const entR = document.querySelector('input[name="ent"]:checked'), entrega = comp ? "" : (entR ? entR.value : "");
+  if(q>0 && !comp && !entrega){ $("#err").textContent = "Escolha como entregar (casa, portaria ou em mãos)."; return; }
   const btns = [$("#enviar"), $("#nao")]; btns.forEach(b => b.disabled = true);
   try{
-    ultimo = {data:d, telefone:tel, nome:nome.slice(0,80), qtd:q, obs:$("#obs").value.trim().slice(0,300), endereco:endereco.slice(0,300), hora:new Date().toISOString(), entrega, pago:""};
+    const obsTxt = $("#obs").value.trim();
+    ultimo = {data:d, telefone:tel, nome:nome.slice(0,80), qtd:total, obs:(comp ? "Complemento +"+q+(obsTxt?": "+obsTxt:"") : obsTxt).slice(0,300), endereco:endereco.slice(0,300), hora:new Date().toISOString(), entrega, pago:""};
     await fs.collection("respostas").doc(d+"_"+tel).set(ultimo);
+    const pg = !!(ja && ja.pg), pagar = comp ? q : (pg ? Math.max(0, total-antes) : total);
+    ja = {q:total, t:ultimo.hora, pg: pg && total<=antes}; guardaPed(tel, ja); $("#obs").value = "";
     lembrar("tel", $("#tel").value.trim()); lembrar("nome", nome); if(entrega) lembrar("ent", entrega);
     $("#formBox").hidden = true; $("#okBox").hidden = false;
-    $("#okTit").textContent = q ? "Pedido confirmado!" : "Tudo certo!";
-    $("#okTxt").textContent = q ? q+(q>1?" marmitas":" marmita")+" para "+DIAS[dt.getDay()]+", "+pad(D)+"/"+pad(M)+". Obrigado!" : "Anotamos que você não vai querer marmita neste dia.";
-    mostrarPix(q, tel);
+    const quando = DIAS[dt.getDay()]+", "+pad(D)+"/"+pad(M);
+    $("#okTit").textContent = !q ? (antes ? "Pedido cancelado" : "Tudo certo!") : comp ? "Complemento confirmado!" : antes ? "Pedido alterado!" : "Pedido confirmado!";
+    $("#okTxt").textContent = !q ? "Anotamos que você não vai querer marmita neste dia." : comp ? "Adicionamos "+plural(q)+". Agora são "+plural(total)+" para "+quando+". Obrigado!" : plural(total)+" para "+quando+". Obrigado!";
+    mostrarPix(pagar, tel);
   }catch(e){ $("#err").textContent = "Não foi possível enviar. Confira a internet e tente de novo."; }
   btns.forEach(b => b.disabled = false);
 }
@@ -213,7 +258,7 @@ $("#pixPago").onclick = async () => { if(!ultimo) return; $("#pixPago").disabled
   catch(e){ $("#pixPago").disabled = false; $("#pixPago").textContent = "Não foi possível avisar. Tente de novo."; } };
 $("#enviar").onclick = () => enviar(qtd);
 $("#nao").onclick = () => enviar(0);
-$("#editar").onclick = () => { $("#okBox").hidden = true; $("#formBox").hidden = false; };
+$("#editar").onclick = () => { $("#okBox").hidden = true; $("#formBox").hidden = false; modo = ""; mostrarJa(); };
 })();
 </script>
 </body>

@@ -39,6 +39,10 @@ service cloud.firestore {
     match /conhecidos/{h} {
       allow get: if true;
     }
+    // Página de pedido: mostra ao cliente quantas marmitas ele já pediu no dia (código de telefone+dia, sem dados pessoais)
+    match /pedidosPub/{h} {
+      allow get: if true;
+    }
 
     // Assinatura de plano pela página de atendimento: qualquer pessoa envia, ninguém de fora lê.
     match /assinaturas/{id} {

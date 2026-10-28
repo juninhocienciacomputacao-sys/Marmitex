@@ -77,6 +77,16 @@ Na aba **Congeladas** você cadastra os pacotes (ex.: Kit 10 congeladas fit), la
 
 Em **Congeladas > Recomendações ao cliente** fica um texto pronto (freezer a -18 °C, validade, descongelar na geladeira, consumir em até 24 h depois de descongelada, nunca recongelar, como aquecer). Dá para editar e mudar a validade. O texto aparece na página de atendimento (`atendimento.html#cuidados`), no link de pedido e na mensagem de confirmação de quem recebe congeladas. O botão **Imprimir etiquetas** gera folha A4 com 24 etiquetas: prato, data de produção, validade e modo de preparo.
 
+## Cliente que pede de novo no mesmo dia
+
+Quem já pediu e abre o link de novo vê "Você já pediu X marmitas" e escolhe:
+- **Complementar pedido**: diz quantas a mais. Soma ao pedido, mantém endereço e entrega, e a observação entra como "Complemento +N". O Pix cobra só as novas.
+- **Alterar quantidade**: escolhe o novo total. Se já tinha pago, o Pix cobra só a diferença.
+- **Cancelar meu pedido**: zera o pedido do dia.
+
+No Financeiro, se o cliente pagou e depois aumentou, aparece só o valor que falta ("Complemento").
+Depois desta atualização, publique de novo as regras do Firebase (Ajustes > Regras do Firebase).
+
 ## Pagamento
 
 Preencha em **Ajustes** a chave Pix (o sistema já arruma o formato: telefone vira +55, CPF/CNPJ só números) e marque as formas de pagamento aceitas. Com a chave, o cliente avulso recebe o Pix copia e cola e o QR Code na hora do pedido. Sem a chave, a página mostra o valor, as formas aceitas e um botão para combinar no WhatsApp. Enquanto faltar nome, Pix ou WhatsApp do restaurante, a tela **Dia** avisa.
