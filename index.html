@@ -155,7 +155,7 @@ a.btn.primary{color:var(--brand-fg)}
 <script>
 (function(){
 "use strict";
-window.__RULES = "rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n\n    // Administrador: troque SEU-EMAIL-AQUI pelo seu e-mail (s\u00f3 uma vez).\n    // Os outros usu\u00e1rios voc\u00ea cadastra dentro do sistema, em Ajustes > Usu\u00e1rios do sistema.\n    function dono() {\n      return request.auth != null && request.auth.token.email in ['SEU-EMAIL-AQUI'];\n    }\n    function usuarios() {\n      return /databases/$(database)/documents/acesso/usuarios;\n    }\n    function membro() {\n      return dono() || (request.auth != null && exists(usuarios())\n        && request.auth.token.email in get(usuarios()).data.emails);\n    }\n\n    // O sistema: administrador e usu\u00e1rios cadastrados leem e gravam.\n    match /{col}/{document=**} {\n      allow read: if membro();\n      allow write: if membro() && col != 'acesso';\n    }\n\n    // Lista de usu\u00e1rios: todos os usu\u00e1rios veem, s\u00f3 o administrador muda.\n    match /acesso/{doc} {\n      allow read: if membro();\n      allow write: if dono();\n    }\n\n    // P\u00e1gina de pedido: qualquer pessoa v\u00ea o card\u00e1pio e o nome do restaurante.\n    match /cardapios/{dia} {\n      allow read: if true;\n    }\n    match /publico/{doc} {\n      allow read: if true;\n    }\n    // P\u00e1gina de pedido: confere se o telefone (em c\u00f3digo, sem dados pessoais) j\u00e1 tem endere\u00e7o cadastrado.\n    // S\u00f3 pode consultar um c\u00f3digo por vez; ningu\u00e9m de fora consegue listar.\n    match /conhecidos/{h} {\n      allow get: if true;\n    }\n\n    // Pedidos pelo link: qualquer pessoa envia o pr\u00f3prio pedido, ningu\u00e9m de fora l\u00ea.\n    match /respostas/{id} {\n      allow create, update: if\n        request.resource.data.keys().hasOnly(['data','telefone','nome','qtd','obs','endereco','hora','entrega','pago'])\n        && request.resource.data.keys().hasAll(['data','telefone','nome','qtd','obs','endereco','hora'])\n        && request.resource.data.data is string && request.resource.data.data.size() == 10\n        && request.resource.data.telefone is string\n        && request.resource.data.telefone.size() >= 12 && request.resource.data.telefone.size() <= 13\n        && id == request.resource.data.data + '_' + request.resource.data.telefone\n        && request.resource.data.qtd is int && request.resource.data.qtd >= 0 && request.resource.data.qtd <= 20\n        && request.resource.data.nome is string && request.resource.data.nome.size() <= 80\n        && request.resource.data.obs is string && request.resource.data.obs.size() <= 300\n        && request.resource.data.endereco is string && request.resource.data.endereco.size() <= 300\n        && request.resource.data.hora is string && request.resource.data.hora.size() <= 30\n        && (!('entrega' in request.resource.data) || request.resource.data.entrega in ['', 'casa', 'portaria', 'maos'])\n        && (!('pago' in request.resource.data) || request.resource.data.pago in ['', 'informado']);\n    }\n  }\n}\n";
+window.__RULES = "rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n\n    // Administrador: troque SEU-EMAIL-AQUI pelo seu e-mail (s\u00f3 uma vez).\n    // Os outros usu\u00e1rios voc\u00ea cadastra dentro do sistema, em Ajustes > Usu\u00e1rios do sistema.\n    function dono() {\n      return request.auth != null && request.auth.token.email in ['SEU-EMAIL-AQUI'];\n    }\n    function usuarios() {\n      return /databases/$(database)/documents/acesso/usuarios;\n    }\n    function membro() {\n      return dono() || (request.auth != null && exists(usuarios())\n        && request.auth.token.email in get(usuarios()).data.emails);\n    }\n\n    // O sistema: administrador e usu\u00e1rios cadastrados leem e gravam.\n    match /{col}/{document=**} {\n      allow read: if membro();\n      allow write: if membro() && col != 'acesso';\n    }\n\n    // Lista de usu\u00e1rios: todos os usu\u00e1rios veem, s\u00f3 o administrador muda.\n    match /acesso/{doc} {\n      allow read: if membro();\n      allow write: if dono();\n    }\n\n    // P\u00e1gina de pedido: qualquer pessoa v\u00ea o card\u00e1pio e o nome do restaurante.\n    match /cardapios/{dia} {\n      allow read: if true;\n    }\n    match /publico/{doc} {\n      allow read: if true;\n    }\n    // P\u00e1gina de pedido: confere se o telefone (em c\u00f3digo, sem dados pessoais) j\u00e1 tem endere\u00e7o cadastrado.\n    // S\u00f3 pode consultar um c\u00f3digo por vez; ningu\u00e9m de fora consegue listar.\n    match /conhecidos/{h} {\n      allow get: if true;\n    }\n\n    // Assinatura de plano pela p\u00e1gina de atendimento: qualquer pessoa envia, ningu\u00e9m de fora l\u00ea.\n    match /assinaturas/{id} {\n      allow create, update: if\n        request.resource.data.keys().hasOnly(['telefone','nome','planoId','inicio','endereco','entrega','obs','hora','pago'])\n        && request.resource.data.keys().hasAll(['telefone','nome','planoId','inicio','endereco','entrega','obs','hora','pago'])\n        && request.resource.data.telefone is string\n        && request.resource.data.telefone.size() >= 12 && request.resource.data.telefone.size() <= 13\n        && id == request.resource.data.telefone\n        && request.resource.data.nome is string && request.resource.data.nome.size() <= 80\n        && request.resource.data.planoId is string && request.resource.data.planoId.size() <= 40\n        && request.resource.data.inicio is string && request.resource.data.inicio.size() == 10\n        && request.resource.data.endereco is string && request.resource.data.endereco.size() <= 300\n        && request.resource.data.entrega in ['casa', 'portaria', 'maos']\n        && request.resource.data.obs is string && request.resource.data.obs.size() <= 300\n        && request.resource.data.hora is string && request.resource.data.hora.size() <= 30\n        && request.resource.data.pago in ['', 'informado'];\n    }\n\n    // Pedidos pelo link: qualquer pessoa envia o pr\u00f3prio pedido, ningu\u00e9m de fora l\u00ea.\n    match /respostas/{id} {\n      allow create, update: if\n        request.resource.data.keys().hasOnly(['data','telefone','nome','qtd','obs','endereco','hora','entrega','pago'])\n        && request.resource.data.keys().hasAll(['data','telefone','nome','qtd','obs','endereco','hora'])\n        && request.resource.data.data is string && request.resource.data.data.size() == 10\n        && request.resource.data.telefone is string\n        && request.resource.data.telefone.size() >= 12 && request.resource.data.telefone.size() <= 13\n        && id == request.resource.data.data + '_' + request.resource.data.telefone\n        && request.resource.data.qtd is int && request.resource.data.qtd >= 0 && request.resource.data.qtd <= 20\n        && request.resource.data.nome is string && request.resource.data.nome.size() <= 80\n        && request.resource.data.obs is string && request.resource.data.obs.size() <= 300\n        && request.resource.data.endereco is string && request.resource.data.endereco.size() <= 300\n        && request.resource.data.hora is string && request.resource.data.hora.size() <= 30\n        && (!('entrega' in request.resource.data) || request.resource.data.entrega in ['', 'casa', 'portaria', 'maos'])\n        && (!('pago' in request.resource.data) || request.resource.data.pago in ['', 'informado']);\n    }\n  }\n}\n";
 // ---------- helpers ----------
 const $ = s => document.querySelector(s);
 const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -249,7 +249,7 @@ const icon = id => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" s
 // ---------- state ----------
 const DEFAULT_CONFIG = {restaurante:"", meuNomeWhats:"", horarioLimite:"10:30", alertaSaldo:3, alertaDias:5, msgAlerta:"Olá {nome}! Restam {saldo} marmitas no seu plano {plano}, que vai até {fim}. Quer renovar?", enderecoRestaurante:"", cidade:"", custoMarmita:0, custoFixoMensal:0, telefoneRestaurante:"", premioIndicacao:"1 marmita grátis", autoPlano:true, abertos:[], feriadosLocais:"", prazoTipo:"mesmo", pixChave:"", pixNome:"", pixCidade:"", horaEntrega:"", autoCadastro:true, estoqueCong:0, estoqueMinCong:0, movCong:[], modulos:{clientes:true,planos:true,congeladas:true,precos:true,cardapio:true,calendario:true,relatorios:true,entregas:true,financeiro:true,marketing:true}};
 const S = {clientes:[], planos:[], cardapios:{}, config:structuredClone(DEFAULT_CONFIG), tab:"hoje", loaded:{}, mode:"loading",
-  busca:"", filtro:"todos", mostrar:100, cardData:today(), calMes:today().slice(0,7), pedidos:{}, respostas:[], ready:{}, acesso:{emails:[], info:{}}, entregadores:[], pacotes:[], encomendas:[], precos:[], promocoes:[], cgFiltro:"abertas", fin:{}, finPeriodo:"mes", diaData:today(), confBusca:"", relPeriodo:"7", relTipo:"todos"};
+  busca:"", filtro:"todos", mostrar:100, cardData:today(), calMes:today().slice(0,7), pedidos:{}, respostas:[], ready:{}, acesso:{emails:[], info:{}}, entregadores:[], pacotes:[], encomendas:[], precos:[], promocoes:[], assinaturas:[], cgFiltro:"abertas", fin:{}, finPeriodo:"mes", diaData:today(), confBusca:"", relPeriodo:"7", relTipo:"todos"};
 
 // Erro de permissão do Firebase: mostra o e-mail e entrega as regras prontas
 function avisoPermissao(col, e){
@@ -509,6 +509,51 @@ function painelAvisos(d){
   });
 }
 
+// ----- Página de atendimento: catálogo público e assinaturas pelo link -----
+const linkAtendimento = () => { if(!window.__fs) return ""; try{ return new URL("atendimento.html", location.href).href.split("#")[0].split("?")[0]; }catch(e){ return ""; } };
+function syncCatalogo(){
+  if(!window.__fs || !prontos("planos","pacotes","precos","promocoes","config")) return;
+  const t = today();
+  const cat = {
+    planos: S.planos.filter(p => p.tipo!=="personalizado" && p.ativo!==false && p.preco).map(p => ({id:p.id, nome:p.nome||"", marmitas:Number(p.marmitas)||0, porDia:Number(p.porDia)||1, duracao:Number(p.duracao)||0, dias:p.dias||[], preco:Number(p.preco)||0, descricao:p.descricao||""})),
+    pacotes: modOn("congeladas") ? S.pacotes.filter(p => p.ativo!==false).map(p => ({nome:p.nome||"", unidades:Number(p.unidades)||0, preco:Number(p.preco)||0, descricao:p.descricao||""})) : [],
+    precos: modOn("precos") ? S.precos.filter(p => p.ativo!==false).sort((a,b) => CAT_PRECO.indexOf(a.cat)-CAT_PRECO.indexOf(b.cat) || (a.preco||0)-(b.preco||0)).map(p => ({nome:p.nome||"", descricao:p.descricao||"", preco:precoNoDia(p, t)})) : [],
+    promos: modOn("precos") ? promosDia(t).map(textoPromo) : [], dia:t
+  };
+  const j = JSON.stringify(cat); let antes = ""; try{ antes = localStorage.getItem("marmitex-cat")||""; }catch(e){}
+  if(j===antes) return;
+  Store.set("publico", "catalogo", cat).then(() => { try{ localStorage.setItem("marmitex-cat", j); }catch(e){} }).catch(() => {});
+}
+const processando = new Set();
+function processarAssinaturas(){
+  if(!window.__fs || !prontos("clientes","planos","assinaturas")) return;
+  S.assinaturas.forEach(a => {
+    if(!a.telefone || processando.has(a.id+a.hora+a.pago)) return;
+    const pl = plano(a.planoId); if(!pl) return;
+    const c = idx().porTel.get(a.telefone);
+    if(c && c.assinaturaHora===a.hora){
+      processando.add(a.id+a.hora+a.pago);
+      const fim = () => enqueue(() => Store.del("assinaturas", a.id));
+      if(a.pago==="informado" && !c.planoPixInformado) enqueue(() => Store.update("clientes", c.id, {planoPixInformado:true})).then(fim); else fim();
+      return;
+    }
+    processando.add(a.id+a.hora+a.pago);
+    const ini = a.inicio && a.inicio >= today() ? a.inicio : addDays(today(),1);
+    const dados = {planoId:pl.id, inicio:ini, fim:pl.duracao ? addDays(ini, Number(pl.duracao)-1) : "", marmitasContratadas:Number(pl.marmitas)||0, ativo:true, entregaModo:a.entrega||((c&&c.entregaModo)||""), assinaturaHora:a.hora, assinadoEm:new Date().toISOString(), planoPixInformado:a.pago==="informado"};
+    if(a.obs) dados.obs = [c && c.obs, a.obs].filter(Boolean).join(" · ");
+    let op;
+    if(c){
+      if(a.endereco && !c.rua && !c.endereco){ const e = splitEndereco(a.endereco); Object.assign(dados, {rua:e.rua||a.endereco, numero:e.numero||"", complemento:e.complemento||""}); if(e.bairro && !c.bairro) dados.bairro = e.bairro; }
+      op = enqueue(() => Store.update("clientes", c.id, dados));
+    } else {
+      const e = splitEndereco(String(a.endereco||""));
+      op = enqueue(() => Store.set("clientes", a.telefone, Object.assign({nome:String(a.nome||"").trim()||"Cliente", telefone:a.telefone, rua:e.rua||"", numero:e.numero||"", complemento:e.complemento||"", bairro:e.bairro||"", cidade:S.config.cidade||"", pagamento:"Pix", origem:"assinatura pelo link", endLink:String(a.endereco||"").trim(), criadoEm:new Date().toISOString()}, dados)));
+    }
+    op.then(res => { if(res===FALHOU){ processando.delete(a.id+a.hora+a.pago); return; } toast("Nova assinatura: "+(a.nome||"cliente")+" · "+pl.nome); enqueue(() => Store.del("assinaturas", a.id)); });
+  });
+}
+const novasAssinaturas = () => S.clientes.filter(c => c.assinadoEm && c.assinadoEm.slice(0,10) >= addDays(today(),-2)).sort((a,b) => b.assinadoEm.localeCompare(a.assinadoEm));
+
 // Página de pedido: reconhece quem já tem endereço cadastrado sem expor dados (só um código do telefone)
 const temEndereco = c => c.ativo!==false && c.telefone && (c.rua || c.endereco);
 async function hashTel(t){ const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("marmitex:"+t)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join(""); }
@@ -530,7 +575,7 @@ async function syncConhecidos(){
   }catch(e){ /* tenta de novo na próxima mudança */ }
   syncCon = false;
 }
-function automacoes(){ clearTimeout(autoT); autoT = setTimeout(() => { syncConhecidos(); fecharFeriados(); autoPlanoDia(today()); autoPlanoDia(S.diaData); processarRespostas(); }, 400); }
+function automacoes(){ clearTimeout(autoT); autoT = setTimeout(() => { syncCatalogo(); processarAssinaturas(); syncConhecidos(); fecharFeriados(); autoPlanoDia(today()); autoPlanoDia(S.diaData); processarRespostas(); }, 400); }
 function setPedidoCampos(d, patch){
   const existed = !!S.pedidos[d];
   S.pedidos[d] = Object.assign({data:d, confirmados:{}}, S.pedidos[d], patch);
@@ -672,6 +717,9 @@ VIEWS.hoje = () => {
     <div class="row"><button class="btn small" id="copySemConf">Copiar telefones</button><button class="btn small" id="copyLembrete">Copiar lembrete</button></div>
     <div class="results">${sc.map(x=>`<div class="res"><div><b>${esc(x.cliente.nome)}</b> · ${x.qtd} marmita(s)<div class="muted" style="font-size:.8rem">${fmtPhone(x.cliente.telefone)} · ${esc(x.cliente.bairro||"")}</div></div><span class="row" style="gap:6px">${x.cliente.telefone?`<a class="btn small" href="https://wa.me/${esc(x.cliente.telefone)}?text=${encodeURIComponent(lembrete(d,x.cliente))}" target="_blank" rel="noopener">Lembrar</a>`:""}<button class="btn small primary" data-okconf="${esc(x.id)}">Confirmado</button><button class="btn small danger" data-cancel="${esc(x.id)}">Não quer</button></span></div>`).join("")}</div>
   </section>` : ""; })()}
+  ${(()=>{ const na = novasAssinaturas(); return na.length ? `<section class="panel" style="display:flex;flex-direction:column;gap:10px"><h2>📅 Novas assinaturas pelo link <span class="pill ok">${na.length}</span></h2>
+    <p class="muted" style="margin:0">O cliente escolheu o plano na página de atendimento. O cadastro e o plano já foram feitos. Confira o pagamento e dê as boas-vindas.</p>
+    <div class="results">${na.map(c => { const pg = !!lancId("pl-"+c.id+"-"+c.inicio); return `<div class="res"><div><b>${esc(c.nome)}</b> · ${esc(plano(c.planoId)?.nome||"")} <span class="pill ${pg?"ok":c.planoPixInformado?"warn":"bad"}">${pg?"pago":c.planoPixInformado?"Pix informado":"a pagar"}</span><div class="muted" style="font-size:.8rem">${fmtPhone(c.telefone)} · começa ${fmtDate(c.inicio)}</div></div>${c.telefone?`<a class="btn small" href="https://wa.me/${esc(c.telefone)}?text=${encodeURIComponent("Oi, "+(c.nome||"").split(" ")[0]+"! 🎉 Bem-vindo(a) ao plano "+(plano(c.planoId)?.nome||"")+" da "+(S.config.restaurante||"nossa cozinha")+". Começa em "+fmtDate(c.inicio).slice(0,5)+" e suas marmitas já estão garantidas nos dias do plano. Qualquer dúvida é só chamar!")}" target="_blank" rel="noopener">Boas-vindas</a>`:""}</div>`; }).join("")}</div></section>` : ""; })()}
   <section style="display:flex;flex-direction:column;gap:10px"><h2>Confirmados do dia</h2><div id="confTab"></div></section>
   <textarea id="msgCopy" aria-hidden="true" tabindex="-1" style="position:absolute;left:-9999px;width:1px;height:1px"></textarea>
   ${alertas.length ? `<section style="display:flex;flex-direction:column;gap:10px"><h2>Avisar sobre fim de plano</h2><p class="muted" style="margin:0">Planos com poucas marmitas, sem saldo ou vencidos. Copie o aviso e mande para o cliente.</p>
@@ -886,6 +934,8 @@ function splitEndereco(e){
   if(!e) return {};
   const m = e.match(/^(.*?(?:rua|r\.|av\.?|avenida|travessa|tv\.|alameda|estrada|rodovia|pra[çc]a)[^,\d]*?)[, ]+(?:n[ºo°.]?\s*)?(\d+[a-z]?)\b([\s\S]*)$/i);
   const bm = e.match(/bairro[:\s]+([^\n,.]+)/i); const bairro = bm ? bm[1].trim() : "";
+  const partes = e.split(",").map(x => x.trim());
+  if(partes.length>=2 && partes[0] && /^(n[ºo°.]?\s*)?\d+[a-z]?$/i.test(partes[1])) return {bairro, rua:partes[0], numero:partes[1].replace(/^n[ºo°.]?\s*/i,""), complemento:partes.slice(2).join(", ").replace(/bairro[:\s]+[^\n,.]+/i,"").replace(/\s+/g," ").replace(/^[\s,\-–]+|[\s,\-–]+$/g,"").trim()};
   if(m) return {bairro, rua:m[1].replace(/^.*?(?=(rua|r\.|av|avenida|travessa|tv\.|alameda|estrada|rodovia|pra[çc]a))/i,"").trim(), numero:m[2], complemento:m[3].replace(/bairro[:\s]+[^\n,.]+/i,"").replace(/\s+/g," ").replace(/^[\s,\-–]+/,"").replace(/[\s,\-–]+$/,"").trim()};
   return {bairro, rua:e};
 }
@@ -1977,6 +2027,7 @@ VIEWS.marketing = () => {
     ${lw ? `<p style="margin:0" class="muted">Coloque na bio do Instagram e nos anúncios. Quem tocar cai no seu WhatsApp com a mensagem pronta.</p><div class="msg" style="word-break:break-all">${esc(lw)}</div><div class="row"><button class="btn small primary" id="copyLink">Copiar link</button></div>`
       : `<p class="muted" style="margin:0">Coloque o telefone do restaurante em Ajustes para criar o link.</p><button class="btn small" data-go="ajustes" style="align-self:flex-start">Abrir Ajustes</button>`}
   </section>
+  ${window.__fs ? viewAtendimento() : ""}
   <section class="panel" style="display:flex;flex-direction:column;gap:10px"><h2>Criar campanha</h2>
     <div class="form">
       <label class="f c2">Objetivo<select id="mkObj"><option value="novos">Clientes novos</option><option value="reativar">Trazer de volta quem sumiu</option><option value="plano">Vender planos para avulsos</option><option value="congeladas">Vender congeladas</option><option value="indicacao">Indique e ganhe</option></select></label>
@@ -2003,7 +2054,41 @@ VIEWS.marketing = () => {
   </section>
   <textarea id="msgCopy" aria-hidden="true" tabindex="-1" style="position:absolute;left:-9999px;width:1px;height:1px"></textarea>`;
 };
+function textosAtendimento(){
+  const la = linkAtendimento(), r = S.config.restaurante || "nossa cozinha";
+  return {
+    saudacao:"Olá! 👋 Bem-vindo(a) à "+r+"! 🥗\n\nPara ver o cardápio, pedir marmita, assinar um plano ou ver os preços, é só tocar aqui:\n"+la+"\n\nTudo pelo link, rapidinho. Se preferir falar com a gente, responda esta mensagem. 😊",
+    ausencia:"Olá! No momento não estamos atendendo, mas você pode pedir sua marmita ou assinar um plano agora mesmo pelo link:\n"+la+"\n\nAssim que voltarmos, respondemos você. 🛵",
+    pedido:"Para pedir é só tocar no link, escolher a quantidade e confirmar 👇\n"+la,
+    plano:"Nossos planos saem mais em conta e você não precisa pedir todo dia. Escolha e assine aqui 👇\n"+la,
+    pix:S.config.pixChave ? "Nossa chave Pix: "+S.config.pixChave+(S.config.pixNome?" ("+S.config.pixNome+")":"")+". Depois é só mandar o comprovante. Obrigado!" : "Cadastre a chave Pix em Ajustes para gerar esta resposta.",
+    cardapio:"O cardápio do dia e o link de pedido estão aqui 👇\n"+la
+  };
+}
+function viewAtendimento(){
+  const t = textosAtendimento(), la = linkAtendimento();
+  const bloco = (k, titulo, onde) => `<div style="display:flex;flex-direction:column;gap:6px"><b>${titulo}</b><span class="muted" style="font-size:.85rem">${onde}</span><div class="msg" style="white-space:pre-wrap">${esc(t[k])}</div><div class="row"><button class="btn small" data-copyat="${k}">Copiar</button></div></div>`;
+  return `<section class="panel" style="display:flex;flex-direction:column;gap:14px"><h2>Atendimento automático no WhatsApp</h2>
+    <p class="muted" style="margin:0">Quando alguém chama o restaurante, o WhatsApp Business responde sozinho com o link de atendimento. Pelo link o cliente pede avulso, assina um plano (o sistema cadastra e ativa sozinho, com Pix), vê congeladas e preços.</p>
+    <div class="msg" style="word-break:break-all">${esc(la)}</div><div class="row"><button class="btn small primary" data-copyat="link">Copiar link de atendimento</button><a class="btn small" href="${esc(la)}" target="_blank" rel="noopener">Abrir a página</a></div>
+    <details><summary style="cursor:pointer;font-weight:700">Como ligar no WhatsApp Business (uma vez, 5 minutos)</summary>
+      <ol style="margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:6px">
+        <li>No WhatsApp Business, toque em <b>⋮ (ou Configurações) &gt; Ferramentas comerciais</b>.</li>
+        <li><b>Mensagem de saudação</b>: ative, apague o texto, cole a <b>Saudação</b> abaixo e salve. Em Destinatários, escolha <b>Todos</b>. Ela vai sozinha para quem chama pela primeira vez ou depois de 14 dias sem conversa.</li>
+        <li><b>Mensagem de ausência</b>: ative, cole a <b>Ausência</b> abaixo, em Programar escolha <b>Fora do horário comercial</b> (cadastre o horário em Perfil comercial) e salve.</li>
+        <li><b>Respostas rápidas</b>: toque em +, cole cada texto abaixo e use o atalho indicado (ex.: <b>/pedido</b>). Na conversa, digite a barra e escolha a resposta.</li>
+        <li>No Instagram, coloque o link de atendimento na bio.</li>
+      </ol></details>
+    ${bloco("saudacao","Saudação","Ferramentas comerciais > Mensagem de saudação")}
+    ${bloco("ausencia","Ausência","Ferramentas comerciais > Mensagem de ausência")}
+    ${bloco("pedido","Resposta rápida /pedido","Ferramentas comerciais > Respostas rápidas")}
+    ${bloco("plano","Resposta rápida /plano","Ferramentas comerciais > Respostas rápidas")}
+    ${bloco("pix","Resposta rápida /pix","Ferramentas comerciais > Respostas rápidas")}
+    ${bloco("cardapio","Resposta rápida /cardapio","Ferramentas comerciais > Respostas rápidas")}
+  </section>`;
+}
 BIND.marketing = () => {
+  document.querySelectorAll("[data-copyat]").forEach(b => b.onclick = () => { const k = b.dataset.copyat, t = k==="link" ? linkAtendimento() : textosAtendimento()[k]; $("#msgCopy").value = t; copiar(t); });
   document.querySelectorAll("[data-go]").forEach(b => b.onclick = () => go(b.dataset.go));
   const cl = $("#copyLink"); if(cl) cl.onclick = () => { $("#msgCopy").value = linkWhats(); copiar(linkWhats()); };
   const out = $("#mkOut");
@@ -2219,9 +2304,10 @@ async function boot(){
   if(window.__fs) Store.watch("respostas", (docs, m) => { S.respostas = docs; marcar("respostas", m); rerenderSafe(); automacoes(); }, addDays(today(),-1));
   Store.watch("financeiro", docs => { S.fin = Object.fromEntries(docs.map(d=>[d.id,d])); rerenderSafe(); }, addDays(today(),-100));
   Store.watch("entregadores", docs => { S.entregadores = docs; rerenderSafe(); });
-  Store.watch("pacotes", docs => { S.pacotes = docs; rerenderSafe(); });
-  Store.watch("precos", docs => { S.precos = docs; rerenderSafe(); });
-  Store.watch("promocoes", docs => { S.promocoes = docs; rerenderSafe(); });
+  Store.watch("pacotes", (docs, m) => { S.pacotes = docs; marcar("pacotes", m); rerenderSafe(); automacoes(); });
+  Store.watch("precos", (docs, m) => { S.precos = docs; marcar("precos", m); rerenderSafe(); automacoes(); });
+  Store.watch("promocoes", (docs, m) => { S.promocoes = docs; marcar("promocoes", m); rerenderSafe(); automacoes(); });
+  if(window.__fs) Store.watch("assinaturas", (docs, m) => { S.assinaturas = docs; marcar("assinaturas", m); rerenderSafe(); automacoes(); });
   Store.watch("encomendas", docs => { S.encomendas = docs; rerenderSafe(); }, addDays(today(),-100));
   if(window.__fs) Store.watch("acesso", docs => { const u = docs.find(d => d.id==="usuarios") || {}; S.acesso = {emails:Array.isArray(u.emails)?u.emails:[], info:u.info||{}}; rerenderSafe(); });
   Store.watch("config", (docs, m) => { const g = docs.find(d=>d.id==="geral"); S.config = Object.assign(structuredClone(DEFAULT_CONFIG), g||{}); S.config.modulos = Object.assign({}, DEFAULT_CONFIG.modulos, (g&&g.modulos)||{}); delete S.config.id; marcar("config", m); aplicarMarca(); rerenderSafe(); automacoes(); });

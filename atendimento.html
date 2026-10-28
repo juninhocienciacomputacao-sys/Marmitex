@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Atendimento</title>
+<meta name="theme-color" content="#1f5c3d">
+<link rel="icon" href="icon-192.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@600;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{--bg:#f3f5f1;--surface:#fff;--line:#d3dacd;--fg:#1b241d;--muted:#5d6a60;--brand:#1f5c3d;--brand-fg:#fff;--brand-soft:#dbe9df;--bad:#b3261e;--warn-soft:#fbecc9;
+  --display:"Familjen Grotesk","Segoe UI",system-ui,sans-serif;--body:"Atkinson Hyperlegible","Segoe UI",system-ui,sans-serif}
+@media (prefers-color-scheme: dark){:root{--bg:#121713;--surface:#1a211c;--line:#334036;--fg:#e6ece6;--muted:#9aa89d;--brand:#5fb487;--brand-fg:#0d1a12;--brand-soft:#21382a;--bad:#f2867c;--warn-soft:#3a2f17;color-scheme:dark}}
+*{box-sizing:border-box}[hidden]{display:none!important}
+html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.45 var(--body)}
+main{max-width:480px;margin:0 auto;padding:20px max(16px,env(safe-area-inset-right,0px)) 40px max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:16px}
+h1,h2{font-family:var(--display);margin:0;line-height:1.15;text-wrap:balance}
+h1{font-size:1.6rem}h2{font-size:1.1rem}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.muted{color:var(--muted)}
+ul{margin:0;padding-left:20px}
+label{display:flex;flex-direction:column;gap:4px;font-weight:700;font-size:.9rem;color:var(--muted)}
+input,textarea{font:inherit;color:inherit;width:100%;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:10px 12px}
+textarea{min-height:64px;resize:vertical}
+button{font:inherit;cursor:pointer}
+.qty{display:flex;align-items:center;gap:14px}
+.qty button{width:48px;height:48px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--fg);font-size:1.5rem;font-weight:700}
+.qty b{font-family:var(--display);font-size:2rem;min-width:40px;text-align:center;font-variant-numeric:tabular-nums}
+.main{background:var(--brand);color:var(--brand-fg);border:0;border-radius:10px;padding:14px;font-weight:700;font-size:1.05rem}
+.ghost{background:none;border:1px solid var(--line);color:var(--fg);border-radius:10px;padding:12px;font-weight:700}
+.err{color:var(--bad);margin:0}
+.chk{flex-direction:row;align-items:center;gap:10px;background:var(--brand-soft);color:var(--fg);border-radius:10px;padding:12px;font-size:1rem}
+.chk input{width:22px;height:22px;flex:none}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opt{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-weight:400;color:var(--fg);font-size:1rem;flex-direction:row}
+.opt input{width:20px;height:20px;flex:none}
+.pix{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px;text-align:left}
+.pix textarea{font:12px/1.35 ui-monospace,monospace;min-height:72px}
+#qr{align-self:center;background:#fff;padding:10px;border-radius:8px}
+.ok{background:var(--brand-soft);border-radius:12px;padding:18px;text-align:center}
+.banner{background:var(--warn-soft);border-radius:10px;padding:10px 12px}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.menu{display:flex;flex-direction:column;gap:10px}
+.big{display:flex;align-items:center;gap:14px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;color:var(--fg);text-decoration:none;font:inherit;cursor:pointer;width:100%}
+.big .ico{font-size:1.8rem;flex:none;width:44px;text-align:center}
+.big b{font-family:var(--display);font-size:1.12rem;display:block}
+.big span.muted{font-size:.9rem}
+.big.prim{background:var(--brand);border-color:var(--brand);color:var(--brand-fg)}.big.prim .muted{color:var(--brand-fg);opacity:.85}
+.plano{border:2px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:4px;background:var(--surface);cursor:pointer;text-align:left;font:inherit;color:var(--fg)}
+.plano[aria-pressed="true"]{border-color:var(--brand);background:var(--brand-soft)}
+.plano .preco{font-family:var(--display);font-size:1.3rem;font-weight:700}
+.back{background:none;border:0;color:var(--brand);font-weight:700;padding:0;align-self:flex-start}
+.ok{background:var(--brand-soft);border-radius:12px;padding:18px;text-align:center;display:flex;flex-direction:column;gap:10px}
+.banner{background:var(--warn-soft);border-radius:10px;padding:10px 12px}
+.pix{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px;text-align:left}
+.pix textarea{font:12px/1.35 ui-monospace,monospace;min-height:72px}
+#qr{align-self:center;background:#fff;padding:10px;border-radius:8px}
+table{width:100%;border-collapse:collapse}td{padding:6px 0;border-bottom:1px solid var(--line);vertical-align:top}td.v{text-align:right;font-weight:700;white-space:nowrap;padding-left:10px}
+</style>
+</head>
+<body>
+<main>
+  <img id="logo" alt="" hidden style="width:96px;height:96px;object-fit:contain;border-radius:18px;background:#fff;align-self:center">
+  <div style="text-align:center"><h1 id="rest">Bem-vindo(a)!</h1><p class="muted" id="sub" style="margin:4px 0 0">Carregando...</p></div>
+
+  <section id="vHome" class="menu" hidden>
+    <a class="big prim" id="bPedir" href="#"><span class="ico">🍱</span><span><b>Pedir marmita</b><span class="muted" id="bPedirTxt">Carregando o cardápio...</span></span></a>
+    <button class="big" id="bPlano"><span class="ico">📅</span><span><b>Assinar um plano</b><span class="muted" id="bPlanoTxt">Marmitas todo dia, sem precisar pedir</span></span></button>
+    <button class="big" id="bCong" hidden><span class="ico">🧊</span><span><b>Congeladas</b><span class="muted">Pacotes para a semana</span></span></button>
+    <button class="big" id="bPrecos" hidden><span class="ico">💰</span><span><b>Preços e promoções</b><span class="muted">Tamanhos, adicionais e entrega</span></span></button>
+    <a class="big" id="bFalar" href="#" target="_blank" rel="noopener" hidden><span class="ico">💬</span><span><b>Falar com a gente</b><span class="muted">Tirar dúvidas no WhatsApp</span></span></a>
+    <p class="muted" style="text-align:center;margin:4px 0 0;font-size:.9rem">🛵 Só entrega, na sua casa ou no trabalho.</p>
+  </section>
+
+  <section id="vPlanos" class="card" hidden>
+    <button class="back" data-home>‹ Voltar</button>
+    <h2>Escolha seu plano</h2>
+    <div id="listaPlanos" class="menu"></div>
+    <div id="formPlano" hidden style="display:flex;flex-direction:column;gap:12px">
+      <label>Seu WhatsApp (com DDD)<input type="tel" id="tel" inputmode="tel" autocomplete="tel" placeholder="(11) 91234-5678"></label>
+      <label>Seu nome<input type="text" id="nome" autocomplete="name"></label>
+      <label class="chk" id="usarBox" hidden style="display:flex"><input type="checkbox" id="usar" checked> Entregar no meu endereço cadastrado</label>
+      <label id="endLbl">Endereço para entrega<textarea id="end" placeholder="Rua, número, complemento, bairro"></textarea></label>
+      <div><div style="font-weight:700;font-size:.9rem;color:var(--muted);margin-bottom:6px">Como entregar?</div>
+        <div class="opts" role="radiogroup">
+          <label class="opt"><input type="radio" name="ent" value="casa"> Casa (entregar na porta)</label>
+          <label class="opt"><input type="radio" name="ent" value="portaria"> Apartamento: pode deixar na portaria ou recepção</label>
+          <label class="opt"><input type="radio" name="ent" value="maos"> Apartamento: entregar só em mãos para mim</label>
+        </div></div>
+      <label>Começar em<input type="date" id="ini"></label>
+      <label>Observação (opcional)<input type="text" id="obs" placeholder="Ex.: sem pimenta, alergia a camarão"></label>
+      <p class="err" id="err"></p>
+      <button class="main" id="assinar">Assinar plano</button>
+    </div>
+  </section>
+
+  <section id="vOk" class="ok" hidden>
+    <h2 id="okTit">Plano assinado!</h2><p id="okTxt" style="margin:0"></p>
+    <div class="pix" id="pixBox" hidden>
+      <h2 style="font-size:1.05rem">Pague pelo Pix: <span id="pixVal"></span></h2>
+      <p class="muted" style="margin:0">Copie o código e cole no app do seu banco (Pix copia e cola), ou leia o QR Code.</p>
+      <div id="qr"></div>
+      <textarea id="pixCode" readonly aria-label="Código Pix copia e cola"></textarea>
+      <button class="main" id="pixCopy">Copiar código Pix</button>
+      <button class="ghost" id="pixPago">Já paguei</button>
+    </div>
+    <button class="ghost" data-home>Voltar ao início</button>
+  </section>
+
+  <section id="vCong" class="card" hidden><button class="back" data-home>‹ Voltar</button><h2>Congeladas</h2><div id="listaCong"></div><a class="main" id="congWa" href="#" target="_blank" rel="noopener" style="text-align:center;text-decoration:none">Pedir congeladas no WhatsApp</a></section>
+  <section id="vPrecos" class="card" hidden><button class="back" data-home>‹ Voltar</button><h2>Preços</h2><div id="listaPrecos"></div></section>
+  <p class="banner" id="aviso" hidden></p>
+</main>
+<script>
+(function(){
+"use strict";
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyD35S_8juHbOlb8DLssGdbuvhqzvuBE1bo",
+  authDomain: "marmitex-148de.firebaseapp.com",
+  projectId: "marmitex-148de",
+  storageBucket: "marmitex-148de.firebasestorage.app",
+  messagingSenderId: "162985128880",
+  appId: "1:162985128880:web:492aa9289d5301d1b71c75"
+};
+const $ = s => document.querySelector(s);
+const pad = n => String(n).padStart(2,"0");
+const isoD = x => x.getFullYear()+"-"+pad(x.getMonth()+1)+"-"+pad(x.getDate());
+const now = new Date(), hoje = isoD(now);
+const addD = (s,n) => { const [y,m,d] = s.split("-").map(Number); const x = new Date(y,m-1,d+n); return isoD(x); };
+const DIAS = ["domingo","segunda","terça","quarta","quinta","sexta","sábado"], DS = ["dom","seg","ter","qua","qui","sex","sáb"];
+const brl = n => (Number(n)||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+const fmt = s => { const [y,m,d] = s.split("-"); return d+"/"+m; };
+const normPhone = r => { let x = String(r||"").replace(/\D/g,"").replace(/^0+/,""); if(x.length===10||x.length===11) x = "55"+x; return x; };
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const mem = k => { try{ return localStorage.getItem("pedido-"+k)||""; }catch(e){ return ""; } };
+const lembrar = (k,v) => { try{ localStorage.setItem("pedido-"+k, v); }catch(e){} };
+const telas = ["vHome","vPlanos","vOk","vCong","vPrecos"];
+const ver = id => { telas.forEach(t => $("#"+t).hidden = t!==id); window.scrollTo(0,0); };
+document.addEventListener("click", e => { if(e.target.closest("[data-home]")){ e.preventDefault(); ver("vHome"); } });
+if(!window.firebase || !FIREBASE_CONFIG){ $("#sub").textContent = "Não foi possível carregar. Confira a internet e abra o link de novo."; return; }
+firebase.initializeApp(FIREBASE_CONFIG);
+const fs = firebase.firestore();
+let info = {}, cat = {}, planoSel = null, conhecido = null, ultimo = null;
+const semAcento = t => String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^A-Za-z0-9 .-]/g,"").trim();
+function crc16(t){ let c = 0xFFFF; for(let i=0;i<t.length;i++){ c ^= t.charCodeAt(i)<<8; for(let j=0;j<8;j++) c = (c & 0x8000) ? ((c<<1)^0x1021) & 0xFFFF : (c<<1) & 0xFFFF; } return c.toString(16).toUpperCase().padStart(4,"0"); }
+function pixCode(chave, valor, nome, cidade, txid){
+  const f = (id, v) => id + String(v.length).padStart(2,"0") + v;
+  const p = f("00","01") + f("26", f("00","BR.GOV.BCB.PIX") + f("01", chave)) + f("52","0000") + f("53","986") + (valor ? f("54", valor.toFixed(2)) : "") + f("58","BR") + f("59", semAcento(nome).slice(0,25)||"RESTAURANTE") + f("60", semAcento(cidade).slice(0,15)||"BRASIL") + f("62", f("05", String(txid||"").replace(/[^A-Za-z0-9]/g,"").slice(0,25)||"***")) + "6304";
+  return p + crc16(p);
+}
+function limite(d){
+  const m = String(info.horarioLimite||"").match(/(\d{1,2})[:h](\d{2})?/); if(!m) return null;
+  const [Y,M,D] = d.split("-").map(Number); const x = new Date(Y, M-1, D, Number(m[1]), Number(m[2]||0)); if(info.prazoTipo==="anterior") x.setDate(x.getDate()-1); return x;
+}
+const wa = txt => info.telefone ? "https://wa.me/"+info.telefone+"?text="+encodeURIComponent(txt) : "#";
+async function proximoDia(){
+  for(let i=0;i<8;i++){
+    const d = addD(hoje, i); let c = null;
+    try{ const s = await fs.collection("cardapios").doc(d).get(); c = s.exists ? s.data() : null; }catch(e){}
+    if(!c || !(c.itens||[]).length || c.fechado) continue;
+    const l = limite(d); if(l && now > l) continue; if(!l && d < hoje) continue;
+    return {d, c, l};
+  }
+  return null;
+}
+Promise.all([fs.collection("publico").doc("info").get().catch(()=>null), fs.collection("publico").doc("catalogo").get().catch(()=>null)]).then(async ([pi, pc]) => {
+  info = pi && pi.exists ? pi.data() : {}; cat = pc && pc.exists ? pc.data() : {};
+  if(info.restaurante){ $("#rest").textContent = info.restaurante; document.title = info.restaurante; }
+  if(/^data:image\/(png|jpeg|webp);base64,/.test(info.logo||"")){ $("#logo").src = info.logo; $("#logo").hidden = false; const l = document.querySelector('link[rel="icon"]'); if(l) l.href = info.logo; }
+  if(/^#[0-9a-f]{6}$/i.test(info.cor||"")) document.documentElement.style.setProperty("--brand", info.cor);
+  $("#sub").textContent = "Marmitas fitness com entrega. Escolha uma opção:";
+  const planos = (cat.planos||[]);
+  if(planos.length){ const min = Math.min(...planos.filter(p=>p.marmitas&&p.preco).map(p=>p.preco/p.marmitas)); if(isFinite(min)) $("#bPlanoTxt").textContent = "A partir de "+brl(min)+" por marmita, sem precisar pedir todo dia"; } else $("#bPlano").hidden = true;
+  if((cat.pacotes||[]).length) $("#bCong").hidden = false;
+  if((cat.precos||[]).length || (cat.promos||[]).length) $("#bPrecos").hidden = false;
+  if(info.telefone){ $("#bFalar").href = wa("Olá! Quero tirar uma dúvida."); $("#bFalar").hidden = false; }
+  ver("vHome");
+  const p = await proximoDia();
+  if(p){ $("#bPedir").href = "pedido.html?d="+p.d; $("#bPedirTxt").textContent = "Cardápio de "+DIAS[new Date(p.d+"T12:00").getDay()]+", "+fmt(p.d)+(p.l?" · pedidos até "+pad(p.l.getHours())+":"+pad(p.l.getMinutes())+(info.prazoTipo==="anterior"?" de "+DIAS[p.l.getDay()]:""):""); }
+  else { $("#bPedir").href = wa("Olá! Quero pedir uma marmita."); $("#bPedir").target = "_blank"; $("#bPedirTxt").textContent = "O próximo cardápio ainda não saiu. Toque para falar com a gente."; }
+});
+// Planos
+$("#bPlano").onclick = () => {
+  const l = cat.planos||[];
+  $("#listaPlanos").innerHTML = l.map((p,i) => `<button class="plano" data-p="${i}" aria-pressed="false"><b>${esc(p.nome)}</b><span class="preco">${brl(p.preco)}</span><span class="muted">${p.marmitas||0} marmitas${p.marmitas?" · "+brl(p.preco/p.marmitas)+" cada":""}${p.duracao?" · "+p.duracao+" dias":""}</span><span class="muted">${(p.dias||[]).length===7?"Todos os dias":"Dias: "+(p.dias||[]).map(d=>DS[d]).join(", ")}${p.porDia>1?" · "+p.porDia+" por dia":""}</span>${p.descricao?`<span class="muted">${esc(p.descricao)}</span>`:""}</button>`).join("");
+  $("#formPlano").hidden = true; planoSel = null; ver("vPlanos");
+};
+$("#listaPlanos").onclick = e => { const b = e.target.closest("[data-p]"); if(!b) return;
+  document.querySelectorAll("[data-p]").forEach(x => x.setAttribute("aria-pressed", x===b)); planoSel = (cat.planos||[])[b.dataset.p];
+  $("#formPlano").hidden = false; if(!$("#ini").value) $("#ini").value = addD(hoje, 1); $("#ini").min = hoje;
+  $("#tel").value ||= mem("tel"); $("#nome").value ||= mem("nome"); const e2 = document.querySelector('input[name="ent"][value="'+mem("ent")+'"]'); if(e2) e2.checked = true;
+  checar(); $("#formPlano").scrollIntoView({behavior:"smooth"}); };
+async function hashTel(t){ const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("marmitex:"+t)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join(""); }
+let chkT, ultTel = "";
+function mostrarEnd(){ const usa = conhecido===true && $("#usar").checked; $("#usarBox").hidden = conhecido!==true; $("#endLbl").hidden = usa; }
+async function checar(){
+  const tel = normPhone($("#tel").value); if(tel===ultTel) return; ultTel = tel;
+  if(tel.length<12 || tel.length>13 || !window.crypto || !crypto.subtle){ conhecido = null; mostrarEnd(); return; }
+  try{ const d = await fs.collection("conhecidos").doc(await hashTel(tel)).get(); conhecido = d.exists; }catch(e){ conhecido = null; }
+  mostrarEnd();
+}
+$("#tel").addEventListener("input", () => { clearTimeout(chkT); chkT = setTimeout(checar, 400); });
+$("#usar").onchange = mostrarEnd;
+$("#assinar").onclick = async () => {
+  const tel = normPhone($("#tel").value), nome = $("#nome").value.trim(); $("#err").textContent = "";
+  if(!planoSel){ $("#err").textContent = "Escolha um plano."; return; }
+  if(tel.length<12 || tel.length>13){ $("#err").textContent = "Digite seu WhatsApp com DDD."; $("#tel").focus(); return; }
+  if(!nome){ $("#err").textContent = "Digite seu nome."; $("#nome").focus(); return; }
+  const endereco = conhecido===true && $("#usar").checked ? "" : $("#end").value.trim();
+  if(conhecido!==true && !endereco){ $("#err").textContent = "Digite o endereço de entrega."; $("#end").focus(); return; }
+  const entR = document.querySelector('input[name="ent"]:checked'); if(!entR){ $("#err").textContent = "Escolha como entregar."; return; }
+  const ini = $("#ini").value && $("#ini").value >= hoje ? $("#ini").value : addD(hoje,1);
+  $("#assinar").disabled = true;
+  try{
+    ultimo = {telefone:tel, nome:nome.slice(0,80), planoId:String(planoSel.id).slice(0,40), inicio:ini, endereco:endereco.slice(0,300), entrega:entR.value, obs:$("#obs").value.trim().slice(0,300), hora:new Date().toISOString(), pago:""};
+    await fs.collection("assinaturas").doc(tel).set(ultimo);
+    lembrar("tel", $("#tel").value.trim()); lembrar("nome", nome); lembrar("ent", entR.value);
+    $("#okTit").textContent = "Plano assinado!";
+    $("#okTxt").textContent = planoSel.nome+": começa em "+fmt(ini)+". Suas marmitas já entram na lista de entrega nos dias do plano. Se um dia não quiser, é só avisar pelo link do cardápio.";
+    $("#pixBox").hidden = true;
+    if(info.pixChave && planoSel.preco){
+      const code = pixCode(info.pixChave, Number(planoSel.preco), info.pixNome||info.restaurante, info.pixCidade, "PL"+tel.slice(-6));
+      $("#pixVal").textContent = brl(planoSel.preco); $("#pixCode").value = code; $("#qr").innerHTML = ""; $("#qr").hidden = false;
+      try{ if(window.QRCode) new QRCode($("#qr"), {text:code, width:200, height:200, correctLevel:QRCode.CorrectLevel.M}); else $("#qr").hidden = true; }catch(e){ $("#qr").hidden = true; }
+      $("#pixPago").disabled = false; $("#pixPago").textContent = "Já paguei"; $("#pixBox").hidden = false;
+    }
+    ver("vOk");
+  }catch(e){ $("#err").textContent = "Não foi possível enviar. Confira a internet e tente de novo."; }
+  $("#assinar").disabled = false;
+};
+$("#pixCopy").onclick = async () => { const t = $("#pixCode").value; try{ await navigator.clipboard.writeText(t); }catch(e){ $("#pixCode").select(); document.execCommand("copy"); } $("#pixCopy").textContent = "Código copiado!"; setTimeout(() => $("#pixCopy").textContent = "Copiar código Pix", 2500); };
+$("#pixPago").onclick = async () => { if(!ultimo) return; $("#pixPago").disabled = true;
+  try{ ultimo = Object.assign({}, ultimo, {pago:"informado"}); await fs.collection("assinaturas").doc(ultimo.telefone).set(ultimo); $("#pixPago").textContent = "Obrigado! Vamos conferir o pagamento."; }
+  catch(e){ $("#pixPago").disabled = false; $("#pixPago").textContent = "Não foi possível avisar. Tente de novo."; } };
+// Congeladas e preços
+$("#bCong").onclick = () => {
+  $("#listaCong").innerHTML = "<table>"+(cat.pacotes||[]).map(p => `<tr><td><b>${esc(p.nome)}</b>${p.unidades?` <span class="muted">(${p.unidades} refeições)</span>`:""}${p.descricao?`<div class="muted" style="font-size:.88rem">${esc(p.descricao)}</div>`:""}</td><td class="v">${brl(p.preco)}</td></tr>`).join("")+"</table>";
+  $("#congWa").href = wa("Olá! Quero pedir congeladas."); $("#congWa").hidden = !info.telefone; ver("vCong");
+};
+$("#bPrecos").onclick = () => {
+  const pr = cat.precos||[], promos = cat.promos||[];
+  $("#listaPrecos").innerHTML = (pr.length ? "<table>"+pr.map(p => `<tr><td>${esc(p.nome)}${p.descricao?` <span class="muted">(${esc(p.descricao)})</span>`:""}</td><td class="v">${p.preco?brl(p.preco):"grátis"}</td></tr>`).join("")+"</table>" : "")
+    + (promos.length ? `<h2 style="margin-top:14px">🔥 Promoções</h2><ul>${promos.map(t=>`<li>${esc(t)}</li>`).join("")}</ul>` : "")
+    + ((cat.planos||[]).length ? `<h2 style="margin-top:14px">Planos</h2><table>${cat.planos.map(p=>`<tr><td>${esc(p.nome)} <span class="muted">(${p.marmitas||0} marmitas)</span></td><td class="v">${brl(p.preco)}</td></tr>`).join("")}</table>` : "");
+  ver("vPrecos");
+};
+})();
+</script>
+</body>
+</html>

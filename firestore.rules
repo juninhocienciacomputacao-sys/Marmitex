@@ -40,6 +40,24 @@ service cloud.firestore {
       allow get: if true;
     }
 
+    // Assinatura de plano pela página de atendimento: qualquer pessoa envia, ninguém de fora lê.
+    match /assinaturas/{id} {
+      allow create, update: if
+        request.resource.data.keys().hasOnly(['telefone','nome','planoId','inicio','endereco','entrega','obs','hora','pago'])
+        && request.resource.data.keys().hasAll(['telefone','nome','planoId','inicio','endereco','entrega','obs','hora','pago'])
+        && request.resource.data.telefone is string
+        && request.resource.data.telefone.size() >= 12 && request.resource.data.telefone.size() <= 13
+        && id == request.resource.data.telefone
+        && request.resource.data.nome is string && request.resource.data.nome.size() <= 80
+        && request.resource.data.planoId is string && request.resource.data.planoId.size() <= 40
+        && request.resource.data.inicio is string && request.resource.data.inicio.size() == 10
+        && request.resource.data.endereco is string && request.resource.data.endereco.size() <= 300
+        && request.resource.data.entrega in ['casa', 'portaria', 'maos']
+        && request.resource.data.obs is string && request.resource.data.obs.size() <= 300
+        && request.resource.data.hora is string && request.resource.data.hora.size() <= 30
+        && request.resource.data.pago in ['', 'informado'];
+    }
+
     // Pedidos pelo link: qualquer pessoa envia o próprio pedido, ninguém de fora lê.
     match /respostas/{id} {
       allow create, update: if

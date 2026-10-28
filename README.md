@@ -47,6 +47,12 @@ Na aba **Preços** você cadastra os tamanhos de marmita, adicionais, bebidas e 
 
 Quando o cliente digita o WhatsApp na página de pedido e já tem endereço cadastrado, aparece marcado **Entregar no meu endereço cadastrado** e ele não precisa digitar nada. Se desmarcar, informa outro endereço só para aquele pedido, que vai na rota do dia. Cliente sem endereço precisa informar, e o sistema já guarda no cadastro dele. A página não mostra dados do cliente: o sistema publica só um código do telefone.
 
+## Atendimento automático (WhatsApp Business)
+
+A página `atendimento.html` é o "balcão" do restaurante: o cliente escolhe **Pedir marmita** (vai para o próximo cardápio aberto), **Assinar um plano** (o sistema cadastra o cliente, ativa o plano e mostra o Pix), **Congeladas**, **Preços** ou **Falar com a gente**.
+
+Em **Marketing > Atendimento automático** estão o link e os textos prontos para a **Mensagem de saudação**, a **Mensagem de ausência** e as **Respostas rápidas** do WhatsApp Business, com o passo a passo para ligar. As novas assinaturas aparecem no Dia com o botão de boas-vindas.
+
 ## Pedido pelo link, do jeito profissional
 
 - **Prazo:** em Ajustes escolha se os pedidos fecham no próprio dia ou no dia anterior (ex.: até 14:00 do dia anterior). Os pedidos de um dia só abrem quando o cardápio dele é salvo.
