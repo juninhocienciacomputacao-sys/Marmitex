@@ -103,6 +103,8 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:.85rem;font-weight:
 .day.open{background:var(--brand);border-color:var(--brand);color:var(--brand-fg)}
 .day.today{box-shadow:inset 0 0 0 2px var(--accent)}
 .day.blank{visibility:hidden}
+.day.hol:not(.open){background:var(--warn-soft);border-color:var(--warn-soft)}
+.day .fer{font-size:.62rem;font-weight:700;line-height:1.15;text-align:left;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .day .dot{font-size:.62rem;font-weight:700;opacity:.9}
 .items{display:flex;flex-direction:column;gap:8px}
 .item{display:grid;grid-template-columns:1fr 170px auto;gap:8px;align-items:center}
@@ -187,6 +189,7 @@ const MODULOS = [
   {id:"hoje",nome:"Dia",desc:"Passo a passo do dia: cardápio, envio, confirmações e lista de entrega.",fixo:true},
   {id:"clientes",nome:"Clientes",desc:"Cadastro e importação do WhatsApp."},
   {id:"planos",nome:"Planos",desc:"Planos prontos e personalizados."},
+  {id:"congeladas",nome:"Congeladas",desc:"Pacotes de congeladas: encomendas, estoque, cobrança e entrega junto com as rotas."},
   {id:"cardapio",nome:"Cardápio",desc:"Cardápio do dia e mensagem pronta para o WhatsApp."},
   {id:"calendario",nome:"Calendário",desc:"Dias em que o restaurante abre."},
   {id:"relatorios",nome:"Relatórios",desc:"Clientes de plano e avulsos, saldos e totais por dia, semana e mês."},
@@ -200,6 +203,7 @@ const ICONS = {
   clientes:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c1.9.7 3.1 2.4 3.5 5.2"/>',
   planos:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>',
   cardapio:'<path d="M3 13h18a9 9 0 0 1-18 0Z"/><path d="M12 4v5M8 6v3M16 6v3"/>',
+  congeladas:'<path d="M12 2v20M3.3 7l17.4 10M20.7 7 3.3 17"/><path d="M9 3.5 12 6l3-2.5M9 20.5l3-2.5 3 2.5"/>',
   calendario:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
   relatorios:'<path d="M4 20V11M10 20V5M16 20v-6M21 20H3"/>',
   entregas:'<circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M9 17h6M6 14l3-7h4l2 4h3l3 3M13 7h-2"/>',
@@ -210,9 +214,9 @@ const ICONS = {
 const icon = id => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(ICONS[id]||"")+'</svg>';
 
 // ---------- state ----------
-const DEFAULT_CONFIG = {restaurante:"", meuNomeWhats:"", horarioLimite:"10:30", alertaSaldo:3, alertaDias:5, msgAlerta:"Olá {nome}! Restam {saldo} marmitas no seu plano {plano}, que vai até {fim}. Quer renovar?", enderecoRestaurante:"", cidade:"", custoMarmita:0, custoFixoMensal:0, telefoneRestaurante:"", premioIndicacao:"1 marmita grátis", autoPlano:true, abertos:[], modulos:{clientes:true,planos:true,cardapio:true,calendario:true,relatorios:true,entregas:true,financeiro:true,marketing:true}};
+const DEFAULT_CONFIG = {restaurante:"", meuNomeWhats:"", horarioLimite:"10:30", alertaSaldo:3, alertaDias:5, msgAlerta:"Olá {nome}! Restam {saldo} marmitas no seu plano {plano}, que vai até {fim}. Quer renovar?", enderecoRestaurante:"", cidade:"", custoMarmita:0, custoFixoMensal:0, telefoneRestaurante:"", premioIndicacao:"1 marmita grátis", autoPlano:true, abertos:[], feriadosLocais:"", estoqueCong:0, estoqueMinCong:0, movCong:[], modulos:{clientes:true,planos:true,congeladas:true,cardapio:true,calendario:true,relatorios:true,entregas:true,financeiro:true,marketing:true}};
 const S = {clientes:[], planos:[], cardapios:{}, config:structuredClone(DEFAULT_CONFIG), tab:"hoje", loaded:{}, mode:"loading",
-  busca:"", filtro:"todos", mostrar:100, cardData:today(), calMes:today().slice(0,7), pedidos:{}, respostas:[], ready:{}, acesso:{emails:[], info:{}}, entregadores:[], fin:{}, finPeriodo:"mes", diaData:today(), confBusca:"", relPeriodo:"7", relTipo:"todos"};
+  busca:"", filtro:"todos", mostrar:100, cardData:today(), calMes:today().slice(0,7), pedidos:{}, respostas:[], ready:{}, acesso:{emails:[], info:{}}, entregadores:[], pacotes:[], encomendas:[], cgFiltro:"abertas", fin:{}, finPeriodo:"mes", diaData:today(), confBusca:"", relPeriodo:"7", relTipo:"todos"};
 
 // ---------- store (shared db, or this-browser fallback) ----------
 const Store = {
@@ -244,6 +248,11 @@ const Store = {
     const merge = (x,y) => { for(const k in y){ if(y[k] && typeof y[k]==="object" && !Array.isArray(y[k]) && x[k] && typeof x[k]==="object") merge(x[k],y[k]); else x[k]=y[k]; } };
     merge(cur, patch); this.saveLocal(); this.subs[col] && this.watch(col, this.subs[col]);
   },
+  async merge(col, id, data){
+    const body = Object.assign({}, data); delete body.id;
+    if(this.fs) return this.fs.collection(col).doc(id).set(body, {merge:true});
+    return (this.local[col]||{})[id] ? this.update(col, id, body) : this.set(col, id, body);
+  },
   async del(col, id){
     if(this.fs) return this.fs.collection(col).doc(id).delete();
     delete (this.local[col]||{})[id]; this.saveLocal(); this.subs[col] && this.watch(col, this.subs[col]);
@@ -256,7 +265,7 @@ async function saveConfig(patch){
 }
 function erroMsg(e){
   if(!e) return "Não foi possível salvar.";
-  if(e.code==="invalid_argument" || e.code==="permission-denied") return "Sem permissão para salvar. Confira se seu e-mail está nas regras do Firebase.";
+  if(e.code==="invalid_argument" || e.code==="permission-denied") return "Sem permissão para salvar. Nas regras do Firebase (Firestore > Regras) deve estar o e-mail "+(((window.__auth&&window.__auth.currentUser)||{}).email||"com que você entrou")+".";
   if(e.code==="quota_exceeded") return "Espaço cheio. Apague registros antigos para continuar.";
   if(e.code==="resource_exhausted") return "Muitas gravações seguidas. Espere alguns segundos.";
   return "Não foi possível salvar ("+(e.code||"erro")+").";
@@ -283,6 +292,25 @@ async function copiar(text){
 // ---------- derived ----------
 const plano = id => S.planos.find(p => p.id===id);
 const isOpen = d => S.config.abertos.includes(d);
+// Feriados nacionais (fixos e móveis) e os feriados da cidade cadastrados em Ajustes
+function pascoa(y){ const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),x=h+l-7*m+114; return iso(new Date(y,Math.floor(x/31)-1,(x%31)+1)); }
+const FER = {};
+function feriadosAno(y){
+  const key = y+"|"+(S.config.feriadosLocais||""); if(FER[key]) return FER[key];
+  const f = {};
+  [["01-01","Ano Novo"],["04-21","Tiradentes"],["05-01","Dia do Trabalho"],["09-07","Independência"],["10-12","N. Sra. Aparecida"],["11-02","Finados"],["11-15","Proclamação da República"],["11-20","Consciência Negra"],["12-25","Natal"]].forEach(([md,n]) => f[y+"-"+md] = n);
+  const p = pascoa(y); f[addDays(p,-48)] = "Carnaval"; f[addDays(p,-47)] = "Carnaval"; f[addDays(p,-2)] = "Sexta-feira Santa"; f[addDays(p,60)] = "Corpus Christi";
+  String(S.config.feriadosLocais||"").split(/\n|;/).forEach(l => { const m = l.trim().match(/^(\d{1,2})\/(\d{1,2})\s*[-–:]?\s*(.*)$/); if(m) f[y+"-"+pad(m[2])+"-"+pad(m[1])] = m[3].trim() || "Feriado da cidade"; });
+  return FER[key] = f;
+}
+const feriado = d => feriadosAno(Number(d.slice(0,4)))[d] || "";
+// Uma vez: fecha os feriados futuros que tinham sido abertos pelos atalhos
+function fecharFeriados(){
+  if(S.config.feriadosFechados || !prontos("config")) return;
+  const t = today(), ab = S.config.abertos.filter(d => !(d>=t && feriado(d))), n = S.config.abertos.length - ab.length;
+  saveConfig({abertos:ab, feriadosFechados:true});
+  if(n) toast(n+(n>1?" feriados foram fechados":" feriado foi fechado")+" no calendário.");
+}
 const pedido = d => S.pedidos[d] || {data:d, confirmados:{}};
 // Índices recalculados quando os dados mudam (deixa as telas rápidas com milhares de clientes)
 let IDX = null;
@@ -325,7 +353,8 @@ function setConf(d, c, qtd, extra){
   const local = Object.assign({}, prev, entry);
   const existed = !!S.pedidos[d]; invalidar();
   S.pedidos[d] = Object.assign({data:d, enviado:false}, S.pedidos[d], {confirmados:Object.assign({}, pedido(d).confirmados, {[c.id]:local})});
-  return enqueue(() => existed ? Store.update("pedidos", d, {confirmados:{[c.id]:entry}}) : Store.set("pedidos", d, S.pedidos[d]));
+  const novo = S.pedidos[d];
+  return enqueue(() => existed ? Store.update("pedidos", d, {confirmados:{[c.id]:entry}}) : Store.merge("pedidos", d, novo));
 }
 function linkPedido(d){
   if(!window.__fs) return "";
@@ -356,11 +385,12 @@ function autoPlanoDia(d){
   planoHoje(d).forEach(c => setConf(d, c, plano(c.planoId)?.porDia||1, {origem:"plano"}));
 }
 let autoT;
-function automacoes(){ clearTimeout(autoT); autoT = setTimeout(() => { autoPlanoDia(today()); autoPlanoDia(S.diaData); processarRespostas(); }, 400); }
+function automacoes(){ clearTimeout(autoT); autoT = setTimeout(() => { fecharFeriados(); autoPlanoDia(today()); autoPlanoDia(S.diaData); processarRespostas(); }, 400); }
 function setPedidoCampos(d, patch){
   const existed = !!S.pedidos[d];
   S.pedidos[d] = Object.assign({data:d, confirmados:{}}, S.pedidos[d], patch);
-  return enqueue(() => existed ? Store.update("pedidos", d, patch) : Store.set("pedidos", d, S.pedidos[d]));
+  const novo = S.pedidos[d];
+  return enqueue(() => existed ? Store.update("pedidos", d, patch) : Store.merge("pedidos", d, novo));
 }
 const csvCell = v => { const s = String(v ?? ""); return /[;"\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
 const toCsv = rows => rows.map(r => r.map(csvCell).join(";")).join("\r\n");
@@ -429,6 +459,8 @@ function listaEntrega(d){
     i++;
     t += i+". "+(c.nome||"")+" ("+x.qtd+")"+(x.avulso?" avulso":"")+"\n   "+(enderecoTxt(c)||"sem endereço")+(c.referencia?" · Ref: "+c.referencia:"")+"\n   "+fmtPhone(c.telefone)+(c.pagamento?" · "+c.pagamento:"")+(c.obs?"\n   Obs: "+c.obs:"")+"\n";
   });
+  const cg = modOn("congeladas") ? congDia(d).filter(e => !e.entregue) : [];
+  if(cg.length) t += "\n🧊 *Congeladas*\n"+cg.map(e => { const c = idx().porId.get(e.clienteId)||{}; return "• "+(c.nome||"")+": "+descEnc(e)+(e.pago?"":" · cobrar "+brl(e.valor))+"\n   "+(enderecoTxt(c)||"sem endereço"); }).join("\n")+"\n";
   return t;
 }
 function csvDia(d){
@@ -864,6 +896,153 @@ BIND.cardapio = () => {
   previewMsg();
 };
 
+// ----- Congeladas -----
+const pacote = id => S.pacotes.find(p => p.id===id);
+const congDia = d => S.encomendas.filter(e => e.data===d);
+const unidadesEnc = e => (Number(e.unidades)||0)*(Number(e.qtd)||1);
+const descEnc = e => { const q = Number(e.qtd)||1; return q+"× "+(e.pacoteNome||"pacote")+(e.unidades?" ("+unidadesEnc(e)+" un.)":""); };
+function listaPacotes(){ const l = S.pacotes.filter(p => p.ativo!==false); return l.length ? l.map(p => "• "+p.nome+(p.unidades?" ("+p.unidades+" refeições)":"")+": "+brl(p.preco)+(p.descricao?"\n   "+p.descricao:"")).join("\n") : "• (cadastre os pacotes na aba Congeladas)"; }
+function proximoAberto(){ for(let i=0;i<21;i++){ const d = addDays(today(),i); if(isOpen(d)) return d; } return today(); }
+function moverEstoque(n, obs){
+  if(!n) return;
+  const mov = [{d:new Date().toISOString(), n, obs:obs||""}, ...(S.config.movCong||[])].slice(0,20);
+  return saveConfig({estoqueCong:(Number(S.config.estoqueCong)||0)+n, movCong:mov});
+}
+function marcarPagoCong(e, v){
+  e.pago = v; enqueue(() => Store.update("encomendas", e.id, {pago:v}));
+  const c = idx().porId.get(e.clienteId)||{};
+  if(v) addLanc(today(), "cg-"+e.id, {tipo:"receita", cat:"Congeladas", valor:Number(e.valor)||0, desc:(c.nome||"")+" · "+descEnc(e), pag:c.pagamento||"", clienteId:e.clienteId||"", apagado:false});
+  else { const l = lancId("cg-"+e.id); if(l) apagarLanc(l.data, l.id); }
+}
+function marcarEntregueCong(e, v){
+  if(!!e.entregue===v) return;
+  e.entregue = v; enqueue(() => Store.update("encomendas", e.id, {entregue:v}));
+  moverEstoque(v ? -unidadesEnc(e) : unidadesEnc(e), (v?"Entregue: ":"Desfeito: ")+((idx().porId.get(e.clienteId)||{}).nome||""));
+}
+VIEWS.congeladas = () => {
+  const t = today(), est = Number(S.config.estoqueCong)||0, min = Number(S.config.estoqueMinCong)||0;
+  const abertas = S.encomendas.filter(e => !e.entregue || !e.pago);
+  const reservado = S.encomendas.filter(e => !e.entregue).reduce((s,e)=>s+unidadesEnc(e),0), livre = est - reservado;
+  const arec = S.encomendas.filter(e => !e.pago).reduce((s,e)=>s+(Number(e.valor)||0),0);
+  const hojeAbertas = congDia(t).filter(e => !e.entregue);
+  const lista = (S.cgFiltro==="abertas" ? abertas : S.encomendas.slice()).sort((a,b) => (S.cgFiltro==="abertas" ? a.data.localeCompare(b.data) : b.data.localeCompare(a.data)) || String(a.criado||"").localeCompare(String(b.criado||"")));
+  const cli = id => idx().porId.get(id) || {nome:"(cliente apagado)"};
+  const linha = e => { const c = cli(e.clienteId), atras = !e.entregue && e.data < t;
+    return `<tr><td class="num" style="white-space:nowrap">${fmtDate(e.data).slice(0,5)}${e.data===t?' <span class="pill">hoje</span>':""}${atras?' <span class="pill bad">atrasada</span>':""}</td><td><b>${esc(c.nome)}</b><div class="muted" style="font-size:.8rem">${esc(descEnc(e))}${e.obs?" · "+esc(e.obs):""}</div></td><td class="num">${brl(e.valor)}</td>
+      <td><button class="btn small ${e.pago?"":"primary"}" data-cgpago="${esc(e.id)}" aria-pressed="${!!e.pago}">${e.pago?"✓ Pago":"Receber"}</button></td>
+      <td><button class="btn small ${e.entregue?"":"primary"}" data-cgent="${esc(e.id)}" aria-pressed="${!!e.entregue}">${e.entregue?"✓ Entregue":"Entregar"}</button></td>
+      <td><button class="btn small" data-cged="${esc(e.id)}" aria-label="Editar encomenda">Editar</button></td></tr>`; };
+  const movs = (S.config.movCong||[]).slice(0,6);
+  return `
+  <div class="head"><div><h1>Congeladas</h1><p>Pacotes, encomendas e estoque. As encomendas entram nas rotas do dia da entrega.</p></div>
+    <div class="row"><button class="btn" id="cgCopiar">Copiar oferta</button><button class="btn primary" id="cgNova">+ Encomenda</button></div></div>
+  <div class="stats">
+    <div class="stat"><b>${est}</b><span>em estoque (unidades)</span></div>
+    <div class="stat"><b>${reservado}</b><span>reservadas para entregar</span></div>
+    <div class="stat"><b style="color:${livre<min||livre<0?"var(--bad)":"inherit"}">${livre}</b><span>livres para vender</span></div>
+    <div class="stat"><b style="color:var(--warn)">${brl(arec)}</b><span>a receber</span></div>
+  </div>
+  ${est<0 ? `<div class="banner"><b>O estoque está negativo (${est}).</b> Registre a produção ou corrija o estoque abaixo.</div>` : livre<0 ? `<div class="banner"><b>Faltam ${-livre} unidades</b> para as encomendas em aberto. Registre a produção abaixo.</div>` : (min && livre<min ? `<div class="banner">Estoque livre abaixo do mínimo (${min}). Hora de produzir mais.</div>` : "")}
+  <section style="display:flex;flex-direction:column;gap:10px">
+    <div class="row" style="justify-content:space-between"><h2>Encomendas</h2>
+      <div class="row"><button class="btn small ${S.cgFiltro==="abertas"?"primary":""}" data-cgf="abertas" aria-pressed="${S.cgFiltro==="abertas"}">Em aberto (${abertas.length})</button><button class="btn small ${S.cgFiltro!=="abertas"?"primary":""}" data-cgf="todas" aria-pressed="${S.cgFiltro!=="abertas"}">Todas</button>${hojeAbertas.length?`<button class="btn small" id="cgEntHoje">Marcar as ${hojeAbertas.length} de hoje como entregues</button>`:""}</div></div>
+    ${lista.length ? `<div class="tablebox"><table><thead><tr><th>Entrega</th><th>Cliente e pacote</th><th>Valor</th><th>Pagamento</th><th>Entrega</th><th></th></tr></thead><tbody>${lista.slice(0,300).map(linha).join("")}</tbody></table></div>` : `<p class="muted" style="margin:0">${S.cgFiltro==="abertas"?"Nenhuma encomenda em aberto.":"Nenhuma encomenda nos últimos 100 dias."}</p>`}
+  </section>
+  <section class="panel" style="display:flex;flex-direction:column;gap:10px">
+    <div class="row" style="justify-content:space-between"><h2>Pacotes</h2><button class="btn small" id="cgNovoPac">+ Pacote</button></div>
+    ${S.pacotes.length ? `<div class="tablebox"><table style="min-width:0"><thead><tr><th>Pacote</th><th>Refeições</th><th>Preço</th><th>Por refeição</th></tr></thead><tbody>${S.pacotes.slice().sort((a,b)=>(a.nome||"").localeCompare(b.nome||"","pt-BR")).map(p=>`<tr class="click" data-pac="${esc(p.id)}" tabindex="0"><td><b>${esc(p.nome)}</b>${p.ativo===false?' <span class="pill">pausado</span>':""}${p.descricao?`<div class="muted" style="font-size:.8rem">${esc(p.descricao)}</div>`:""}</td><td class="num">${p.unidades||"—"}</td><td class="num">${brl(p.preco)}</td><td class="num">${p.unidades?brl((p.preco||0)/p.unidades):"—"}</td></tr>`).join("")}</tbody></table></div>` : `<p class="muted" style="margin:0">Cadastre os pacotes que você vende, por exemplo "Kit 10 congeladas fit".</p>`}
+  </section>
+  <section class="panel" style="display:flex;flex-direction:column;gap:10px"><h2>Estoque</h2>
+    <div class="form">
+      <label class="f c2">Produzi agora (unidades)<input type="number" min="1" id="cgProd" placeholder="Ex.: 40"></label>
+      <label class="f c2">Estoque mínimo (aviso)<input type="number" min="0" id="cgMin" value="${esc(min||"")}"></label>
+      <label class="f c2">Corrigir estoque para<input type="number" id="cgFix" placeholder="${est}"></label>
+    </div>
+    <div class="row"><button class="btn primary" id="cgAddEst">Salvar estoque</button></div>
+    ${movs.length ? `<p class="muted" style="margin:0;font-size:.85rem">Últimas mudanças: ${movs.map(m => esc(new Date(m.d).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})+" "+(m.n>0?"+":"")+m.n+(m.obs?" ("+m.obs+")":""))).join(" · ")}</p>` : ""}
+  </section>
+  <textarea id="msgCopy" aria-hidden="true" tabindex="-1" style="position:absolute;left:-9999px;width:1px;height:1px"></textarea>`;
+};
+BIND.congeladas = () => {
+  const enc = id => S.encomendas.find(e => e.id===id);
+  $("#cgNova").onclick = () => formEncomenda();
+  $("#cgNovoPac").onclick = () => formPacote();
+  $("#cgCopiar").onclick = () => { const t = preencher(TEMPLATES.congeladas.whatsapp, null).replace("Oi, tudo bem!","Oi!"); $("#msgCopy").value = t; copiar(t); };
+  document.querySelectorAll("[data-pac]").forEach(r => { r.onclick = () => formPacote(pacote(r.dataset.pac)); r.onkeydown = e => { if(e.key==="Enter") r.onclick(); }; });
+  document.querySelectorAll("[data-cgf]").forEach(b => b.onclick = () => { S.cgFiltro = b.dataset.cgf; render(); });
+  document.querySelectorAll("[data-cged]").forEach(b => b.onclick = () => formEncomenda(enc(b.dataset.cged)));
+  document.querySelectorAll("[data-cgpago]").forEach(b => b.onclick = () => { const e = enc(b.dataset.cgpago); marcarPagoCong(e, !e.pago); render(); toast(e.pago?"Pagamento lançado no financeiro.":"Pagamento desfeito."); });
+  document.querySelectorAll("[data-cgent]").forEach(b => b.onclick = () => { const e = enc(b.dataset.cgent); marcarEntregueCong(e, !e.entregue); render(); });
+  const eh = $("#cgEntHoje"); if(eh) eh.onclick = () => { congDia(today()).filter(e=>!e.entregue).forEach(e => marcarEntregueCong(e, true)); render(); toast("Congeladas de hoje marcadas como entregues."); };
+  $("#cgAddEst").onclick = async () => {
+    const prod = Number($("#cgProd").value)||0, fix = $("#cgFix").value.trim(), min = Number($("#cgMin").value)||0;
+    if(prod>0) await moverEstoque(prod, "Produção");
+    if(fix!=="" && !isNaN(Number(fix))){ const n = Number(fix) - (Number(S.config.estoqueCong)||0); if(n) await moverEstoque(n, "Correção"); }
+    if(min !== (Number(S.config.estoqueMinCong)||0)) await saveConfig({estoqueMinCong:min});
+    render(); toast("Estoque atualizado.");
+  };
+};
+function formPacote(p){
+  const novo = !p; p = p || {ativo:true};
+  openModal(`<h2>${novo?"Novo pacote":"Editar pacote"}</h2>
+    <form class="form">
+      <label class="f c6">Nome<input type="text" id="pk_nome" value="${esc(p.nome)}" placeholder="Kit 10 congeladas fit"></label>
+      <label class="f c3">Refeições<input type="number" min="1" id="pk_un" value="${esc(p.unidades||"")}"></label>
+      <label class="f c3">Preço (R$)<input type="number" min="0" step="0.01" id="pk_preco" value="${esc(p.preco||"")}"></label>
+      <label class="f c6">Descrição (sabores, gramagem, validade)<textarea id="pk_desc">${esc(p.descricao)}</textarea></label>
+      <label class="check c6"><input type="checkbox" id="pk_ativo" ${p.ativo!==false?"checked":""}> À venda (aparece na oferta)</label>
+    </form>
+    <div class="foot">${novo?"":`<button class="btn danger" id="pk_del">Apagar</button>`}<span style="flex:1"></span><button class="btn" data-close>Cancelar</button><button class="btn primary" id="pk_save">Salvar</button></div>`,
+  () => {
+    $("#pk_save").onclick = async () => {
+      const nome = $("#pk_nome").value.trim(); if(!nome){ toast("Preencha o nome do pacote."); return; }
+      try{ await Store.set("pacotes", p.id||uid(), {nome, unidades:Number($("#pk_un").value)||0, preco:Number($("#pk_preco").value)||0, descricao:$("#pk_desc").value.trim(), ativo:$("#pk_ativo").checked}); closeModal(); toast("Pacote salvo."); }catch(e){ toast(erroMsg(e)); }
+    };
+    const d = $("#pk_del"); if(d) d.onclick = () => { if(d.dataset.sure){ Store.del("pacotes", p.id).then(()=>{closeModal();toast("Pacote apagado.");}).catch(e=>toast(erroMsg(e))); } else { d.dataset.sure="1"; d.textContent="Toque de novo para apagar"; } };
+  });
+}
+function formEncomenda(e){
+  const novo = !e; e = e || {data:proximoAberto(), qtd:1};
+  const nomeCli = c => (c.nome||"Sem nome")+" · "+fmtPhone(c.telefone);
+  const c0 = e.clienteId ? idx().porId.get(e.clienteId) : null;
+  const pacs = S.pacotes.filter(p => p.ativo!==false || p.id===e.pacoteId);
+  if(!pacs.length){ toast("Cadastre um pacote primeiro."); formPacote(); return; }
+  openModal(`<h2>${novo?"Nova encomenda de congeladas":"Editar encomenda"}</h2>
+    <form class="form">
+      <label class="f c6">Cliente (nome ou telefone)<input type="text" id="en_cli" list="en_cli_l" autocomplete="off" value="${esc(c0?nomeCli(c0):"")}"><datalist id="en_cli_l">${S.clientes.filter(c=>c.ativo!==false).map(c=>`<option value="${esc(nomeCli(c))}">`).join("")}</datalist></label>
+      <label class="f c2">Pacote<select id="en_pac">${pacs.map(p=>`<option value="${esc(p.id)}" ${p.id===e.pacoteId?"selected":""}>${esc(p.nome)} · ${brl(p.preco)}</option>`).join("")}</select></label>
+      <label class="f c2">Quantidade<input type="number" min="1" id="en_qtd" value="${esc(e.qtd||1)}"></label>
+      <label class="f c2">Valor (R$)<input type="number" min="0" step="0.01" id="en_val" value="${esc(e.valor ?? "")}"></label>
+      <label class="f c3">Entregar em<input type="date" id="en_data" value="${esc(e.data)}"></label>
+      <label class="check c3" style="align-self:end"><input type="checkbox" id="en_pago" ${e.pago?"checked":""}> Já está pago</label>
+      <label class="f c6">Observação<input type="text" id="en_obs" value="${esc(e.obs)}" placeholder="Ex.: sem pimenta, entregar após 18h"></label>
+    </form>
+    <p class="muted" id="en_info" style="margin:0"></p>
+    <div class="foot">${novo?"":`<button class="btn danger" id="en_del">Apagar</button>`}<span style="flex:1"></span><button class="btn" data-close>Cancelar</button><button class="btn primary" id="en_save">Salvar</button></div>`,
+  () => {
+    let valorManual = !novo;
+    const calc = () => { const p = pacote($("#en_pac").value), q = Number($("#en_qtd").value)||1; if(!valorManual && p) $("#en_val").value = ((p.preco||0)*q).toFixed(2); $("#en_info").textContent = p && p.unidades ? (p.unidades*q)+" refeições congeladas" : ""; };
+    $("#en_pac").onchange = $("#en_qtd").oninput = calc; $("#en_val").oninput = () => { valorManual = true; }; calc();
+    $("#en_save").onclick = async () => {
+      const txt = $("#en_cli").value.trim(), tel = normPhone(txt.split("·").pop());
+      const c = S.clientes.find(x => nomeCli(x)===txt) || (tel.length>=12 && idx().porTel.get(tel)) || S.clientes.filter(x => norm(x.nome)===norm(txt)).length===1 && S.clientes.find(x => norm(x.nome)===norm(txt));
+      if(!c){ toast("Escolha um cliente da lista. Se for novo, cadastre em Clientes primeiro."); return; }
+      const p = pacote($("#en_pac").value), q = Math.max(1, Number($("#en_qtd").value)||1), data = $("#en_data").value || proximoAberto();
+      const id = e.id || uid(), pagoAntes = !!e.pago, pago = $("#en_pago").checked;
+      const body = {data, clienteId:c.id, pacoteId:p.id, pacoteNome:p.nome, unidades:Number(p.unidades)||0, qtd:q, valor:Number($("#en_val").value)||0, obs:$("#en_obs").value.trim(), pago:pagoAntes, entregue:!!e.entregue, entregador:e.entregador||"", ordem:e.ordem ?? 9999, criado:e.criado||new Date().toISOString()};
+      if(e.entregue && e.id && unidadesEnc(body)!==unidadesEnc(e)) moverEstoque(unidadesEnc(e)-unidadesEnc(body), "Encomenda alterada");
+      try{
+        await Store.set("encomendas", id, body);
+        if(pago!==pagoAntes) marcarPagoCong(Object.assign({id}, body), pago);
+        closeModal(); toast(novo ? "Encomenda salva para "+fmtDate(data)+"." : "Encomenda atualizada.");
+      }catch(err){ toast(erroMsg(err)); }
+    };
+    const d = $("#en_del"); if(d) d.onclick = () => { if(!d.dataset.sure){ d.dataset.sure="1"; d.textContent="Toque de novo para apagar"; return; }
+      if(e.pago){ const l = lancId("cg-"+e.id); if(l) apagarLanc(l.data, l.id); }
+      Store.del("encomendas", e.id).then(()=>{ closeModal(); toast("Encomenda apagada."); }).catch(err=>toast(erroMsg(err))); };
+  });
+}
+
 // ----- Calendário -----
 VIEWS.calendario = () => {
   const [y,m] = S.calMes.split("-").map(Number); const first = new Date(y,m-1,1); const n = new Date(y,m,0).getDate();
@@ -871,14 +1050,16 @@ VIEWS.calendario = () => {
   let cells = DOW.map(d=>`<div class="dow">${d}</div>`).join("");
   for(let i=0;i<first.getDay();i++) cells += `<div class="day blank" aria-hidden="true"></div>`;
   for(let d=1; d<=n; d++){
-    const k = S.calMes+"-"+pad(d); const o = isOpen(k);
-    cells += `<button class="day ${o?"open":""} ${k===t?"today":""}" data-d="${k}" aria-pressed="${o}" aria-label="${d} de ${MESES[m-1]}: ${o?"aberto":"fechado"}"><span>${d}</span>${S.cardapios[k]?'<span class="dot" title="Tem cardápio">● menu</span>':""}</button>`;
+    const k = S.calMes+"-"+pad(d); const o = isOpen(k), fer = feriado(k);
+    cells += `<button class="day ${o?"open":""} ${fer?"hol":""} ${k===t?"today":""}" data-d="${k}" aria-pressed="${o}" aria-label="${d} de ${MESES[m-1]}: ${o?"aberto":"fechado"}${fer?", feriado "+esc(fer):""}"><span>${d}</span>${fer?`<span class="fer">${esc(fer)}</span>`:""}${S.cardapios[k]?'<span class="dot" title="Tem cardápio">● menu</span>':""}</button>`;
   }
+  const fers = Object.entries(feriadosAno(y)).filter(([k]) => k.startsWith(S.calMes)).sort();
   return `
   <div class="head"><div><h1>Calendário</h1><p>Toque em um dia para marcar aberto ou fechado. ${abertosMes} dias abertos em ${MESES[m-1]}.</p></div>
     <div class="row"><button class="btn" id="mPrev" aria-label="Mês anterior">‹</button><b style="min-width:150px;text-align:center;font-family:var(--display);font-size:1.1rem">${MESES[m-1][0].toUpperCase()+MESES[m-1].slice(1)} ${y}</b><button class="btn" id="mNext" aria-label="Próximo mês">›</button></div></div>
   <section class="panel"><div class="cal">${cells}</div></section>
-  <div class="row"><span class="muted">Atalhos para ${MESES[m-1]}:</span><button class="btn small" data-fill="1,2,3,4,5">Abrir seg a sex</button><button class="btn small" data-fill="1,2,3,4,5,6">Abrir seg a sáb</button><button class="btn small danger" data-fill="">Fechar o mês todo</button></div>`;
+  <div class="row"><span class="muted">Atalhos para ${MESES[m-1]}:</span><button class="btn small" data-fill="1,2,3,4,5">Abrir seg a sex</button><button class="btn small" data-fill="1,2,3,4,5,6">Abrir seg a sáb</button><button class="btn small danger" data-fill="">Fechar o mês todo</button></div>
+  <p class="muted" style="margin:0;font-size:.88rem">${fers.length ? "Feriados em "+MESES[m-1]+": "+fers.map(([k,n]) => Number(k.slice(8))+" ("+esc(n)+")").join(", ")+". Os atalhos deixam os feriados fechados; se for abrir, toque no dia." : "Sem feriados em "+MESES[m-1]+"."} Feriados da sua cidade: cadastre em Ajustes.</p>`;
 };
 BIND.calendario = () => {
   const mv = k => { const [y,m] = S.calMes.split("-").map(Number); const d = new Date(y,m-1+k,1); S.calMes = d.getFullYear()+"-"+pad(d.getMonth()+1); render(); };
@@ -891,7 +1072,7 @@ BIND.calendario = () => {
     const dias = b.dataset.fill ? b.dataset.fill.split(",").map(Number) : [];
     const [y,m] = S.calMes.split("-").map(Number); const n = new Date(y,m,0).getDate();
     const set = new Set(S.config.abertos.filter(d=>!d.startsWith(S.calMes)));
-    for(let d=1; d<=n; d++){ const dt = new Date(y,m-1,d); if(dias.includes(dt.getDay())) set.add(iso(dt)); }
+    for(let d=1; d<=n; d++){ const dt = new Date(y,m-1,d); if(dias.includes(dt.getDay()) && !feriado(iso(dt))) set.add(iso(dt)); }
     saveConfig({abertos:[...set].sort()}); render(); toast("Calendário atualizado.");
   });
 };
@@ -1016,15 +1197,28 @@ function colarRespostas(){
 const entregador = id => S.entregadores.find(e => e.id===id);
 const enderecoMapa = c => [[c.rua, c.numero].filter(Boolean).join(", "), c.bairro, c.cidade || S.config.cidade].filter(Boolean).join(", ");
 function patchConf(d, patch){
+  for(const id in patch) if(id.startsWith("cg:")){ const eid = id.slice(3), v = patch[id]; delete patch[id]; const e = S.encomendas.find(x => x.id===eid); if(e) Object.assign(e, v); enqueue(() => Store.update("encomendas", eid, v)); }
+  if(!Object.keys(patch).length) return;
   const p = S.pedidos[d]; if(!p) return;
   const c = Object.assign({}, p.confirmados); for(const id in patch) c[id] = Object.assign({}, c[id], patch[id]);
   S.pedidos[d] = Object.assign({}, p, {confirmados:c});
   return enqueue(() => Store.update("pedidos", d, {confirmados:patch}));
 }
+// Paradas do dia: marmitas confirmadas + congeladas a entregar (juntas quando é o mesmo cliente)
+function paradasDia(d){
+  const out = confirmadosDia(d).map(x => Object.assign(x, {cong:[]}));
+  if(!modOn("congeladas")) return out;
+  const by = new Map(out.map(x => [x.id, x]));
+  congDia(d).filter(e => !e.entregue).forEach(e => { const c = idx().porId.get(e.clienteId); if(!c) return; const x = by.get(c.id); if(x) x.cong.push(e); else { const n = {id:"cg:"+e.id, qtd:0, avulso:false, origem:"cong", cliente:c, cong:[e], enc:e}; by.set(c.id, n); out.push(n); } });
+  return out;
+}
+const metaParada = (pc, x) => x.enc ? {entregador:x.enc.entregador, ordem:x.enc.ordem} : (pc[x.id]||{});
+function descParada(x){ const p = []; if(x.qtd) p.push(x.qtd+(x.qtd>1?" marmitas":" marmita")); (x.cong||[]).forEach(e => p.push("🧊 "+descEnc(e))); return p.join(" + "); }
+const cobrarCong = x => (x.cong||[]).filter(e => !e.pago).reduce((s,e) => s+(Number(e.valor)||0), 0);
 function rotasDia(d){
   const pc = pedido(d).confirmados||{};
   const by = {}; S.entregadores.forEach(e => by[e.id] = []); by[""] = [];
-  confirmadosDia(d).forEach(x => { const e = (pc[x.id]||{}).entregador; x.ordem = (pc[x.id]||{}).ordem ?? 9999; (by[entregador(e) ? e : ""]).push(x); });
+  paradasDia(d).forEach(x => { const e = metaParada(pc,x).entregador; x.ordem = metaParada(pc,x).ordem ?? 9999; (by[entregador(e) ? e : ""]).push(x); });
   const cmp = (a,b) => a.ordem-b.ordem || norm(a.cliente.bairro).localeCompare(norm(b.cliente.bairro)) || norm(a.cliente.rua).localeCompare(norm(b.cliente.rua)) || (parseInt(a.cliente.numero)||0)-(parseInt(b.cliente.numero)||0);
   Object.values(by).forEach(l => l.sort(cmp));
   return by;
@@ -1032,23 +1226,23 @@ function rotasDia(d){
 function distribuir(d, refazer){
   const ents = S.entregadores.filter(e => e.ativo!==false);
   if(!ents.length){ toast("Cadastre pelo menos um entregador."); return; }
-  const pc = pedido(d).confirmados||{}, conf = confirmadosDia(d), carga = {};
+  const pc = pedido(d).confirmados||{}, conf = paradasDia(d), carga = {};
   ents.forEach(e => carga[e.id] = 0);
-  if(!refazer) conf.forEach(x => { const e = (pc[x.id]||{}).entregador; if(e in carga) carga[e] += x.qtd; });
-  const pend = conf.filter(x => refazer || !((pc[x.id]||{}).entregador in carga));
+  if(!refazer) conf.forEach(x => { const e = metaParada(pc,x).entregador; if(e in carga) carga[e] += x.qtd||1; });
+  const pend = conf.filter(x => refazer || !(metaParada(pc,x).entregador in carga));
   if(!pend.length && !refazer){ toast("Todas as entregas já têm entregador."); return; }
   const grupos = {}; pend.forEach(x => (grupos[norm(x.cliente.bairro)] ||= []).push(x));
   const dono = {};
   Object.entries(grupos).sort((a,b) => b[1].length-a[1].length).forEach(([b,l]) => {
     let e = b && ents.find(e => String(e.bairros||"").split(",").map(norm).filter(Boolean).includes(b));
     if(!e) e = ents.slice().sort((a,c) => carga[a.id]-carga[c.id])[0];
-    carga[e.id] += l.reduce((s,x)=>s+x.qtd,0); l.forEach(x => dono[x.id] = e.id);
+    carga[e.id] += l.reduce((s,x)=>s+(x.qtd||1),0); l.forEach(x => dono[x.id] = e.id);
   });
   const patch = {}, final = {};
-  conf.forEach(x => { const e = dono[x.id] || (pc[x.id]||{}).entregador; (final[e] ||= []).push(x); });
+  conf.forEach(x => { const e = dono[x.id] || metaParada(pc,x).entregador; (final[e] ||= []).push(x); });
   Object.values(final).forEach(l => {
     l.sort((a,b) => norm(a.cliente.bairro).localeCompare(norm(b.cliente.bairro)) || norm(a.cliente.rua).localeCompare(norm(b.cliente.rua)) || (parseInt(a.cliente.numero)||0)-(parseInt(b.cliente.numero)||0));
-    l.forEach((x,i) => patch[x.id] = {entregador: dono[x.id] || (pc[x.id]||{}).entregador, ordem:i});
+    l.forEach((x,i) => patch[x.id] = {entregador: dono[x.id] || metaParada(pc,x).entregador || "", ordem:i});
   });
   patchConf(d, patch); render(); toast("Entregas distribuídas.");
 }
@@ -1073,10 +1267,12 @@ function mapsLinks(lista){
 }
 function textoRota(d, e, lista){
   const tot = lista.reduce((s,x)=>s+x.qtd,0);
-  let t = "🛵 *Rota de "+(e ? e.nome : "entregas")+" · "+fmtDate(d)+"*\n"+tot+" marmitas · "+lista.length+" entregas\n";
+  const ncg = lista.reduce((s,x)=>s+(x.cong||[]).length,0);
+  let t = "🛵 *Rota de "+(e ? e.nome : "entregas")+" · "+fmtDate(d)+"*\n"+tot+" marmitas"+(ncg?" · "+ncg+" de congeladas":"")+" · "+lista.length+" entregas\n";
   if(S.config.enderecoRestaurante) t += "Saída: "+S.config.enderecoRestaurante+"\n";
   lista.forEach((x,i) => { const c = x.cliente;
-    t += "\n*"+(i+1)+". "+(c.nome||"")+"* ("+x.qtd+(x.qtd>1?" marmitas":" marmita")+")\n"+(enderecoTxt(c)||"sem endereço")+(c.referencia?"\nRef: "+c.referencia:"")+"\n📞 "+fmtPhone(c.telefone)+(c.pagamento?"\n💰 "+c.pagamento+(x.avulso?" (avulso, cobrar)":""):"")+(c.obs?"\n📝 "+c.obs:"")+"\n";
+    const cob = cobrarCong(x);
+    t += "\n*"+(i+1)+". "+(c.nome||"")+"* ("+descParada(x)+")\n"+(enderecoTxt(c)||"sem endereço")+(c.referencia?"\nRef: "+c.referencia:"")+"\n📞 "+fmtPhone(c.telefone)+(c.pagamento?"\n💰 "+c.pagamento+(x.avulso?" (avulso, cobrar)":""):"")+(cob?"\n💰 Cobrar congeladas: "+brl(cob):"")+(c.obs?"\n📝 "+c.obs:"")+(x.cong||[]).filter(e=>e.obs).map(e=>"\n🧊 "+e.obs).join("")+"\n";
   });
   const links = mapsLinks(lista);
   if(links.length) t += "\n🗺️ Mapa"+(links.length>1?" (em "+links.length+" partes)":"")+":\n"+links.join("\n");
@@ -1092,17 +1288,19 @@ function textoProducao(d){
   if(porEnt.length) t += "\n*Separar por entregador*\n"+porEnt.join("\n")+"\n";
   const obs = conf.filter(x => x.cliente.obs);
   if(obs.length) t += "\n*Pedidos com observação*\n"+obs.map(x => "• "+x.cliente.nome+" ("+x.qtd+"): "+x.cliente.obs).join("\n");
+  const cg = modOn("congeladas") ? congDia(d).filter(e => !e.entregue) : [];
+  if(cg.length) t += "\n\n🧊 *Congeladas para separar: "+cg.reduce((s,e)=>s+unidadesEnc(e),0)+" unidades*\n"+cg.map(e => "• "+((idx().porId.get(e.clienteId)||{}).nome||"")+": "+descEnc(e)+(e.obs?" ("+e.obs+")":"")).join("\n");
   return t;
 }
 VIEWS.entregas = () => {
   const d = S.diaData, dt = parseIso(d), r = rotasDia(d);
-  const conf = confirmadosDia(d), tot = conf.reduce((s,x)=>s+x.qtd,0), sem = r[""]||[];
+  const conf = paradasDia(d), tot = conf.reduce((s,x)=>s+x.qtd,0), sem = r[""]||[], ncg = conf.reduce((s,x)=>s+x.cong.length,0);
   const ents = S.entregadores.slice().sort((a,b)=>(a.nome||"").localeCompare(b.nome||"","pt-BR"));
   const opts = sel => `<option value="">Sem entregador</option>`+ents.filter(e=>e.ativo!==false).map(e=>`<option value="${esc(e.id)}" ${sel===e.id?"selected":""}>${esc(e.nome)}</option>`).join("");
-  const parada = (x,i,eid,n) => { const c = x.cliente; return `<tr><td class="num">${i+1}</td><td><b>${esc(c.nome)}</b> (${x.qtd})${x.avulso?' <span class="pill warn">avulso</span>':""}<div class="muted" style="font-size:.8rem">${esc(enderecoTxt(c)||"sem endereço")}${c.referencia?" · "+esc(c.referencia):""}</div></td><td>${esc(c.pagamento||"—")}</td><td><select data-mv="${esc(x.id)}" aria-label="Entregador" style="min-width:130px">${opts(eid)}</select></td><td style="white-space:nowrap">${eid?`<button class="btn small" data-up="${esc(x.id)}" data-e="${esc(eid)}" ${i===0?"disabled":""} aria-label="Subir">↑</button> <button class="btn small" data-dn="${esc(x.id)}" data-e="${esc(eid)}" ${i===n-1?"disabled":""} aria-label="Descer">↓</button>`:""}</td></tr>`; };
+  const parada = (x,i,eid,n) => { const c = x.cliente; return `<tr><td class="num">${i+1}</td><td><b>${esc(c.nome)}</b> · ${esc(descParada(x))}${x.avulso?' <span class="pill warn">avulso</span>':""}${cobrarCong(x)?` <span class="pill warn">cobrar ${brl(cobrarCong(x))}</span>`:""}<div class="muted" style="font-size:.8rem">${esc(enderecoTxt(c)||"sem endereço")}${c.referencia?" · "+esc(c.referencia):""}</div></td><td>${esc(c.pagamento||"—")}</td><td><select data-mv="${esc(x.id)}" aria-label="Entregador" style="min-width:130px">${opts(eid)}</select></td><td style="white-space:nowrap">${eid?`<button class="btn small" data-up="${esc(x.id)}" data-e="${esc(eid)}" ${i===0?"disabled":""} aria-label="Subir">↑</button> <button class="btn small" data-dn="${esc(x.id)}" data-e="${esc(eid)}" ${i===n-1?"disabled":""} aria-label="Descer">↓</button>`:""}</td></tr>`; };
   const tabela = (l,eid) => `<div class="tablebox"><table><thead><tr><th>#</th><th>Cliente e endereço</th><th>Pagamento</th><th>Entregador</th><th>Ordem</th></tr></thead><tbody>${l.map((x,i)=>parada(x,i,eid,l.length)).join("")}</tbody></table></div>`;
   return `
-  <div class="head"><div><h1>Entregas</h1><p>${DOW_LONG[dt.getDay()]}, ${fmtDate(d)} · ${tot} marmitas · ${conf.length} entregas</p></div>
+  <div class="head"><div><h1>Entregas</h1><p>${DOW_LONG[dt.getDay()]}, ${fmtDate(d)} · ${tot} marmitas${ncg?" · "+ncg+" de congeladas":""} · ${conf.length} entregas</p></div>
     <div class="row"><button class="btn" id="ePrev" aria-label="Dia anterior">‹</button><input type="date" id="eDate" value="${d}" style="width:auto"><button class="btn" id="eNext" aria-label="Próximo dia">›</button></div></div>
   <section class="panel" style="display:flex;flex-direction:column;gap:10px">
     <div class="row" style="justify-content:space-between"><h2>Entregadores</h2><button class="btn small" id="novoEnt">+ Entregador</button></div>
@@ -1116,7 +1314,7 @@ VIEWS.entregas = () => {
       <div class="row"><button class="btn small primary" data-copyrota="${esc(e.id)}">Copiar rota</button>${e.telefone?`<a class="btn small" href="https://wa.me/${esc(e.telefone)}?text=${encodeURIComponent(txt)}" target="_blank" rel="noopener">Enviar no WhatsApp</a>`:""}${links.map((u,i)=>`<a class="btn small" href="${esc(u)}" target="_blank" rel="noopener">Mapa${links.length>1?" "+(i+1):""}</a>`).join("")}</div></div>
       ${tabela(l,e.id)}</section>`; }).join("")}
   ${sem.length ? `<section style="display:flex;flex-direction:column;gap:10px"><h2>Sem entregador <span class="pill warn">${sem.length}</span></h2>${tabela(sem,"")}</section>` : ""}
-  ` : `<div class="panel empty"><h2>Nenhum pedido confirmado neste dia</h2><p>Confirme os pedidos na aba Dia e volte aqui para montar as rotas.</p><button class="btn primary" data-go="hoje">Ir para o Dia</button></div>`}
+  ` : `<div class="panel empty"><h2>Nenhuma entrega neste dia</h2><p>Confirme os pedidos na aba Dia e volte aqui para montar as rotas.</p><button class="btn primary" data-go="hoje">Ir para o Dia</button></div>`}
   <p class="muted" style="font-size:.85rem;margin:0">A ordem das paradas segue bairro, rua e número. Ajuste com as setas. ${S.config.enderecoRestaurante?"":"Coloque o endereço do restaurante em Ajustes para o mapa sair de lá."}</p>
   <textarea id="msgCopy" aria-hidden="true" tabindex="-1" style="position:absolute;left:-9999px;width:1px;height:1px"></textarea>`;
 };
@@ -1159,7 +1357,7 @@ function formEntregador(e){
 // ----- Financeiro -----
 const CAT_VAR = ["Ingredientes","Embalagens","Gás","Entregadores"];
 const CAT_FIXO = ["Aluguel","Funcionários","Luz e água","Internet e telefone","Marketing","Impostos e taxas","Manutenção","Outros"];
-const CAT_REC = ["Plano","Avulso","Outros"];
+const CAT_REC = ["Plano","Avulso","Congeladas","Outros"];
 function lancamentos(ini, fim){
   const out = [];
   Object.keys(S.fin).filter(d => d>=ini && d<=fim).forEach(d => Object.entries(S.fin[d].itens||{}).forEach(([id,it]) => { if(it && !it.apagado) out.push(Object.assign({id, data:d}, it)); }));
@@ -1170,7 +1368,8 @@ function addLanc(d, id, item){
   const existed = !!S.fin[d];
   item = Object.assign({hora:new Date().toISOString()}, item);
   S.fin[d] = Object.assign({data:d, itens:{}}, S.fin[d]); S.fin[d] = Object.assign({}, S.fin[d], {itens:Object.assign({}, S.fin[d].itens, {[id]:item})});
-  return enqueue(() => existed ? Store.update("financeiro", d, {itens:{[id]:item}}) : Store.set("financeiro", d, S.fin[d]));
+  const novo = S.fin[d];
+  return enqueue(() => existed ? Store.update("financeiro", d, {itens:{[id]:item}}) : Store.merge("financeiro", d, novo));
 }
 function apagarLanc(d, id){
   const it = S.fin[d] && S.fin[d].itens[id]; if(!it) return;
@@ -1221,8 +1420,9 @@ function aReceber(){
   const d = S.diaData, preco = Number(S.cardapios[d] && S.cardapios[d].preco)||0;
   const av = confirmadosDia(d).filter(x=>x.avulso).map(x => ({tipo:"av", id:"av-"+d+"-"+x.id, c:x.cliente, valor:x.qtd*preco, desc:x.qtd+" avulsa(s) em "+fmtDate(d), d}));
   const pl = S.clientes.filter(c => c.ativo!==false && c.planoId && c.inicio && c.inicio>=addDays(today(),-45)).map(c => ({tipo:"pl", id:"pl-"+c.id+"-"+c.inicio, c, valor:Number(plano(c.planoId)?.preco)||0, desc:"Plano "+(plano(c.planoId)?.nome||"")+" desde "+fmtDate(c.inicio)}));
+  const cg = modOn("congeladas") ? S.encomendas.filter(e => !e.pago && e.data<=addDays(today(),7)).map(e => ({tipo:"cg", id:"cg-"+e.id, enc:e, c:idx().porId.get(e.clienteId)||{nome:"(cliente apagado)"}, valor:Number(e.valor)||0, desc:"Congeladas: "+descEnc(e)+" · entrega "+fmtDate(e.data)})) : [];
   const pagos = new Set(todosLanc().map(l=>l.id));
-  return [...av, ...pl].filter(x => !pagos.has(x.id));
+  return [...av, ...pl, ...cg].filter(x => !pagos.has(x.id));
 }
 VIEWS.financeiro = () => {
   const [ini,fim] = periodoFin(), l = lancamentos(ini,fim);
@@ -1307,7 +1507,7 @@ BIND.financeiro = () => {
   $("#novaDesp").onclick = () => formLanc("despesa");
   document.querySelectorAll("[data-go]").forEach(b => b.onclick = () => go(b.dataset.go));
   const ar = aReceber();
-  document.querySelectorAll("[data-receber]").forEach(b => b.onclick = () => { const x = ar[b.dataset.receber]; addLanc(today(), x.id, {tipo:"receita", cat:x.tipo==="av"?"Avulso":"Plano", valor:x.valor, desc:x.c.nome+" · "+x.desc, pag:x.c.pagamento||"", clienteId:x.c.id}); render(); toast("Recebimento lançado."); });
+  document.querySelectorAll("[data-receber]").forEach(b => b.onclick = () => { const x = ar[b.dataset.receber]; if(x.enc){ marcarPagoCong(x.enc, true); render(); toast("Recebimento lançado."); return; } addLanc(today(), x.id, {tipo:"receita", cat:x.tipo==="av"?"Avulso":"Plano", valor:x.valor, desc:x.c.nome+" · "+x.desc, pag:x.c.pagamento||"", clienteId:x.c.id}); render(); toast("Recebimento lançado."); });
   document.querySelectorAll("[data-apagar]").forEach(b => b.onclick = () => { if(b.dataset.sure){ const [d,id] = b.dataset.apagar.split("|"); apagarLanc(d,id); render(); toast("Lançamento apagado."); } else { b.dataset.sure="1"; b.textContent="Apagar?"; } });
   const [ini,fim] = periodoFin();
   const cf = $("#csvFin"); if(cf) cf.onclick = () => baixar("financeiro-"+ini+"-a-"+fim+".csv", toCsv([["Data","Tipo","Categoria","Descrição","Forma de pagamento","Valor"], ...lancamentos(ini,fim).map(x=>[fmtDate(x.data), x.tipo==="receita"?"Receita":"Despesa", x.cat, x.desc||"", x.pag||"", (x.tipo==="despesa"?-x.valor:x.valor).toFixed(2).replace(".",",")])]));
@@ -1341,15 +1541,16 @@ function oportunidades(){
   const ranking = Object.entries(ind).map(([id,l]) => ({c:S.clientes.find(x=>x.id===id), l})).filter(x=>x.c).sort((a,b)=>b.l.length-a.l.length);
   return {avFreq, sumidos, ranking};
 }
-const linkWhats = () => { const t = normPhone(S.config.telefoneRestaurante); return t ? "https://wa.me/"+t+"?text="+encodeURIComponent("Olá! Vi vocês no Instagram e quero conhecer o cardápio e os planos de marmita.") : ""; };
+const linkWhats = () => { const t = normPhone(S.config.telefoneRestaurante); return t ? "https://wa.me/"+t+"?text="+encodeURIComponent("Olá! Vi vocês no Instagram e quero conhecer o cardápio, os planos e as congeladas.") : ""; };
 const TEMPLATES = {
-  novos:{whatsapp:"Olá! 👋 Aqui é da {rest}. Fazemos marmitas caseiras todo dia, entregues quentinhas na sua casa ou trabalho. Temos planos a partir de {preco} por marmita. Quer receber o cardápio do dia? Responda SIM!", instagram:"🍱 Comida caseira de verdade, todo dia, na sua porta.\n\nNa {rest} você escolhe um plano e esquece a preocupação com o almoço. Planos a partir de {preco} por marmita.\n\n👉 Peça pelo link da bio e receba o cardápio do dia no WhatsApp.\n\n#marmita #marmitafit #comidacaseira #almoço #delivery"},
-  reativar:{whatsapp:"Oi, {nome}! Sentimos sua falta aqui na {rest} 😊 Esta semana o cardápio está caprichado. Quer que eu separe uma marmita para você amanhã?", instagram:"Tem saudade de comida caseira? 🍲 Volta pra {rest}! Esta semana tem cardápio especial. Chama no WhatsApp pelo link da bio."},
-  plano:{whatsapp:"Oi, {nome}! Vi que você tem pedido bastante com a gente 🙌 Com um plano você paga menos por marmita ({preco}) e não precisa pedir todo dia. Quer que eu te mande as opções?", instagram:"💡 Quem pede todo dia economiza com plano!\n\nNos planos da {rest} a marmita sai a partir de {preco}. Escolha os dias, a quantidade e receba sem preocupação.\n\nChama no WhatsApp pelo link da bio."},
+  novos:{whatsapp:"Olá! 👋 Aqui é da {rest}. Fazemos marmitas fitness todo dia, equilibradas e saborosas, com entrega na sua casa ou no trabalho. Planos a partir de {preco} por marmita e pacotes de congeladas para a semana. Quer receber o cardápio do dia? Responda SIM!", instagram:"🥗 Comida fitness de verdade, todo dia, na sua porta.\n\nNa {rest} você escolhe um plano e não sai da dieta. Planos a partir de {preco} por marmita, e pacotes de congeladas para ter refeição saudável a semana toda.\n\n🛵 Entregamos na sua casa ou no trabalho. Peça pelo link da bio.\n\n#marmitafit #marmitafitness #comidasaudavel #dieta #congeladasfit #delivery"},
+  reativar:{whatsapp:"Oi, {nome}! Sentimos sua falta aqui na {rest} 💪 Esta semana o cardápio fit está caprichado. Quer que eu separe uma marmita para você amanhã? Também temos pacotes de congeladas, entregues na sua porta.", instagram:"Saiu da dieta? 🥦 Volta pra {rest}! Cardápio fit todo dia e pacotes de congeladas, com entrega na sua porta. Chama no WhatsApp pelo link da bio."},
+  plano:{whatsapp:"Oi, {nome}! Vi que você tem pedido bastante com a gente 🙌 Com um plano você paga menos por marmita ({preco}), mantém a dieta e não precisa pedir todo dia. Quer que eu te mande as opções?", instagram:"💡 Quem pede todo dia economiza com plano!\n\nNos planos da {rest} a marmita fit sai a partir de {preco}. Escolha os dias e a quantidade e receba em casa ou no trabalho, sem sair da dieta.\n\nChama no WhatsApp pelo link da bio."},
+  congeladas:{whatsapp:"Oi, {nome}! 🧊 Chegaram as congeladas fit da {rest}, para ter refeição saudável a semana toda:\n\n{pacotes}\n\nEntregamos na sua casa ou no trabalho. Quer que eu separe um pacote para você?", instagram:"🧊 Congeladas fit da {rest}\n\nRefeição saudável pronta na sua geladeira, a semana toda:\n\n{pacotes}\n\n🛵 Entregamos na sua casa ou no trabalho. Peça pelo WhatsApp (link na bio).\n\n#congeladasfit #marmitafit #comidasaudavel #dieta"},
   indicacao:{whatsapp:"Oi, {nome}! Indique a {rest} para um amigo: quando ele fechar um plano informando o código {codigo}, você ganha {premio}. 🎁", instagram:"🎁 Indique e ganhe!\n\nIndicou um amigo para a {rest} e ele fechou um plano? Você ganha {premio}.\n\nPeça seu código pelo WhatsApp (link na bio)."}
 };
 function precoMinimo(){ const v = S.planos.filter(p=>p.marmitas&&p.preco).map(p=>p.preco/p.marmitas); return v.length ? brl(Math.min(...v)) : "um preço especial"; }
-function preencher(t, c){ return t.replace(/\{rest\}/g, S.config.restaurante||"nossa cozinha").replace(/\{preco\}/g, precoMinimo()).replace(/\{nome\}/g, c ? (c.nome||"").split(" ")[0] : "tudo bem").replace(/\{codigo\}/g, c ? codigoIndicacao(c) : "SEUCODIGO").replace(/\{premio\}/g, S.config.premioIndicacao||"1 marmita grátis"); }
+function preencher(t, c){ return t.replace(/\{rest\}/g, S.config.restaurante||"nossa cozinha").replace(/\{preco\}/g, precoMinimo()).replace(/\{nome\}/g, c ? (c.nome||"").split(" ")[0] : "tudo bem").replace(/\{codigo\}/g, c ? codigoIndicacao(c) : "SEUCODIGO").replace(/\{premio\}/g, S.config.premioIndicacao||"1 marmita grátis").replace(/\{pacotes\}/g, listaPacotes()); }
 VIEWS.marketing = () => {
   const o = oportunidades(), lw = linkWhats();
   return `
@@ -1360,7 +1561,7 @@ VIEWS.marketing = () => {
   </section>
   <section class="panel" style="display:flex;flex-direction:column;gap:10px"><h2>Criar campanha</h2>
     <div class="form">
-      <label class="f c2">Objetivo<select id="mkObj"><option value="novos">Clientes novos</option><option value="reativar">Trazer de volta quem sumiu</option><option value="plano">Vender planos para avulsos</option><option value="indicacao">Indique e ganhe</option></select></label>
+      <label class="f c2">Objetivo<select id="mkObj"><option value="novos">Clientes novos</option><option value="reativar">Trazer de volta quem sumiu</option><option value="plano">Vender planos para avulsos</option><option value="congeladas">Vender congeladas</option><option value="indicacao">Indique e ganhe</option></select></label>
       <label class="f c2">Onde vai postar<select id="mkCanal"><option value="whatsapp">WhatsApp (lista ou status)</option><option value="instagram">Instagram (post ou anúncio)</option></select></label>
       <label class="f c2">Detalhe (opcional)<input type="text" id="mkDet" placeholder="Ex.: feijoada no sábado"></label>
     </div>
@@ -1423,6 +1624,7 @@ VIEWS.ajustes = () => `
       <label class="f c2">Telefone do restaurante (WhatsApp)<input type="tel" id="a_tel" value="${esc(S.config.telefoneRestaurante)}"></label>
       <label class="f c2">Custo por marmita (R$)<input type="number" step="0.01" min="0" id="a_custo" value="${esc(S.config.custoMarmita||"")}" placeholder="Calculado das despesas"></label>
       <label class="f c2">Custos fixos por mês (R$)<input type="number" step="0.01" min="0" id="a_fixo" value="${esc(S.config.custoFixoMensal||"")}" placeholder="Calculado das despesas"></label>
+      <label class="f c6">Feriados da sua cidade (um por linha, dia/mês e nome)<textarea id="a_fer" placeholder="25/01 Aniversário da cidade&#10;29/06 São Pedro">${esc(S.config.feriadosLocais)}</textarea><span style="font-weight:400">Os nacionais já estão no calendário. Os feriados ficam fechados; abra no Calendário se for trabalhar.</span></label>
       <label class="f c6">Prêmio por indicação<input type="text" id="a_premio" value="${esc(S.config.premioIndicacao)}"></label>
       <label class="f c2">Avisar quando restarem (marmitas)<input type="number" min="0" id="a_alerta" value="${esc(S.config.alertaSaldo)}"></label>
       <label class="check c6"><input type="checkbox" id="a_auto" ${S.config.autoPlano!==false?"checked":""}> Confirmar sozinho os clientes de plano nos dias abertos (eles só avisam se não quiserem)</label>
@@ -1438,7 +1640,7 @@ VIEWS.ajustes = () => `
   <p class="muted" style="font-size:.85rem">${S.mode==="cloud"?"Os dados ficam salvos no seu Firebase e aparecem iguais no celular e no computador.":"Modo de teste: dados só neste navegador."}</p>
   ${window.__auth?`<div class="row"><span class="muted">Conectado como ${esc((window.__auth.currentUser||{}).email||"")}</span><button class="btn small" id="sairBtn">Sair</button></div>`:""}`;
 // ----- Backup (versão com Firebase) -----
-const COLS_BACKUP = ["clientes","planos","cardapios","pedidos","financeiro","entregadores","config","acesso","publico","respostas"];
+const COLS_BACKUP = ["clientes","planos","pacotes","encomendas","cardapios","pedidos","financeiro","entregadores","config","acesso","publico","respostas"];
 const diasDesdeBackup = () => S.config.ultimoBackup ? Math.floor((parseIso(today()) - parseIso(S.config.ultimoBackup.slice(0,10)))/86400000) : null;
 function viewBackup(){
   const dd = diasDesdeBackup();
@@ -1564,7 +1766,7 @@ function bindUsuarios(){
 }
 BIND.ajustes = () => {
   if(window.__fs){ bindUsuarios(); bindBackup(); }
-  $("#a_save").onclick = () => { saveConfig({restaurante:$("#a_nome").value.trim(), meuNomeWhats:$("#a_wa").value.trim(), horarioLimite:$("#a_hora").value.trim()||"10:30", enderecoRestaurante:$("#a_end").value.trim(), cidade:$("#a_cid").value.trim(), telefoneRestaurante:$("#a_tel").value.trim(), custoMarmita:Number($("#a_custo").value)||0, custoFixoMensal:Number($("#a_fixo").value)||0, premioIndicacao:$("#a_premio").value.trim()||"1 marmita grátis", alertaSaldo:Number($("#a_alerta").value)||0, alertaDias:Number($("#a_alertaDias").value)||0, msgAlerta:$("#a_msg").value.trim()||DEFAULT_CONFIG.msgAlerta, autoPlano:$("#a_auto").checked}).then(()=>{ render(); toast("Ajustes salvos."); }); };
+  $("#a_save").onclick = () => { const ferAntes = S.config.feriadosLocais||"", ferNovo = $("#a_fer").value.trim(); S.config.feriadosLocais = ferNovo; const abertos = ferNovo!==ferAntes ? S.config.abertos.filter(d => !(d>=today() && feriado(d))) : S.config.abertos; saveConfig({abertos, feriadosLocais:ferNovo, restaurante:$("#a_nome").value.trim(), meuNomeWhats:$("#a_wa").value.trim(), horarioLimite:$("#a_hora").value.trim()||"10:30", enderecoRestaurante:$("#a_end").value.trim(), cidade:$("#a_cid").value.trim(), telefoneRestaurante:$("#a_tel").value.trim(), custoMarmita:Number($("#a_custo").value)||0, custoFixoMensal:Number($("#a_fixo").value)||0, premioIndicacao:$("#a_premio").value.trim()||"1 marmita grátis", alertaSaldo:Number($("#a_alerta").value)||0, alertaDias:Number($("#a_alertaDias").value)||0, msgAlerta:$("#a_msg").value.trim()||DEFAULT_CONFIG.msgAlerta, autoPlano:$("#a_auto").checked}).then(()=>{ render(); toast("Ajustes salvos."); }); };
   document.querySelectorAll("[data-m]").forEach(cb => cb.onchange = () => { saveConfig({modulos:Object.assign({}, S.config.modulos, {[cb.dataset.m]:cb.checked})}); render(); });
 };
 
@@ -1591,6 +1793,8 @@ async function boot(){
   if(window.__fs) Store.watch("respostas", (docs, m) => { S.respostas = docs; marcar("respostas", m); rerenderSafe(); automacoes(); }, addDays(today(),-1));
   Store.watch("financeiro", docs => { S.fin = Object.fromEntries(docs.map(d=>[d.id,d])); rerenderSafe(); }, addDays(today(),-100));
   Store.watch("entregadores", docs => { S.entregadores = docs; rerenderSafe(); });
+  Store.watch("pacotes", docs => { S.pacotes = docs; rerenderSafe(); });
+  Store.watch("encomendas", docs => { S.encomendas = docs; rerenderSafe(); }, addDays(today(),-100));
   if(window.__fs) Store.watch("acesso", docs => { const u = docs.find(d => d.id==="usuarios") || {}; S.acesso = {emails:Array.isArray(u.emails)?u.emails:[], info:u.info||{}}; rerenderSafe(); });
   Store.watch("config", (docs, m) => { const g = docs.find(d=>d.id==="geral"); S.config = Object.assign(structuredClone(DEFAULT_CONFIG), g||{}); S.config.modulos = Object.assign({}, DEFAULT_CONFIG.modulos, (g&&g.modulos)||{}); delete S.config.id; marcar("config", m); rerenderSafe(); automacoes(); });
   render();

@@ -35,6 +35,18 @@ A mensagem do cardápio (botão **Copiar mensagem** na aba Dia) já leva o link 
 - Pedido de telefone não cadastrado aparece num aviso com o botão **Cadastrar**.
 - Para desligar a confirmação automática de plano: **Ajustes**.
 
+## Congeladas
+
+Na aba **Congeladas** você cadastra os pacotes (ex.: Kit 10 congeladas fit), lança as encomendas de cada cliente com o dia da entrega e controla o estoque.
+
+- A encomenda entra sozinha na rota do entregador no dia da entrega, junto com a marmita do cliente quando ele também pediu.
+- **Receber** lança o valor no Financeiro. **Entregar** tira as unidades do estoque.
+- **Copiar oferta** monta a mensagem com os pacotes e preços para o WhatsApp.
+
+## Feriados
+
+Os feriados nacionais aparecem no Calendário e ficam fechados (os atalhos "Abrir seg a sex/sáb" pulam os feriados). Para abrir num feriado, toque no dia. Os feriados da sua cidade você cadastra em **Ajustes**.
+
 ## Backup (faça toda semana)
 
 Em **Ajustes > Backup**, toque em **Baixar backup agora**. O sistema baixa um arquivo `backup-marmitex-DATA.json` com tudo: clientes, planos, cardápios, pedidos, financeiro e configurações. Guarde no computador e no Google Drive.
