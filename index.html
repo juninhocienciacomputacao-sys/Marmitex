@@ -53,6 +53,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .app{display:grid;grid-template-columns:220px 1fr;min-height:100%}
 nav.side{background:var(--surface);border-right:1px solid var(--line);padding:20px 12px;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh}
 .logo{font-family:var(--display);font-weight:700;font-size:1.3rem;padding:4px 10px 18px;color:var(--brand)}
+.logo{display:flex;align-items:center;gap:10px}.logo img{width:44px;height:44px;border-radius:10px;object-fit:contain;flex:none;background:var(--surface)}
 .logo small{display:block;font-family:var(--body);font-weight:400;font-size:.78rem;color:var(--muted)}
 .navbtn{display:flex;align-items:center;gap:10px;border:0;background:none;padding:9px 10px;border-radius:8px;cursor:pointer;text-align:left;color:var(--muted);font-weight:700}
 .navbtn svg{width:20px;height:20px;flex:none}
@@ -292,7 +293,7 @@ const Store = {
 async function saveConfig(patch){
   S.config = Object.assign({}, S.config, patch);
   try{ await Store.set("config","geral",S.config); }catch(e){ toast(erroMsg(e)); }
-  if(window.__fs) Store.set("publico","info",{restaurante:S.config.restaurante||"", horarioLimite:S.config.horarioLimite||"10:30", telefone:normPhone(S.config.telefoneRestaurante)||""}).catch(()=>{});
+  if(window.__fs) Store.set("publico","info",{restaurante:S.config.restaurante||"", horarioLimite:S.config.horarioLimite||"10:30", telefone:normPhone(S.config.telefoneRestaurante)||"", logo:logoOk()?S.config.logo:"", cor:S.config.corMarca||""}).catch(()=>{});
 }
 function erroMsg(e){
   if(!e) return "Não foi possível salvar.";
@@ -458,7 +459,7 @@ function menuText(dataIso){
 function modOn(id){ const m = MODULOS.find(x=>x.id===id); return m.fixo || (!m.breve && S.config.modulos[id]!==false); }
 function renderNav(){
   const tabs = MODULOS.filter(m => modOn(m.id));
-  $("#nav").innerHTML = '<div class="logo">'+esc(S.config.restaurante||"Marmitex")+'<small>Gestão de marmitas</small></div>' +
+  $("#nav").innerHTML = '<div class="logo">'+(logoOk()?'<img src="'+esc(S.config.logo)+'" alt="">':"")+'<div>'+esc(S.config.restaurante||"Marmitex")+'<small>Marmitas fitness</small></div></div>' +
     tabs.map(m => '<button class="navbtn" data-tab="'+m.id+'" '+(S.tab===m.id?'aria-current="page"':'')+'>'+icon(m.id)+'<span>'+esc(m.nome)+'</span></button>').join("");
   $("#nav").querySelectorAll("[data-tab]").forEach(b => b.onclick = () => go(b.dataset.tab));
 }
@@ -915,7 +916,7 @@ VIEWS.cardapio = () => {
       <h2>Mensagem para o WhatsApp</h2>
       <div class="msg" id="msgPrev"></div>
       <textarea id="msgCopy" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"></textarea>
-      <div class="row"><button class="btn primary" id="cCopy">Copiar mensagem</button><span class="muted" style="font-size:.85rem">Cole na lista de transmissão ou no status. O envio automático chega no passo 3.</span></div>
+      <div class="row"><button class="btn primary" id="cCopy">Copiar mensagem</button><button class="btn" id="cImg">Imagem com a logo</button><span class="muted" style="font-size:.85rem">Cole na lista de transmissão ou no status. O envio automático chega no passo 3.</span></div>
     </section>
   </div>`;
 };
@@ -954,6 +955,7 @@ BIND.cardapio = () => {
   $("#addIt").onclick = () => { syncDraft(); draft.itens.push({nome:"",cat:"Prato principal"}); render(); const ins = document.querySelectorAll("[data-n]"); ins[ins.length-1].focus(); };
   const cf = $("#copyFrom"); if(cf) cf.onchange = () => { const src = S.cardapios[cf.value]; if(src){ draft = Object.assign(structuredClone(src),{_d:S.cardData}); render(); toast("Cardápio copiado. Revise e salve."); } };
   $("#cCopy").onclick = () => { syncDraft(); copiar(previewMsg()); };
+  $("#cImg").onclick = () => { syncDraft(); compartilharImagem(S.cardData, {itens:draft.itens.filter(i=>i.nome.trim())}, previewMsg()); };
   $("#cSave").onclick = async () => {
     syncDraft(); const itens = draft.itens.filter(i=>i.nome.trim()).map(i=>({nome:i.nome.trim(),cat:i.cat}));
     if(!itens.length){ toast("Adicione pelo menos um prato."); return; }
@@ -966,6 +968,109 @@ BIND.cardapio = () => {
   const del = $("#cDel"); if(del) del.onclick = () => { if(del.dataset.sure){ Store.del("cardapios",S.cardData).then(()=>{draft=null;toast("Cardápio apagado.");}).catch(e=>toast(erroMsg(e))); } else { del.dataset.sure="1"; del.textContent="Toque de novo para apagar"; } };
   previewMsg();
 };
+
+// ----- Marca: logo e cor -----
+const logoOk = () => /^data:image\/(png|jpeg|webp);base64,/.test(S.config.logo||"");
+const corMarca = () => /^#[0-9a-f]{6}$/i.test(S.config.corMarca||"") ? S.config.corMarca : "#1f5c3d";
+function aplicarMarca(){
+  try{ if(logoOk()) localStorage.setItem("marmitex-logo", S.config.logo); else localStorage.removeItem("marmitex-logo"); localStorage.setItem("marmitex-nome", S.config.restaurante||""); }catch(e){}
+  let l = document.querySelector('link[rel="icon"]'); if(!l){ l = document.createElement("link"); l.rel = "icon"; document.head.appendChild(l); }
+  if(logoOk()) l.href = S.config.logo;
+}
+function lerLogo(file){
+  return new Promise((ok, erro) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const N = 320, c = document.createElement("canvas"); c.width = c.height = N; const x = c.getContext("2d");
+      const k = Math.min(N/img.width, N/img.height); const w = img.width*k, h = img.height*k;
+      x.drawImage(img, (N-w)/2, (N-h)/2, w, h); URL.revokeObjectURL(url);
+      let d = c.toDataURL("image/png");
+      if(d.length > 180000){ const c2 = document.createElement("canvas"); c2.width = c2.height = N; const y = c2.getContext("2d"); y.fillStyle = "#fff"; y.fillRect(0,0,N,N); y.drawImage(c,0,0); d = c2.toDataURL("image/jpeg", .85); }
+      ok(d);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); erro(new Error("imagem")); };
+    img.src = url;
+  });
+}
+function viewMarca(){
+  return `<section class="panel" style="display:flex;flex-direction:column;gap:12px"><h2>Logo e cor da marca</h2>
+    <p class="muted" style="margin:0">A logo aparece no menu, na tela de entrada, na página de pedido dos clientes e na imagem do cardápio para o WhatsApp.</p>
+    <div class="row" style="align-items:center;gap:16px">
+      <div style="width:96px;height:96px;border:1px solid var(--line);border-radius:14px;display:flex;align-items:center;justify-content:center;background:#fff;overflow:hidden">${logoOk()?`<img src="${esc(S.config.logo)}" alt="Logo atual" style="width:100%;height:100%;object-fit:contain">`:'<span class="muted" style="font-size:.8rem;text-align:center">sem logo</span>'}</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <label class="btn primary" style="cursor:pointer">${logoOk()?"Trocar logo":"Carregar logo"}<input type="file" id="mkLogo" accept="image/png,image/jpeg,image/webp" hidden></label>
+        ${logoOk()?'<button class="btn small" id="mkLogoDel">Tirar logo</button>':""}
+      </div>
+      <label class="f">Cor da marca<input type="color" id="mkCor" value="${esc(corMarca())}" style="width:72px;height:44px;padding:2px"></label>
+    </div>
+  </section>`;
+}
+function bindMarca(){
+  const f = $("#mkLogo"); if(!f) return;
+  f.onchange = async () => { const file = f.files[0]; if(!file) return;
+    if(file.size > 8e6){ toast("Imagem muito grande. Use uma de até 8 MB."); return; }
+    try{ const d = await lerLogo(file); await saveConfig({logo:d}); aplicarMarca(); render(); toast("Logo salva."); }catch(e){ toast(e && e.message==="imagem" ? "Não consegui abrir essa imagem. Use PNG ou JPG." : erroMsg(e)); }
+  };
+  const del = $("#mkLogoDel"); if(del) del.onclick = async () => { await saveConfig({logo:""}); aplicarMarca(); render(); toast("Logo retirada."); };
+  $("#mkCor").onchange = async e => { await saveConfig({corMarca:e.target.value}); toast("Cor salva."); };
+}
+// Imagem do cardápio (1080 x 1350) para status, transmissão e Instagram
+async function imagemCardapio(d, cx){
+  const c = cx || S.cardapios[d] || {itens:[]}, W = 1080, H = 1350, cor = corMarca();
+  const cv = document.createElement("canvas"); cv.width = W; cv.height = H; const x = cv.getContext("2d");
+  try{ await document.fonts.ready; }catch(e){}
+  const F = (w, px) => w+" "+px+"px 'Familjen Grotesk','Atkinson Hyperlegible','Segoe UI',Arial,sans-serif";
+  const quebra = (txt, max, font) => { x.font = font; const out = []; let l = ""; String(txt).split(" ").forEach(w => { const t = l ? l+" "+w : w; if(x.measureText(t).width > max && l){ out.push(l); l = w; } else l = t; }); if(l) out.push(l); return out; };
+  // conteúdo
+  const blocos = [];
+  CATEGORIAS.forEach(cat => { const its = (c.itens||[]).filter(i => i.cat===cat && i.nome); if(its.length) blocos.push({t:cat, l:its.map(i => i.nome)}); });
+  const precos = modOn("precos") ? S.precos.filter(p => p.ativo!==false && p.cat==="Marmita").sort((a,b)=>(a.preco||0)-(b.preco||0)) : [];
+  const promos = modOn("precos") ? promosDia(d) : [];
+  // fundo
+  x.fillStyle = "#ffffff"; x.fillRect(0,0,W,H);
+  x.fillStyle = cor; x.fillRect(0,0,W,250);
+  let tx = 64;
+  if(logoOk()){ const img = new Image(); img.src = S.config.logo; await new Promise(r => { img.onload = r; img.onerror = r; });
+    x.save(); x.beginPath(); x.arc(64+85, 125, 85, 0, Math.PI*2); x.fillStyle = "#fff"; x.fill(); x.clip(); x.drawImage(img, 64+10, 50, 150, 150); x.restore(); tx = 64+170+36; }
+  const dt = parseIso(d);
+  x.fillStyle = "#fff"; x.font = F(700, 60); x.fillText(quebra(S.config.restaurante||"Cardápio do dia", W-tx-60, F(700,60))[0], tx, 118);
+  x.font = F(400, 38); x.globalAlpha = .92; x.fillText("Cardápio de "+DOW_LONG[dt.getDay()]+", "+pad(dt.getDate())+"/"+pad(dt.getMonth()+1), tx, 178); x.globalAlpha = 1;
+  // corpo com ajuste automático de tamanho
+  const topo = 300, fim = H-140, larg = W-128;
+  const medir = k => { let h = 0; blocos.forEach(b => { h += 48*k + b.l.reduce((s,i)=>s+quebra("• "+i, larg, F(400, Math.round(36*k))).length*46*k, 0) + 18*k; }); if(precos.length) h += 48*k + precos.length*46*k + 18*k; if(promos.length) h += 30*k + promos.reduce((s,p)=>s+quebra(textoPromo(p), larg-40, F(700, Math.round(32*k))).length*42*k,0) + 30*k; return h; };
+  let k = 1; while(k > .55 && medir(k) > fim-topo) k -= .05;
+  let y = topo;
+  blocos.forEach(b => {
+    x.fillStyle = cor; x.font = F(700, Math.round(30*k)); x.fillText(b.t.toUpperCase(), 64, y+30*k); y += 48*k;
+    x.fillStyle = "#1b241d"; b.l.forEach(i => quebra("• "+i, larg, F(400, Math.round(36*k))).forEach(l => { x.font = F(400, Math.round(36*k)); x.fillText(l, 64, y+34*k); y += 46*k; })); y += 18*k;
+  });
+  if(precos.length){
+    x.fillStyle = cor; x.font = F(700, Math.round(30*k)); x.fillText("PREÇOS", 64, y+30*k); y += 48*k;
+    precos.forEach(p => { const h = precoNoDia(p, d), cheio = Number(p.preco)||0; x.fillStyle = "#1b241d"; x.font = F(400, Math.round(36*k)); x.fillText(p.nome+(p.descricao?" ("+p.descricao+")":""), 64, y+34*k);
+      x.font = F(700, Math.round(36*k)); const v = brl(h), vw = x.measureText(v).width; x.fillText(v, W-64-vw, y+34*k);
+      if(h < cheio){ x.font = F(400, Math.round(28*k)); x.fillStyle = "#8a948c"; const o = brl(cheio), ow = x.measureText(o).width, vx = W-64-vw-18-ow; x.fillText(o, vx, y+32*k); x.fillRect(vx, y+22*k, ow, 2); }
+      y += 46*k; }); y += 18*k;
+  }
+  if(promos.length){
+    const linhas = promos.map(p => quebra(textoPromo(p), larg-40, F(700, Math.round(32*k))));
+    const hb = 30*k + linhas.reduce((s,l)=>s+l.length*42*k,0) + 10*k;
+    x.fillStyle = "#fbecc9"; x.beginPath(); x.roundRect ? x.roundRect(48, y, W-96, hb, 18) : x.rect(48, y, W-96, hb); x.fill();
+    x.fillStyle = "#7a4d00"; let yy = y+18*k; linhas.forEach(ls => ls.forEach((l,j) => { x.font = F(700, Math.round(32*k)); x.fillText((j?"   ":"🔥 ")+l, 70, yy+30*k); yy += 42*k; }));
+  }
+  // rodapé
+  x.fillStyle = cor; x.fillRect(0, H-110, W, 110); x.fillStyle = "#fff"; x.font = F(700, 36);
+  const rod = "Peça até "+(S.config.horarioLimite||"10:30")+" pelo link"+(S.config.telefoneRestaurante?" ou WhatsApp "+fmtPhone(normPhone(S.config.telefoneRestaurante)):"");
+  const rl = quebra(rod, W-128, F(700,32)).slice(0,2); x.font = F(700,32); rl.forEach((l,i) => x.fillText(l, 64, rl.length>1 ? H-66+i*42 : H-43));
+  return new Promise(ok => cv.toBlob(ok, "image/png"));
+}
+async function compartilharImagem(d, cx, texto){
+  try{
+    const blob = await imagemCardapio(d, cx), nome = "cardapio-"+d+".png";
+    const file = new File([blob], nome, {type:"image/png"});
+    if(navigator.canShare && navigator.canShare({files:[file]})){ try{ await navigator.share({files:[file], text:texto||menuText(d)}); return; }catch(e){ if(e && e.name==="AbortError") return; } }
+    baixarArquivo(nome, blob, "image/png"); toast("Imagem baixada. Envie no status ou na transmissão junto com a mensagem.");
+  }catch(e){ toast("Não foi possível gerar a imagem."); }
+}
 
 // ----- Preços e promoções -----
 const CAT_PRECO = ["Marmita","Congelada","Adicional","Bebida","Sobremesa","Taxa de entrega","Outro"];
@@ -1821,6 +1926,7 @@ VIEWS.ajustes = () => `
     </div>
     <div class="row"><button class="btn primary" id="a_save">Salvar</button></div>
   </section>
+  ${viewMarca()}
   ${window.__fs ? viewBackup() + viewUsuarios() : ""}
   <section class="panel" style="display:flex;flex-direction:column;gap:12px"><h2>Módulos</h2>
     <div class="mods">${MODULOS.filter(m=>!m.fixo).map(m=>`<div class="mod"><div><b>${esc(m.nome)}</b> ${m.breve?'<span class="pill">em breve</span>':""}<p>${esc(m.desc)}</p></div><input type="checkbox" data-m="${m.id}" ${m.breve?"disabled":""} ${!m.breve && S.config.modulos[m.id]!==false?"checked":""} aria-label="Ligar ${esc(m.nome)}" style="width:22px;height:22px"></div>`).join("")}</div>
@@ -1953,6 +2059,7 @@ function bindUsuarios(){
   });
 }
 BIND.ajustes = () => {
+  bindMarca();
   if(window.__fs){ bindUsuarios(); bindBackup(); }
   $("#a_save").onclick = () => { const ferAntes = S.config.feriadosLocais||"", ferNovo = $("#a_fer").value.trim(); S.config.feriadosLocais = ferNovo; const abertos = ferNovo!==ferAntes ? S.config.abertos.filter(d => !(d>=today() && feriado(d))) : S.config.abertos; saveConfig({abertos, feriadosLocais:ferNovo, restaurante:$("#a_nome").value.trim(), meuNomeWhats:$("#a_wa").value.trim(), horarioLimite:$("#a_hora").value.trim()||"10:30", enderecoRestaurante:$("#a_end").value.trim(), cidade:$("#a_cid").value.trim(), telefoneRestaurante:$("#a_tel").value.trim(), custoMarmita:Number($("#a_custo").value)||0, custoFixoMensal:Number($("#a_fixo").value)||0, premioIndicacao:$("#a_premio").value.trim()||"1 marmita grátis", alertaSaldo:Number($("#a_alerta").value)||0, alertaDias:Number($("#a_alertaDias").value)||0, msgAlerta:$("#a_msg").value.trim()||DEFAULT_CONFIG.msgAlerta, autoPlano:$("#a_auto").checked}).then(()=>{ render(); toast("Ajustes salvos."); }); };
   document.querySelectorAll("[data-m]").forEach(cb => cb.onchange = () => { saveConfig({modulos:Object.assign({}, S.config.modulos, {[cb.dataset.m]:cb.checked})}); render(); });
@@ -1986,7 +2093,7 @@ async function boot(){
   Store.watch("promocoes", docs => { S.promocoes = docs; rerenderSafe(); });
   Store.watch("encomendas", docs => { S.encomendas = docs; rerenderSafe(); }, addDays(today(),-100));
   if(window.__fs) Store.watch("acesso", docs => { const u = docs.find(d => d.id==="usuarios") || {}; S.acesso = {emails:Array.isArray(u.emails)?u.emails:[], info:u.info||{}}; rerenderSafe(); });
-  Store.watch("config", (docs, m) => { const g = docs.find(d=>d.id==="geral"); S.config = Object.assign(structuredClone(DEFAULT_CONFIG), g||{}); S.config.modulos = Object.assign({}, DEFAULT_CONFIG.modulos, (g&&g.modulos)||{}); delete S.config.id; marcar("config", m); rerenderSafe(); automacoes(); });
+  Store.watch("config", (docs, m) => { const g = docs.find(d=>d.id==="geral"); S.config = Object.assign(structuredClone(DEFAULT_CONFIG), g||{}); S.config.modulos = Object.assign({}, DEFAULT_CONFIG.modulos, (g&&g.modulos)||{}); delete S.config.id; marcar("config", m); aplicarMarca(); rerenderSafe(); automacoes(); });
   render();
 }
 window.__startApp = boot;
@@ -2044,7 +2151,9 @@ const AUTH_ERR = {
   "auth/network-request-failed":"Sem internet. Confira a conexão.", "auth/unauthorized-domain":"Adicione este endereço em Authentication > Configurações > Domínios autorizados."
 };
 function loginScreen(msg){
-  show(`<h2>Marmitex Gestão</h2>
+  let lg = "", nm = ""; try{ lg = localStorage.getItem("marmitex-logo")||""; nm = localStorage.getItem("marmitex-nome")||""; }catch(e){}
+  const logoHtml = /^data:image\/(png|jpeg|webp);base64,/.test(lg) ? `<img src="${lg}" alt="" style="width:88px;height:88px;object-fit:contain;border-radius:16px;align-self:center">` : "";
+  show(`${logoHtml}<h2${logoHtml?' style="text-align:center"':""}>${esc(nm||"Marmitex Gestão")}</h2>
     <p class="muted" style="margin:0">Entre com seu e-mail e senha.</p>
     <form id="g_form" class="form" style="grid-template-columns:1fr">
       <label class="f">E-mail<input type="text" id="g_email" autocomplete="username" inputmode="email"></label>

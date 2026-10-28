@@ -39,6 +39,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
 </head>
 <body>
 <main>
+  <img id="logo" alt="" hidden style="width:96px;height:96px;object-fit:contain;border-radius:18px;background:#fff;align-self:center">
   <div><h1 id="rest">Cardápio do dia</h1><p class="muted" id="sub" style="margin:4px 0 0">Carregando...</p></div>
   <section class="card" id="menuBox" hidden><h2>Hoje tem</h2><ul id="menu"></ul><p class="muted" id="menuObs" style="margin:0"></p></section>
   <section class="card" id="formBox" hidden>
@@ -92,6 +93,8 @@ function prazoPassou(){
 Promise.all([fs.collection("publico").doc("info").get().catch(()=>null), fs.collection("cardapios").doc(d).get().catch(()=>null)]).then(([pi, cd]) => {
   info = pi && pi.exists ? pi.data() : {};
   if(info.restaurante){ $("#rest").textContent = info.restaurante; document.title = "Pedido · "+info.restaurante; }
+  if(/^data:image\/(png|jpeg|webp);base64,/.test(info.logo||"")){ $("#logo").src = info.logo; $("#logo").hidden = false; const l = document.querySelector('link[rel="icon"]'); if(l) l.href = info.logo; }
+  if(/^#[0-9a-f]{6}$/i.test(info.cor||"")) document.documentElement.style.setProperty("--brand", info.cor);
   const c = cd && cd.exists ? cd.data() : null;
   if(c && (c.itens||[]).length){
     $("#menu").innerHTML = ""; c.itens.forEach(i => { const li = document.createElement("li"); li.textContent = i.nome; $("#menu").appendChild(li); });

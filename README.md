@@ -43,6 +43,10 @@ Na aba **Cardápio**, escolha um dos cardápios fit prontos ou toque em **Sugeri
 
 Na aba **Preços** você cadastra os tamanhos de marmita, adicionais, bebidas e a taxa de entrega (há uma tabela fit de exemplo para carregar e ajustar). As promoções têm período e dias da semana; as que valem no dia entram sozinhas na mensagem do cardápio. **Copiar tabela para o WhatsApp** junta preços, planos, congeladas e promoções numa mensagem.
 
+## Logo e imagem do cardápio
+
+Em **Ajustes > Logo e cor da marca**, carregue a logo (PNG ou JPG) e escolha a cor. A logo aparece no menu, na tela de entrada, na página de pedido dos clientes e no ícone da aba. No **Cardápio**, o botão **Imagem com a logo** gera uma imagem pronta (1080 × 1350) com pratos, preços e promoções: no celular abre direto o compartilhamento para o WhatsApp; no computador baixa o arquivo.
+
 ## Congeladas
 
 Na aba **Congeladas** você cadastra os pacotes (ex.: Kit 10 congeladas fit), lança as encomendas de cada cliente com o dia da entrega e controla o estoque.
