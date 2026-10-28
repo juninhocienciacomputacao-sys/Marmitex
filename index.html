@@ -155,6 +155,7 @@ a.btn.primary{color:var(--brand-fg)}
 <script>
 (function(){
 "use strict";
+window.__RULES = "rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n\n    // Administrador: troque SEU-EMAIL-AQUI pelo seu e-mail (s\u00f3 uma vez).\n    // Os outros usu\u00e1rios voc\u00ea cadastra dentro do sistema, em Ajustes > Usu\u00e1rios do sistema.\n    function dono() {\n      return request.auth != null && request.auth.token.email in ['SEU-EMAIL-AQUI'];\n    }\n    function usuarios() {\n      return /databases/$(database)/documents/acesso/usuarios;\n    }\n    function membro() {\n      return dono() || (request.auth != null && exists(usuarios())\n        && request.auth.token.email in get(usuarios()).data.emails);\n    }\n\n    // O sistema: administrador e usu\u00e1rios cadastrados leem e gravam.\n    match /{col}/{document=**} {\n      allow read: if membro();\n      allow write: if membro() && col != 'acesso';\n    }\n\n    // Lista de usu\u00e1rios: todos os usu\u00e1rios veem, s\u00f3 o administrador muda.\n    match /acesso/{doc} {\n      allow read: if membro();\n      allow write: if dono();\n    }\n\n    // P\u00e1gina de pedido: qualquer pessoa v\u00ea o card\u00e1pio e o nome do restaurante.\n    match /cardapios/{dia} {\n      allow read: if true;\n    }\n    match /publico/{doc} {\n      allow read: if true;\n    }\n    // P\u00e1gina de pedido: confere se o telefone (em c\u00f3digo, sem dados pessoais) j\u00e1 tem endere\u00e7o cadastrado.\n    // S\u00f3 pode consultar um c\u00f3digo por vez; ningu\u00e9m de fora consegue listar.\n    match /conhecidos/{h} {\n      allow get: if true;\n    }\n\n    // Pedidos pelo link: qualquer pessoa envia o pr\u00f3prio pedido, ningu\u00e9m de fora l\u00ea.\n    match /respostas/{id} {\n      allow create, update: if\n        request.resource.data.keys().hasOnly(['data','telefone','nome','qtd','obs','endereco','hora','entrega','pago'])\n        && request.resource.data.keys().hasAll(['data','telefone','nome','qtd','obs','endereco','hora'])\n        && request.resource.data.data is string && request.resource.data.data.size() == 10\n        && request.resource.data.telefone is string\n        && request.resource.data.telefone.size() >= 12 && request.resource.data.telefone.size() <= 13\n        && id == request.resource.data.data + '_' + request.resource.data.telefone\n        && request.resource.data.qtd is int && request.resource.data.qtd >= 0 && request.resource.data.qtd <= 20\n        && request.resource.data.nome is string && request.resource.data.nome.size() <= 80\n        && request.resource.data.obs is string && request.resource.data.obs.size() <= 300\n        && request.resource.data.endereco is string && request.resource.data.endereco.size() <= 300\n        && request.resource.data.hora is string && request.resource.data.hora.size() <= 30\n        && (!('entrega' in request.resource.data) || request.resource.data.entrega in ['', 'casa', 'portaria', 'maos'])\n        && (!('pago' in request.resource.data) || request.resource.data.pago in ['', 'informado']);\n    }\n  }\n}\n";
 // ---------- helpers ----------
 const $ = s => document.querySelector(s);
 const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -250,6 +251,22 @@ const DEFAULT_CONFIG = {restaurante:"", meuNomeWhats:"", horarioLimite:"10:30", 
 const S = {clientes:[], planos:[], cardapios:{}, config:structuredClone(DEFAULT_CONFIG), tab:"hoje", loaded:{}, mode:"loading",
   busca:"", filtro:"todos", mostrar:100, cardData:today(), calMes:today().slice(0,7), pedidos:{}, respostas:[], ready:{}, acesso:{emails:[], info:{}}, entregadores:[], pacotes:[], encomendas:[], precos:[], promocoes:[], cgFiltro:"abertas", fin:{}, finPeriodo:"mes", diaData:today(), confBusca:"", relPeriodo:"7", relTipo:"todos"};
 
+// Erro de permissão do Firebase: mostra o e-mail e entrega as regras prontas
+function avisoPermissao(col, e){
+  if(e && e.code==="permission-denied" && window.__fs){ if(!S.permErro){ S.permErro = col; render(); } return; }
+  toast("Erro ao carregar "+col+": "+((e&&e.code)||"erro"));
+}
+const emailLogado = () => String(((window.__auth && window.__auth.currentUser) || {}).email || "").toLowerCase();
+const projetoFb = () => { try{ return window.firebase.app().options.projectId || ""; }catch(e){ return ""; } };
+function regrasProntas(){ return String(window.__RULES||"").replace("'SEU-EMAIL-AQUI'", "'"+emailLogado().replace(/'/g,"")+"'"); }
+function painelRegras(erro){
+  const pj = projetoFb(), url = "https://console.firebase.google.com/"+(pj?"project/"+encodeURIComponent(pj)+"/firestore/rules":"");
+  return `<div class="banner" style="display:flex;flex-direction:column;gap:8px;${erro?"border:2px solid var(--bad)":""}">
+    ${erro?`<b>O Firebase está bloqueando o sistema para o e-mail ${esc(emailLogado())}.</b><span>As regras publicadas no Firebase não têm esse e-mail (ou estão desatualizadas). Por isso os pedidos, pagamentos e cadastros não carregam nem salvam.</span>`:`<b>Regras do Firebase prontas para ${esc(emailLogado())}</b>`}
+    <span>1) Toque em <b>Copiar regras prontas</b> (já vão com o seu e-mail). 2) Toque em <b>Abrir regras do Firebase</b>. 3) Apague tudo o que está lá, cole e toque em <b>Publicar</b>. 4) Espere 1 minuto e toque em <b>Recarregar</b>.</span>
+    <div class="row"><button class="btn small primary" data-copyrules>Copiar regras prontas</button><a class="btn small" href="${esc(url)}" target="_blank" rel="noopener">Abrir regras do Firebase</a><button class="btn small" onclick="location.reload()">Recarregar</button></div></div>`;
+}
+document.addEventListener("click", e => { if(e.target && e.target.closest && e.target.closest("[data-copyrules]")){ const t = regrasProntas(); navigator.clipboard.writeText(t).then(() => toast("Regras copiadas. Agora cole no Firebase e toque em Publicar."), () => { const ta = $("#msgCopy"); if(ta){ ta.value = t; ta.focus(); ta.select(); } toast("Não consegui copiar sozinho. Tente pelo computador."); }); } });
 // ---------- store (shared db, or this-browser fallback) ----------
 const Store = {
   fs:null, local:null, subs:{},
@@ -264,7 +281,7 @@ const Store = {
   watch(col, cb, since){
     if(this.fs){
       let q = this.fs.collection(col); if(since) q = q.where("data",">=",since);
-      q.onSnapshot({includeMetadataChanges:true}, snap => cb(snap.docs.map(d => Object.assign({id:d.id}, d.data())), snap.metadata), e => toast("Erro ao carregar "+col+": "+(e.code||e.message)));
+      q.onSnapshot({includeMetadataChanges:true}, snap => cb(snap.docs.map(d => Object.assign({id:d.id}, d.data())), snap.metadata), e => avisoPermissao(col, e));
     } else {
       this.subs[col] = cb; cb(Object.entries(this.local[col]||{}).map(([id,v]) => Object.assign({id}, v)), {fromCache:false});
     }
@@ -297,7 +314,7 @@ async function saveConfig(patch){
 }
 function erroMsg(e){
   if(!e) return "Não foi possível salvar.";
-  if(e.code==="invalid_argument" || e.code==="permission-denied") return "Sem permissão para salvar. Nas regras do Firebase (Firestore > Regras) deve estar o e-mail "+(((window.__auth&&window.__auth.currentUser)||{}).email||"com que você entrou")+".";
+  if(e.code==="permission-denied"){ S.permErro = S.permErro || "gravar"; setTimeout(render, 50); } if(e.code==="invalid_argument" || e.code==="permission-denied") return "Sem permissão para salvar. Nas regras do Firebase (Firestore > Regras) deve estar o e-mail "+(((window.__auth&&window.__auth.currentUser)||{}).email||"com que você entrou")+".";
   if(e.code==="quota_exceeded") return "Espaço cheio. Apague registros antigos para continuar.";
   if(e.code==="resource_exhausted") return "Muitas gravações seguidas. Espere alguns segundos.";
   return "Não foi possível salvar ("+(e.code||"erro")+").";
@@ -568,7 +585,7 @@ function render(){
   const v = $("#view");
   const banner = S.mode==="local" ? '<div class="banner"><b>Modo de teste:</b> os dados ficam só neste navegador. Configure o Firebase para salvar e ver os mesmos dados no celular e no computador.</div>' : "";
   v.onclick = null;
-  v.innerHTML = banner + (VIEWS[S.tab] || VIEWS.hoje)();
+  v.innerHTML = banner + (S.permErro && window.__fs ? painelRegras(true) : "") + (VIEWS[S.tab] || VIEWS.hoje)();
   (BIND[S.tab]||(()=>{}))();
 }
 
@@ -2041,7 +2058,7 @@ VIEWS.ajustes = () => `
     <div class="row"><button class="btn primary" id="a_save">Salvar</button></div>
   </section>
   ${viewMarca()}
-  ${window.__fs ? viewBackup() + viewUsuarios() : ""}
+  ${window.__fs ? viewBackup() + viewUsuarios() + `<section class="panel" style="display:flex;flex-direction:column;gap:12px"><h2>Regras do Firebase</h2><p class="muted" style="margin:0">Se aparecer erro de permissão, ou depois de uma atualização do sistema, copie as regras prontas e publique no Firebase.</p>${painelRegras(false)}</section>` : ""}
   <section class="panel" style="display:flex;flex-direction:column;gap:12px"><h2>Módulos</h2>
     <div class="mods">${MODULOS.filter(m=>!m.fixo).map(m=>`<div class="mod"><div><b>${esc(m.nome)}</b> ${m.breve?'<span class="pill">em breve</span>':""}<p>${esc(m.desc)}</p></div><input type="checkbox" data-m="${m.id}" ${m.breve?"disabled":""} ${!m.breve && S.config.modulos[m.id]!==false?"checked":""} aria-label="Ligar ${esc(m.nome)}" style="width:22px;height:22px"></div>`).join("")}</div>
   </section>
