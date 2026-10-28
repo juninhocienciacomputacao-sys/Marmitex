@@ -2478,7 +2478,7 @@ function setupScreen(msg){
   document.getElementById("g_test").onclick = () => { gate.hidden = true; if(!started){ started = true; window.__startApp(); } };
 }
 const AUTH_ERR = {
-  "auth/invalid-credential":"E-mail ou senha incorretos.", "auth/wrong-password":"E-mail ou senha incorretos.", "auth/user-not-found":"E-mail ou senha incorretos.",
+  "auth/invalid-credential":"E-mail ou senha incorretos. Se não lembra a senha, toque em Esqueci a senha.", "auth/wrong-password":"E-mail ou senha incorretos.", "auth/user-not-found":"E-mail ou senha incorretos.",
   "auth/invalid-email":"Esse e-mail não é válido.", "auth/email-already-in-use":"Esse e-mail já tem acesso. Use Entrar.",
   "auth/weak-password":"A senha precisa ter pelo menos 6 caracteres.", "auth/too-many-requests":"Muitas tentativas. Espere alguns minutos.",
   "auth/operation-not-allowed":"Ative o login por E-mail/senha no Firebase (Authentication > Método de login).",
@@ -2497,13 +2497,13 @@ function loginScreen(msg){
     <div class="foot" style="justify-content:space-between"><button class="btn small" id="g_reset">Esqueci a senha</button><span style="flex:1"></span><button class="btn" id="g_new">Criar acesso</button><button class="btn primary" id="g_in">Entrar</button></div>
     <p class="muted" style="font-size:.8rem;margin:0">Primeira vez? Digite e-mail e uma senha e toque em Criar acesso. <button class="btn small" id="g_cfgchg" style="margin-left:4px">Trocar configuração</button></p>`);
   const em = () => document.getElementById("g_email").value.trim(), pw = () => document.getElementById("g_pass").value;
-  const err = e => { document.getElementById("g_err").textContent = AUTH_ERR[e && e.code] || ("Não foi possível entrar ("+((e && e.code)||"erro")+")."); };
+  const err = e => { document.getElementById("g_err").style.color = "var(--bad)"; document.getElementById("g_err").textContent = AUTH_ERR[e && e.code] || ("Não foi possível entrar ("+((e && e.code)||"erro")+")."); };
   const auth = firebase.auth();
   document.getElementById("g_in").onclick = () => auth.signInWithEmailAndPassword(em(), pw()).catch(err);
   document.getElementById("g_form").onsubmit = e => { e.preventDefault(); auth.signInWithEmailAndPassword(em(), pw()).catch(err); };
   document.getElementById("g_pass").onkeydown = e => { if(e.key==="Enter"){ e.preventDefault(); auth.signInWithEmailAndPassword(em(), pw()).catch(err); } };
   document.getElementById("g_new").onclick = () => auth.createUserWithEmailAndPassword(em(), pw()).catch(err);
-  document.getElementById("g_reset").onclick = () => { if(!em()){ document.getElementById("g_err").textContent = "Digite seu e-mail primeiro."; return; } auth.sendPasswordResetEmail(em()).then(() => { document.getElementById("g_err").textContent = "Enviamos um e-mail para trocar a senha."; }).catch(err); };
+  document.getElementById("g_reset").onclick = () => { if(!em()){ document.getElementById("g_err").textContent = "Digite seu e-mail primeiro."; return; } auth.sendPasswordResetEmail(em()).then(() => { const g = document.getElementById("g_err"); g.style.color = "var(--ok, #1f7a4d)"; g.textContent = "Pronto! Enviamos um e-mail para "+em()+" com o link para criar uma senha nova. Procure também em Spam e em Promoções (remetente noreply@...firebaseapp.com). O link vale por 1 hora. Depois de trocar, volte aqui e toque em Entrar com a senha nova."; }).catch(err); };
   document.getElementById("g_cfgchg").onclick = () => { if(FIREBASE_CONFIG) return; try{ localStorage.removeItem("marmitex-fb"); }catch(e){} location.reload(); };
 }
 function start(){
