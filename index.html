@@ -246,7 +246,7 @@ const ICONS = {
 const icon = id => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(ICONS[id]||"")+'</svg>';
 
 // ---------- state ----------
-const DEFAULT_CONFIG = {restaurante:"", meuNomeWhats:"", horarioLimite:"10:30", alertaSaldo:3, alertaDias:5, msgAlerta:"Olá {nome}! Restam {saldo} marmitas no seu plano {plano}, que vai até {fim}. Quer renovar?", enderecoRestaurante:"", cidade:"", custoMarmita:0, custoFixoMensal:0, telefoneRestaurante:"", premioIndicacao:"1 marmita grátis", autoPlano:true, abertos:[], feriadosLocais:"", estoqueCong:0, estoqueMinCong:0, movCong:[], modulos:{clientes:true,planos:true,congeladas:true,precos:true,cardapio:true,calendario:true,relatorios:true,entregas:true,financeiro:true,marketing:true}};
+const DEFAULT_CONFIG = {restaurante:"", meuNomeWhats:"", horarioLimite:"10:30", alertaSaldo:3, alertaDias:5, msgAlerta:"Olá {nome}! Restam {saldo} marmitas no seu plano {plano}, que vai até {fim}. Quer renovar?", enderecoRestaurante:"", cidade:"", custoMarmita:0, custoFixoMensal:0, telefoneRestaurante:"", premioIndicacao:"1 marmita grátis", autoPlano:true, abertos:[], feriadosLocais:"", prazoTipo:"mesmo", pixChave:"", pixNome:"", pixCidade:"", horaEntrega:"", autoCadastro:true, estoqueCong:0, estoqueMinCong:0, movCong:[], modulos:{clientes:true,planos:true,congeladas:true,precos:true,cardapio:true,calendario:true,relatorios:true,entregas:true,financeiro:true,marketing:true}};
 const S = {clientes:[], planos:[], cardapios:{}, config:structuredClone(DEFAULT_CONFIG), tab:"hoje", loaded:{}, mode:"loading",
   busca:"", filtro:"todos", mostrar:100, cardData:today(), calMes:today().slice(0,7), pedidos:{}, respostas:[], ready:{}, acesso:{emails:[], info:{}}, entregadores:[], pacotes:[], encomendas:[], precos:[], promocoes:[], cgFiltro:"abertas", fin:{}, finPeriodo:"mes", diaData:today(), confBusca:"", relPeriodo:"7", relTipo:"todos"};
 
@@ -293,7 +293,7 @@ const Store = {
 async function saveConfig(patch){
   S.config = Object.assign({}, S.config, patch);
   try{ await Store.set("config","geral",S.config); }catch(e){ toast(erroMsg(e)); }
-  if(window.__fs) Store.set("publico","info",{restaurante:S.config.restaurante||"", horarioLimite:S.config.horarioLimite||"10:30", telefone:normPhone(S.config.telefoneRestaurante)||"", logo:logoOk()?S.config.logo:"", cor:S.config.corMarca||""}).catch(()=>{});
+  if(window.__fs) Store.set("publico","info",{restaurante:S.config.restaurante||"", horarioLimite:S.config.horarioLimite||"10:30", telefone:normPhone(S.config.telefoneRestaurante)||"", logo:logoOk()?S.config.logo:"", cor:S.config.corMarca||"", prazoTipo:S.config.prazoTipo||"mesmo", pixChave:S.config.pixChave||"", pixNome:S.config.pixNome||"", pixCidade:S.config.pixCidade||S.config.cidade||""}).catch(()=>{});
 }
 function erroMsg(e){
   if(!e) return "Não foi possível salvar.";
@@ -324,6 +324,21 @@ async function copiar(text){
 // ---------- derived ----------
 const plano = id => S.planos.find(p => p.id===id);
 const isOpen = d => S.config.abertos.includes(d);
+function prazoTexto(d){
+  const h = S.config.horarioLimite||"10:30";
+  if(S.config.prazoTipo!=="anterior") return "até as "+h;
+  const a = parseIso(addDays(d,-1)); return "até "+h+" de "+DOW_LONG[a.getDay()]+" ("+pad(a.getDate())+"/"+pad(a.getMonth()+1)+")";
+}
+const MODOS = {casa:"🏠 Casa", portaria:"🏢 Pode deixar na portaria", maos:"🤝 Entregar só em mãos"};
+const modoTxt = c => MODOS[c.entregaModo] || "";
+const semAcento = t => String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^A-Za-z0-9 .-]/g,"").trim();
+function crc16(t){ let c = 0xFFFF; for(let i=0;i<t.length;i++){ c ^= t.charCodeAt(i)<<8; for(let j=0;j<8;j++) c = (c & 0x8000) ? ((c<<1)^0x1021) & 0xFFFF : (c<<1) & 0xFFFF; } return c.toString(16).toUpperCase().padStart(4,"0"); }
+function pixCode(valor, txid){
+  const chave = String(S.config.pixChave||"").trim(); if(!chave) return "";
+  const f = (id, v) => id + String(v.length).padStart(2,"0") + v;
+  const p = f("00","01") + f("26", f("00","BR.GOV.BCB.PIX") + f("01", chave)) + f("52","0000") + f("53","986") + (valor ? f("54", Number(valor).toFixed(2)) : "") + f("58","BR") + f("59", semAcento(S.config.pixNome||S.config.restaurante).slice(0,25)||"RESTAURANTE") + f("60", semAcento(S.config.pixCidade||S.config.cidade).slice(0,15)||"BRASIL") + f("62", f("05", String(txid||"").replace(/[^A-Za-z0-9]/g,"").slice(0,25)||"***")) + "6304";
+  return p + crc16(p);
+}
 // Feriados nacionais (fixos e móveis) e os feriados da cidade cadastrados em Ajustes
 function pascoa(y){ const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),x=h+l-7*m+114; return iso(new Date(y,Math.floor(x/31)-1,(x%31)+1)); }
 const FER = {};
@@ -356,13 +371,14 @@ function idx(){
 const invalidar = () => { IDX = null; };
 function clienteDoDia(id, v){
   const c = idx().porId.get(id) || {id, nome:"(cliente apagado)"};
-  if(!v.endEntrega && !v.obsDia) return c;
+  if(!v.endEntrega && !v.obsDia && !v.entrega) return c;
   const x = Object.assign({}, c);
   if(v.endEntrega){ x.rua = v.endEntrega; x.numero = ""; x.complemento = ""; x.referencia = "endereço informado no pedido de hoje"; }
   if(v.obsDia) x.obs = [c.obs, "Hoje: "+v.obsDia].filter(Boolean).join(" · ");
+  if(v.entrega) x.entregaModo = v.entrega;
   return x;
 }
-const confirmadosDia = d => Object.entries(pedido(d).confirmados||{}).filter(([id,v]) => v && v.qtd>0).map(([id,v]) => ({id, qtd:v.qtd, avulso:!!v.avulso, origem:v.origem||"", cliente:clienteDoDia(id, v)}));
+const confirmadosDia = d => Object.entries(pedido(d).confirmados||{}).filter(([id,v]) => v && v.qtd>0).map(([id,v]) => ({id, qtd:v.qtd, avulso:!!v.avulso, origem:v.origem||"", pixInf:!!v.pixInformado, cliente:clienteDoDia(id, v)}));
 function usadas(c){
   if(!c.planoId) return 0; let n = 0;
   (idx().uso[c.id]||[]).forEach(([d,q]) => { if(c.inicio && d < c.inicio) return; if(c.fim && d > c.fim) return; n += q; });
@@ -405,16 +421,29 @@ const apagando = new Set();
 function apagarResposta(r){ if(apagando.has(r.id)) return; apagando.add(r.id); enqueue(() => Store.del("respostas", r.id)); }
 const prontos = (...cols) => cols.every(c => S.ready[c]);
 // Pedidos feitos pelo link: aplica cada resposta nova ou alterada ao pedido do dia
+const criando = new Set(), mudouModo = new Set();
 function processarRespostas(){
   if(!window.__fs || !prontos("clientes","pedidos","respostas")) return;
   S.respostas.forEach(r => {
     if(!r.data) return;
     if(r.data < today()){ apagarResposta(r); return; }
-    const c = idx().porTel.get(r.telefone); if(!c) return;
+    let c = idx().porTel.get(r.telefone);
+    if(!c){
+      if(S.config.autoCadastro===false || !(Number(r.qtd)>0) || criando.has(r.telefone)) return;
+      criando.add(r.telefone);
+      const e = splitEndereco(String(r.endereco||"").trim());
+      const novo = {nome:String(r.nome||"").trim()||"Cliente", telefone:r.telefone, rua:e.rua||"", numero:e.numero||"", complemento:e.complemento||"", bairro:e.bairro||"", cidade:S.config.cidade||"", pagamento:"Pix", entregaModo:r.entrega||"", ativo:true, origem:"pedido pelo link", endLink:String(r.endereco||"").trim(), criadoEm:new Date().toISOString()};
+      enqueue(() => Store.set("clientes", r.telefone, novo)).then(res => { if(res===FALHOU) criando.delete(r.telefone); else toast("Cliente novo cadastrado pelo link: "+novo.nome); });
+      return; // entra na lista quando o cadastro chegar
+    }
     const cur = (pedido(r.data).confirmados||{})[c.id];
-    if(cur && cur.respHora===r.hora){ apagarResposta(r); return; }
+    if(r.entrega && r.entrega!==c.entregaModo && !mudouModo.has(c.id)){ mudouModo.add(c.id); enqueue(() => Store.update("clientes", c.id, {entregaModo:r.entrega})); }
+    if(cur && cur.respHora===r.hora){
+      if(r.pago==="informado" && !cur.pixInformado) patchConf(r.data, {[c.id]:{pixInformado:true}});
+      apagarResposta(r); return;
+    }
     (() => { const end = String(r.endereco||"").trim(); if(end && !c.rua && !c.endereco){ const e = splitEndereco(end); const patch = {rua:e.rua||end, numero:e.numero||"", complemento:e.complemento||""}; if(e.bairro && !c.bairro) patch.bairro = e.bairro; enqueue(() => Store.update("clientes", c.id, patch)); } })(),
-    setConf(r.data, c, Number(r.qtd)||0, {respHora:r.hora, origem:"link", endEntrega:(c.rua||c.endereco) ? String(r.endereco||"").trim() : "", obsDia:String(r.obs||"").trim()}).then(res => { if(res!==FALHOU) apagarResposta(r); });
+    setConf(r.data, c, Number(r.qtd)||0, {respHora:r.hora, origem:"link", endEntrega:(c.rua||c.endereco) && String(r.endereco||"").trim()!==(c.endLink||"") ? String(r.endereco||"").trim() : "", obsDia:String(r.obs||"").trim(), entrega:String(r.entrega||""), pixInformado:r.pago==="informado"}).then(res => { if(res!==FALHOU) apagarResposta(r); });
   });
 }
 // Clientes de plano entram sozinhos nos dias abertos em que recebem
@@ -426,6 +455,43 @@ function autoPlanoDia(d){
   planoHoje(d).forEach(c => setConf(d, c, plano(c.planoId)?.porDia||1, {origem:"plano"}));
 }
 let autoT;
+// ----- Fechar os pedidos do dia e avisar os clientes -----
+const avPago = (d, id) => !!lancId("av-"+d+"-"+id);
+function fecharLote(d, fechar){
+  setPedidoCampos(d, {fechado:fechar, fechadoEm:fechar?new Date().toISOString():""});
+  if(S.cardapios[d]) enqueue(() => Store.update("cardapios", d, {fechado:fechar}));
+  render(); toast(fechar ? "Pedidos fechados. Agora avise os clientes." : "Pedidos reabertos. O link volta a aceitar pedidos.");
+  if(fechar) painelAvisos(d);
+}
+function avisadosDia(d){ try{ return new Set(JSON.parse(localStorage.getItem("avisados-"+d)||"[]")); }catch(e){ return new Set(); } }
+function marcarAvisado(d, id){ const s = avisadosDia(d); s.add(id); try{ localStorage.setItem("avisados-"+d, JSON.stringify([...s])); }catch(e){} }
+function msgConfirmacao(d, x){
+  const c = x.cliente, dt = parseIso(d), preco = Number(S.cardapios[d] && S.cardapios[d].preco)||0, total = x.avulso ? x.qtd*preco : 0;
+  let t = "Oi, "+(c.nome||"").split(" ")[0]+"! ✅ Seu pedido de "+DOW_LONG[dt.getDay()]+" ("+pad(dt.getDate())+"/"+pad(dt.getMonth()+1)+") está confirmado: *"+x.qtd+(x.qtd>1?" marmitas":" marmita")+"*.";
+  if(total){
+    if(avPago(d, x.id)) t += "\n💰 Total "+brl(total)+": pagamento recebido. Obrigado!";
+    else if(x.pixInf) t += "\n💰 Total "+brl(total)+": recebemos o aviso do seu Pix, vamos conferir.";
+    else if(S.config.pixChave) t += "\n💰 Total "+brl(total)+". Para pagar, use o Pix copia e cola abaixo:\n\n"+pixCode(total, "MX"+d.replace(/-/g,"").slice(2)+String(c.telefone||"").slice(-4));
+    else t += "\n💰 Total "+brl(total)+(c.pagamento?" ("+c.pagamento+")":"")+".";
+  }
+  t += "\n📍 "+(enderecoTxt(c)||"endereço a confirmar")+(modoTxt(c)?"\n"+modoTxt(c):"");
+  if(S.config.horaEntrega) t += "\n🛵 Saímos para entrega a partir de "+S.config.horaEntrega+".";
+  return t + "\n\n"+(S.config.restaurante||"Obrigado pela preferência!");
+}
+function msgGeral(d){
+  const dt = parseIso(d);
+  return "✅ *Pedidos de "+DOW_LONG[dt.getDay()]+" ("+pad(dt.getDate())+"/"+pad(dt.getMonth()+1)+") fechados!*\nTodos os pedidos recebidos estão confirmados e já foram para a produção."+(S.config.horaEntrega?"\n🛵 Entregas a partir de "+S.config.horaEntrega+".":"")+(S.config.pixChave?"\n💰 Pedido avulso: pague pelo Pix "+S.config.pixChave+(S.config.pixNome?" ("+S.config.pixNome+")":"")+".":"")+"\n\nObrigado!"+(S.config.restaurante?" "+S.config.restaurante:"");
+}
+function painelAvisos(d){
+  const conf = confOrdenados(d);
+  const lista = () => { const av = avisadosDia(d); return `<p class="muted" style="margin:0">Toque em <b>Avisar</b>: o WhatsApp abre com a mensagem pronta para o cliente. Depois volte aqui e toque no próximo. <b>${av.size} de ${conf.length}</b> avisados.</p>
+    <div class="results" style="max-height:55vh;overflow:auto">${conf.map(x => `<div class="res"><div><b>${esc(x.cliente.nome)}</b> · ${x.qtd} ${x.avulso?'<span class="pill warn">avulso</span>':'<span class="pill ok">plano</span>'}<div class="muted" style="font-size:.8rem">${fmtPhone(x.cliente.telefone)}</div></div>${x.cliente.telefone?`<a class="btn small ${av.has(x.id)?"":"primary"}" data-av="${esc(x.id)}" href="https://wa.me/${esc(x.cliente.telefone)}?text=${encodeURIComponent(msgConfirmacao(d,x))}" target="_blank" rel="noopener">${av.has(x.id)?"✓ Avisado":"Avisar"}</a>`:'<span class="muted">sem telefone</span>'}</div>`).join("")}</div>`; };
+  openModal(`<h2>Avisar os clientes</h2><div id="avList" style="display:flex;flex-direction:column;gap:10px">${lista()}</div><div class="foot"><span style="flex:1"></span><button class="btn primary" data-close>Pronto</button></div>`, () => {
+    const box = $("#avList");
+    box.onclick = e => { const a = e.target.closest("[data-av]"); if(!a) return; marcarAvisado(d, a.dataset.av); setTimeout(() => { box.innerHTML = lista(); }, 300); };
+  });
+}
+
 // Página de pedido: reconhece quem já tem endereço cadastrado sem expor dados (só um código do telefone)
 const temEndereco = c => c.ativo!==false && c.telefone && (c.rua || c.endereco);
 async function hashTel(t){ const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("marmitex:"+t)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join(""); }
@@ -435,12 +501,12 @@ async function syncConhecidos(){
   syncCon = true;
   try{
     let feitos = {}; try{ feitos = JSON.parse(localStorage.getItem("marmitex-conh")||"{}"); }catch(e){}
-    const quer = {}; for(const c of S.clientes) if(temEndereco(c)) quer[await hashTel(c.telefone)] = 1;
-    const novos = Object.keys(quer).filter(h => !feitos[h]), velhos = Object.keys(feitos).filter(h => !quer[h]);
-    const ops = [...novos.map(h => [h,1]), ...velhos.map(h => [h,0])];
+    const quer = {}; for(const c of S.clientes) if(temEndereco(c)) quer[await hashTel(c.telefone)] = (c.planoId && statusCliente(c).k!=="bad") ? 2 : 1;
+    const novos = Object.keys(quer).filter(h => feitos[h]!==quer[h]), velhos = Object.keys(feitos).filter(h => !quer[h]);
+    const ops = [...novos.map(h => [h,quer[h]]), ...velhos.map(h => [h,0])];
     for(let i=0; i<ops.length; i+=400){
       const b = window.__fs.batch();
-      ops.slice(i, i+400).forEach(([h,on]) => { const ref = window.__fs.collection("conhecidos").doc(h); on ? b.set(ref, {e:1}) : b.delete(ref); });
+      ops.slice(i, i+400).forEach(([h,on]) => { const ref = window.__fs.collection("conhecidos").doc(h); on ? b.set(ref, on===2 ? {e:1, p:1} : {e:1}) : b.delete(ref); });
       await b.commit();
     }
     try{ localStorage.setItem("marmitex-conh", JSON.stringify(quer)); }catch(e){}
@@ -479,9 +545,10 @@ function menuText(dataIso){
   if(c.obs) t += "\n"+c.obs+"\n";
   const link = linkPedido(dataIso);
   if(link){
-    t += "\n👉 *Peça aqui até as "+(S.config.horarioLimite||"10:30")+":*\n"+link;
+    t += "\n👉 *Peça aqui "+prazoTexto(dataIso)+":*\n"+link;
     if(S.config.autoPlano!==false) t += "\n\nCliente de plano: sua marmita já está garantida. Se não quiser hoje, toque no link e escolha *Não quero hoje*.";
-  } else t += "\nResponda *SIM* até as "+(S.config.horarioLimite||"10:30")+" para confirmar sua marmita.";
+  } else t += "\nResponda *SIM* "+prazoTexto(dataIso)+" para confirmar sua marmita.";
+  t += "\n🛵 Só entrega"+(S.config.horaEntrega?", a partir de "+S.config.horaEntrega:"")+".";
   return t;
 }
 
@@ -523,15 +590,15 @@ function listaEntrega(d){
     const c = x.cliente, b = c.bairro || "Sem bairro";
     if(b!==bairro){ bairro = b; t += "\n*"+b+"*\n"; }
     i++;
-    t += i+". "+(c.nome||"")+" ("+x.qtd+")"+(x.avulso?" avulso":"")+"\n   "+(enderecoTxt(c)||"sem endereço")+(c.referencia?" · Ref: "+c.referencia:"")+"\n   "+fmtPhone(c.telefone)+(c.pagamento?" · "+c.pagamento:"")+(c.obs?"\n   Obs: "+c.obs:"")+"\n";
+    t += i+". "+(c.nome||"")+" ("+x.qtd+")"+(x.avulso?" avulso":"")+"\n   "+(enderecoTxt(c)||"sem endereço")+(c.referencia?" · Ref: "+c.referencia:"")+(modoTxt(c)?"\n   "+modoTxt(c):"")+"\n   "+fmtPhone(c.telefone)+(c.pagamento?" · "+c.pagamento:"")+(c.obs?"\n   Obs: "+c.obs:"")+"\n";
   });
   const cg = modOn("congeladas") ? congDia(d).filter(e => !e.entregue) : [];
   if(cg.length) t += "\n🧊 *Congeladas*\n"+cg.map(e => { const c = idx().porId.get(e.clienteId)||{}; return "• "+(c.nome||"")+": "+descEnc(e)+(e.pago?"":" · cobrar "+brl(e.valor))+"\n   "+(enderecoTxt(c)||"sem endereço"); }).join("\n")+"\n";
   return t;
 }
 function csvDia(d){
-  const rows = [["Bairro","Cliente","Telefone","Endereço","Referência","Quantidade","Tipo","Pagamento","Saldo do plano","Observações"]];
-  confOrdenados(d).forEach(x => { const c = x.cliente; rows.push([c.bairro||"", c.nome||"", fmtPhone(c.telefone), enderecoTxt(c), c.referencia||"", x.qtd, x.avulso?"Avulso":"Plano", c.pagamento||"", c.planoId&&c.marmitasContratadas?saldo(c):"", c.obs||""]); });
+  const rows = [["Bairro","Cliente","Telefone","Endereço","Referência","Quantidade","Tipo","Pagamento","Saldo do plano","Entrega","Observações"]];
+  confOrdenados(d).forEach(x => { const c = x.cliente; rows.push([c.bairro||"", c.nome||"", fmtPhone(c.telefone), enderecoTxt(c), c.referencia||"", x.qtd, x.avulso?"Avulso":"Plano", c.pagamento||"", c.planoId&&c.marmitasContratadas?saldo(c):"", (MODOS[c.entregaModo]||"").replace(/^\S+ /,""), c.obs||""]); });
   return toCsv(rows);
 }
 VIEWS.hoje = () => {
@@ -573,7 +640,12 @@ VIEWS.hoje = () => {
       <div class="results" id="confRes"></div>
       <div class="row"><button class="btn small primary" id="respBtn">Colar respostas do WhatsApp</button></div>
       ${ph.length?`<div class="row"><button class="btn small" id="confPlano">Confirmar os ${ph.length} clientes de plano que recebem ${nomeDia}</button></div>`:""}`)}
-    ${step(4,"Gerar a lista de entrega", false, `
+    ${step(4,"Fechar os pedidos e avisar os clientes", !!p.fechado, p.fechado ? `
+      <p>Pedidos fechados${p.fechadoEm?" às "+new Date(p.fechadoEm).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}):""}. O link não aceita mais pedidos para este dia. Avise cada cliente que o pedido foi recebido${S.config.pixChave?" (avulsos recebem o Pix com o valor)":""}.</p>
+      <div class="row"><button class="btn small primary" id="avisarTodos">Avisar clientes (${avisadosDia(d).size} de ${conf.length})</button><button class="btn small" id="copyTelsConf">Copiar telefones dos confirmados</button><button class="btn small" id="copyMsgGeral">Copiar aviso geral</button><button class="btn small" id="reabrir">Reabrir pedidos</button></div>` : `
+      <p>No horário limite (${esc(prazoTexto(d))}), feche os pedidos: o link para de aceitar pedidos e você manda a confirmação para cada cliente.</p>
+      <div class="row"><button class="btn small ${conf.length?"primary":""}" id="fecharLote" ${conf.length?"":"disabled"}>Fechar pedidos do dia</button></div>`)}
+    ${step(5,"Gerar a lista de entrega", false, `
       <p>Lista por bairro, com endereço, quantidade e forma de pagamento. Mande para os entregadores.</p>
       <div class="row"><button class="btn small primary" id="copyEnt" ${conf.length?"":"disabled"}>Copiar lista de entrega</button><button class="btn small" id="csvDia" ${conf.length?"":"disabled"}>Baixar planilha (.csv)</button>${modOn("entregas")?`<button class="btn small" data-go="entregas">Montar rotas dos entregadores</button>`:""}</div>`)}
   </div></section>
@@ -594,7 +666,7 @@ function renderConfirmados(){
   const el = $("#confTab"); if(!el) return;
   const todos = confOrdenados(S.diaData), conf = todos.slice(0, S.confMostrar||200);
   el.innerHTML = (todos.length>conf.length ? `<p class="muted" style="margin:0 0 8px">Mostrando ${conf.length} de ${todos.length}. Use a busca acima para achar um cliente. <button class="btn small" id="confTodos">Mostrar todos</button></p>` : "") + (conf.length ? `<div class="tablebox"><table><thead><tr><th>Cliente</th><th>Bairro</th><th>Endereço</th><th>Qtd</th><th>Tipo</th><th>Pagamento</th><th>Saldo</th></tr></thead><tbody>
-    ${conf.map(x=>{const c=x.cliente;return `<tr><td><b>${esc(c.nome)}</b><div class="muted" style="font-size:.8rem">${fmtPhone(c.telefone)}</div></td><td>${esc(c.bairro||"—")}</td><td>${esc(enderecoTxt(c)||"—")}</td><td><span class="qty"><button class="btn small" data-q="${esc(x.id)}" data-v="${x.qtd-1}" aria-label="Menos uma">−</button><b>${x.qtd}</b><button class="btn small" data-q="${esc(x.id)}" data-v="${x.qtd+1}" aria-label="Mais uma">+</button></span></td><td>${x.avulso?'<span class="pill warn">Avulso</span>':'<span class="pill ok">Plano</span>'}${x.origem==="link"?' <span class="pill">pelo link</span>':x.origem==="plano"?' <span class="pill bad">sem confirmação</span>':""}</td><td>${esc(c.pagamento||"—")}</td><td class="num">${c.planoId&&c.marmitasContratadas?saldo(c):"—"}</td></tr>`}).join("")}
+    ${conf.map(x=>{const c=x.cliente;return `<tr><td><b>${esc(c.nome)}</b><div class="muted" style="font-size:.8rem">${fmtPhone(c.telefone)}${modoTxt(c)?" · "+esc(modoTxt(c)):""}</div>${c.obs?`<div style="font-size:.82rem;margin-top:2px">📝 ${esc(c.obs)}</div>`:""}</td><td>${esc(c.bairro||"—")}</td><td>${esc(enderecoTxt(c)||"—")}</td><td><span class="qty"><button class="btn small" data-q="${esc(x.id)}" data-v="${x.qtd-1}" aria-label="Menos uma">−</button><b>${x.qtd}</b><button class="btn small" data-q="${esc(x.id)}" data-v="${x.qtd+1}" aria-label="Mais uma">+</button></span></td><td>${x.avulso?'<span class="pill warn">Avulso</span>':'<span class="pill ok">Plano</span>'}${x.origem==="link"?' <span class="pill">pelo link</span>':x.origem==="plano"?' <span class="pill bad">sem confirmação</span>':""}</td><td>${esc(c.pagamento||"—")}${x.avulso?(avPago(S.diaData,x.id)?' <span class="pill ok">pago</span>':x.pixInf?' <span class="pill warn">Pix informado</span>':' <span class="pill bad">a pagar</span>'):""}</td><td class="num">${c.planoId&&c.marmitasContratadas?saldo(c):"—"}</td></tr>`}).join("")}
   </tbody></table></div>` : `<div class="panel empty">Nenhum pedido confirmado neste dia ainda.</div>`);
   const ct = $("#confTodos"); if(ct) ct.onclick = () => { S.confMostrar = 100000; renderConfirmados(); };
 }
@@ -621,6 +693,11 @@ BIND.hoje = () => {
     const i = Number(b.dataset.lote); const tels = S.clientes.filter(c=>c.ativo!==false && c.telefone).slice(i*256,(i+1)*256).map(c=>"+"+c.telefone).join("\n");
     $("#msgCopy").value = tels; copiar(tels);
   });
+  const fl = $("#fecharLote"); if(fl) fl.onclick = () => fecharLote(S.diaData, true);
+  const ra = $("#reabrir"); if(ra) ra.onclick = () => fecharLote(S.diaData, false);
+  const at = $("#avisarTodos"); if(at) at.onclick = () => painelAvisos(S.diaData);
+  const ct = $("#copyTelsConf"); if(ct) ct.onclick = () => { const t = confirmadosDia(S.diaData).map(x=>x.cliente.telefone).filter(Boolean).map(t=>"+"+t).join("\n"); $("#msgCopy").value = t; copiar(t); };
+  const mg = $("#copyMsgGeral"); if(mg) mg.onclick = () => { const t = msgGeral(S.diaData); $("#msgCopy").value = t; copiar(t); };
   $("#markEnv").onclick = () => { const on = !pedido(S.diaData).enviado; setPedidoCampos(S.diaData, {enviado:on, enviadoEm:on?new Date().toISOString():""}); render(); toast(on?"Envio marcado.":"Envio desmarcado."); };
   const b = $("#confBusca"); b.oninput = () => { S.confBusca = b.value; renderBuscaConf(); };
   const view = $("#view");
@@ -699,6 +776,7 @@ function formCliente(c, pre){
       <label class="f c2">Bairro<input type="text" id="c_bairro" value="${esc(c.bairro)}"></label>
       <label class="f c2">Cidade<input type="text" id="c_cid" value="${esc(c.cidade)}"></label>
       <label class="f c6">Ponto de referência<input type="text" id="c_ref" value="${esc(c.referencia)}"></label>
+      <label class="f c2">Entrega<select id="c_ent">${[["","—"],["casa","Casa"],["portaria","Apartamento: pode deixar na portaria"],["maos","Apartamento: só em mãos"]].map(([v,n])=>`<option value="${v}" ${(c.entregaModo||"")===v?"selected":""}>${n}</option>`).join("")}</select></label>
       <label class="f c2">Forma de pagamento<select id="c_pag">${PAGAMENTOS.map(p=>`<option ${c.pagamento===p?"selected":""}>${p}</option>`).join("")}</select></label>
       <label class="f c4">Plano<select id="c_plano"><option value="">Avulso (sem plano)</option>${S.planos.map(p=>`<option value="${esc(p.id)}" ${c.planoId===p.id?"selected":""}>${esc(p.nome)} · ${p.marmitas||0} marmitas · ${brl(p.preco)}</option>`).join("")}</select></label>
       <label class="f c2">Início do plano<input type="date" id="c_ini" value="${esc(c.inicio)}"></label>
@@ -720,7 +798,7 @@ function formCliente(c, pre){
     $("#c_save").onclick = async () => {
       const nome = $("#c_nome").value.trim(); if(!nome){ toast("Preencha o nome."); $("#c_nome").focus(); return; }
       const tel = normPhone($("#c_tel").value);
-      const data = Object.assign({}, c, {nome, telefone:tel, rua:$("#c_rua").value.trim(), numero:$("#c_num").value.trim(), complemento:$("#c_comp").value.trim(), bairro:$("#c_bairro").value.trim(), cidade:$("#c_cid").value.trim(), referencia:$("#c_ref").value.trim(), pagamento:$("#c_pag").value, planoId:$("#c_plano").value, inicio:$("#c_ini").value, fim:$("#c_fim").value, marmitasContratadas:Number($("#c_qtd").value)||0, obs:$("#c_obs").value.trim(), indicadoPor:$("#c_ind").value, ativo:$("#c_ativo").checked, atualizado:new Date().toISOString()});
+      const data = Object.assign({}, c, {nome, telefone:tel, rua:$("#c_rua").value.trim(), numero:$("#c_num").value.trim(), complemento:$("#c_comp").value.trim(), bairro:$("#c_bairro").value.trim(), cidade:$("#c_cid").value.trim(), referencia:$("#c_ref").value.trim(), entregaModo:$("#c_ent").value, pagamento:$("#c_pag").value, planoId:$("#c_plano").value, inicio:$("#c_ini").value, fim:$("#c_fim").value, marmitasContratadas:Number($("#c_qtd").value)||0, obs:$("#c_obs").value.trim(), indicadoPor:$("#c_ind").value, ativo:$("#c_ativo").checked, atualizado:new Date().toISOString()});
       let id = c.id || (tel || uid());
       if(novo && tel && S.clientes.some(x=>x.id===tel)){ toast("Já existe um cliente com esse telefone."); return; }
       try{ await Store.set("clientes", id, data); closeModal(); toast("Cliente salvo."); }catch(e){ toast(erroMsg(e)); }
@@ -791,7 +869,7 @@ function splitEndereco(e){
   if(!e) return {};
   const m = e.match(/^(.*?(?:rua|r\.|av\.?|avenida|travessa|tv\.|alameda|estrada|rodovia|pra[çc]a)[^,\d]*?)[, ]+(?:n[ºo°.]?\s*)?(\d+[a-z]?)\b([\s\S]*)$/i);
   const bm = e.match(/bairro[:\s]+([^\n,.]+)/i); const bairro = bm ? bm[1].trim() : "";
-  if(m) return {bairro, rua:m[1].replace(/^.*?(?=(rua|r\.|av|avenida|travessa|tv\.|alameda|estrada|rodovia|pra[çc]a))/i,"").trim(), numero:m[2], complemento:m[3].replace(/bairro[:\s]+[^\n,.]+/i,"").replace(/\s+/g," ").replace(/^[\s,\-–]+/,"").trim()};
+  if(m) return {bairro, rua:m[1].replace(/^.*?(?=(rua|r\.|av|avenida|travessa|tv\.|alameda|estrada|rodovia|pra[çc]a))/i,"").trim(), numero:m[2], complemento:m[3].replace(/bairro[:\s]+[^\n,.]+/i,"").replace(/\s+/g," ").replace(/^[\s,\-–]+/,"").replace(/[\s,\-–]+$/,"").trim()};
   return {bairro, rua:e};
 }
 let IMP = [];
@@ -990,7 +1068,7 @@ BIND.cardapio = () => {
     syncDraft(); const itens = draft.itens.filter(i=>i.nome.trim()).map(i=>({nome:i.nome.trim(),cat:i.cat}));
     if(!itens.length){ toast("Adicione pelo menos um prato."); return; }
     try{
-      await Store.set("cardapios", S.cardData, {data:S.cardData, itens, preco:Number(draft.preco)||0, obs:draft.obs.trim(), atualizado:new Date().toISOString()});
+      await Store.set("cardapios", S.cardData, {data:S.cardData, itens, preco:Number(draft.preco)||0, obs:draft.obs.trim(), fechado:!!(S.cardapios[S.cardData] && S.cardapios[S.cardData].fechado), atualizado:new Date().toISOString()});
       if(!isOpen(S.cardData)) await saveConfig({abertos:[...S.config.abertos, S.cardData].sort()});
       draft = null; toast("Cardápio salvo.");
     }catch(e){ toast(erroMsg(e)); }
@@ -1595,7 +1673,7 @@ function textoRota(d, e, lista){
   if(S.config.enderecoRestaurante) t += "Saída: "+S.config.enderecoRestaurante+"\n";
   lista.forEach((x,i) => { const c = x.cliente;
     const cob = cobrarCong(x);
-    t += "\n*"+(i+1)+". "+(c.nome||"")+"* ("+descParada(x)+")\n"+(enderecoTxt(c)||"sem endereço")+(c.referencia?"\nRef: "+c.referencia:"")+"\n📞 "+fmtPhone(c.telefone)+(c.pagamento?"\n💰 "+c.pagamento+(x.avulso?" (avulso, cobrar)":""):"")+(cob?"\n💰 Cobrar congeladas: "+brl(cob):"")+(c.obs?"\n📝 "+c.obs:"")+(x.cong||[]).filter(e=>e.obs).map(e=>"\n🧊 "+e.obs).join("")+"\n";
+    t += "\n*"+(i+1)+". "+(c.nome||"")+"* ("+descParada(x)+")\n"+(enderecoTxt(c)||"sem endereço")+(c.referencia?"\nRef: "+c.referencia:"")+(modoTxt(c)?"\n"+modoTxt(c):"")+"\n📞 "+fmtPhone(c.telefone)+(c.pagamento?"\n💰 "+c.pagamento+(x.avulso?" (avulso, cobrar)":""):"")+(cob?"\n💰 Cobrar congeladas: "+brl(cob):"")+(c.obs?"\n📝 "+c.obs:"")+(x.cong||[]).filter(e=>e.obs).map(e=>"\n🧊 "+e.obs).join("")+"\n";
   });
   const links = mapsLinks(lista);
   if(links.length) t += "\n🗺️ Mapa"+(links.length>1?" (em "+links.length+" partes)":"")+":\n"+links.join("\n");
@@ -1620,7 +1698,7 @@ VIEWS.entregas = () => {
   const conf = paradasDia(d), tot = conf.reduce((s,x)=>s+x.qtd,0), sem = r[""]||[], ncg = conf.reduce((s,x)=>s+x.cong.length,0);
   const ents = S.entregadores.slice().sort((a,b)=>(a.nome||"").localeCompare(b.nome||"","pt-BR"));
   const opts = sel => `<option value="">Sem entregador</option>`+ents.filter(e=>e.ativo!==false).map(e=>`<option value="${esc(e.id)}" ${sel===e.id?"selected":""}>${esc(e.nome)}</option>`).join("");
-  const parada = (x,i,eid,n) => { const c = x.cliente; return `<tr><td class="num">${i+1}</td><td><b>${esc(c.nome)}</b> · ${esc(descParada(x))}${x.avulso?' <span class="pill warn">avulso</span>':""}${cobrarCong(x)?` <span class="pill warn">cobrar ${brl(cobrarCong(x))}</span>`:""}<div class="muted" style="font-size:.8rem">${esc(enderecoTxt(c)||"sem endereço")}${c.referencia?" · "+esc(c.referencia):""}</div></td><td>${esc(c.pagamento||"—")}</td><td><select data-mv="${esc(x.id)}" aria-label="Entregador" style="min-width:130px">${opts(eid)}</select></td><td style="white-space:nowrap">${eid?`<button class="btn small" data-up="${esc(x.id)}" data-e="${esc(eid)}" ${i===0?"disabled":""} aria-label="Subir">↑</button> <button class="btn small" data-dn="${esc(x.id)}" data-e="${esc(eid)}" ${i===n-1?"disabled":""} aria-label="Descer">↓</button>`:""}</td></tr>`; };
+  const parada = (x,i,eid,n) => { const c = x.cliente; return `<tr><td class="num">${i+1}</td><td><b>${esc(c.nome)}</b> · ${esc(descParada(x))}${x.avulso?' <span class="pill warn">avulso</span>':""}${cobrarCong(x)?` <span class="pill warn">cobrar ${brl(cobrarCong(x))}</span>`:""}<div class="muted" style="font-size:.8rem">${esc(enderecoTxt(c)||"sem endereço")}${c.referencia?" · "+esc(c.referencia):""}${modoTxt(c)?" · "+esc(modoTxt(c)):""}${c.obs?"<br>Obs: "+esc(c.obs):""}</div></td><td>${esc(c.pagamento||"—")}</td><td><select data-mv="${esc(x.id)}" aria-label="Entregador" style="min-width:130px">${opts(eid)}</select></td><td style="white-space:nowrap">${eid?`<button class="btn small" data-up="${esc(x.id)}" data-e="${esc(eid)}" ${i===0?"disabled":""} aria-label="Subir">↑</button> <button class="btn small" data-dn="${esc(x.id)}" data-e="${esc(eid)}" ${i===n-1?"disabled":""} aria-label="Descer">↓</button>`:""}</td></tr>`; };
   const tabela = (l,eid) => `<div class="tablebox"><table><thead><tr><th>#</th><th>Cliente e endereço</th><th>Pagamento</th><th>Entregador</th><th>Ordem</th></tr></thead><tbody>${l.map((x,i)=>parada(x,i,eid,l.length)).join("")}</tbody></table></div>`;
   return `
   <div class="head"><div><h1>Entregas</h1><p>${DOW_LONG[dt.getDay()]}, ${fmtDate(d)} · ${tot} marmitas${ncg?" · "+ncg+" de congeladas":""} · ${conf.length} entregas</p></div>
@@ -1942,6 +2020,12 @@ VIEWS.ajustes = () => `
       <label class="f c3">Nome do restaurante<input type="text" id="a_nome" value="${esc(S.config.restaurante)}"></label>
       <label class="f c3">Seu nome no WhatsApp<input type="text" id="a_wa" value="${esc(S.config.meuNomeWhats)}"></label>
       <label class="f c2">Horário limite para pedidos<input type="text" id="a_hora" value="${esc(S.config.horarioLimite)}" placeholder="10:30"></label>
+      <label class="f c2">Os pedidos de um dia fecham<select id="a_prazo"><option value="mesmo" ${S.config.prazoTipo!=="anterior"?"selected":""}>No próprio dia, até o horário</option><option value="anterior" ${S.config.prazoTipo==="anterior"?"selected":""}>No dia anterior, até o horário</option></select></label>
+      <label class="f c2">Entregas a partir de<input type="text" id="a_horaEnt" value="${esc(S.config.horaEntrega)}" placeholder="11:30"></label>
+      <label class="f c2">Chave Pix<input type="text" id="a_pix" value="${esc(S.config.pixChave)}" placeholder="CNPJ, e-mail, +55 telefone ou chave aleatória"></label>
+      <label class="f c2">Nome de quem recebe o Pix<input type="text" id="a_pixNome" value="${esc(S.config.pixNome)}" placeholder="Como aparece no banco"></label>
+      <label class="f c2">Cidade do Pix<input type="text" id="a_pixCid" value="${esc(S.config.pixCidade)}" placeholder="${esc(S.config.cidade||"Sua cidade")}"></label>
+      <label class="check c6"><input type="checkbox" id="a_autoCad" ${S.config.autoCadastro!==false?"checked":""}> Cadastrar sozinho o cliente novo que pedir pelo link</label>
       <label class="f c4">Endereço do restaurante (saída das rotas)<input type="text" id="a_end" value="${esc(S.config.enderecoRestaurante)}" placeholder="Rua, número, bairro, cidade"></label>
       <label class="f c2">Cidade<input type="text" id="a_cid" value="${esc(S.config.cidade)}"></label>
       <label class="f c2">Telefone do restaurante (WhatsApp)<input type="tel" id="a_tel" value="${esc(S.config.telefoneRestaurante)}"></label>
@@ -2091,7 +2175,7 @@ function bindUsuarios(){
 BIND.ajustes = () => {
   bindMarca();
   if(window.__fs){ bindUsuarios(); bindBackup(); }
-  $("#a_save").onclick = () => { const ferAntes = S.config.feriadosLocais||"", ferNovo = $("#a_fer").value.trim(); S.config.feriadosLocais = ferNovo; const abertos = ferNovo!==ferAntes ? S.config.abertos.filter(d => !(d>=today() && feriado(d))) : S.config.abertos; saveConfig({abertos, feriadosLocais:ferNovo, restaurante:$("#a_nome").value.trim(), meuNomeWhats:$("#a_wa").value.trim(), horarioLimite:$("#a_hora").value.trim()||"10:30", enderecoRestaurante:$("#a_end").value.trim(), cidade:$("#a_cid").value.trim(), telefoneRestaurante:$("#a_tel").value.trim(), custoMarmita:Number($("#a_custo").value)||0, custoFixoMensal:Number($("#a_fixo").value)||0, premioIndicacao:$("#a_premio").value.trim()||"1 marmita grátis", alertaSaldo:Number($("#a_alerta").value)||0, alertaDias:Number($("#a_alertaDias").value)||0, msgAlerta:$("#a_msg").value.trim()||DEFAULT_CONFIG.msgAlerta, autoPlano:$("#a_auto").checked}).then(()=>{ render(); toast("Ajustes salvos."); }); };
+  $("#a_save").onclick = () => { const ferAntes = S.config.feriadosLocais||"", ferNovo = $("#a_fer").value.trim(); S.config.feriadosLocais = ferNovo; const abertos = ferNovo!==ferAntes ? S.config.abertos.filter(d => !(d>=today() && feriado(d))) : S.config.abertos; saveConfig({abertos, feriadosLocais:ferNovo, restaurante:$("#a_nome").value.trim(), meuNomeWhats:$("#a_wa").value.trim(), horarioLimite:$("#a_hora").value.trim()||"10:30", prazoTipo:$("#a_prazo").value, horaEntrega:$("#a_horaEnt").value.trim(), pixChave:$("#a_pix").value.trim(), pixNome:$("#a_pixNome").value.trim(), pixCidade:$("#a_pixCid").value.trim(), autoCadastro:$("#a_autoCad").checked, enderecoRestaurante:$("#a_end").value.trim(), cidade:$("#a_cid").value.trim(), telefoneRestaurante:$("#a_tel").value.trim(), custoMarmita:Number($("#a_custo").value)||0, custoFixoMensal:Number($("#a_fixo").value)||0, premioIndicacao:$("#a_premio").value.trim()||"1 marmita grátis", alertaSaldo:Number($("#a_alerta").value)||0, alertaDias:Number($("#a_alertaDias").value)||0, msgAlerta:$("#a_msg").value.trim()||DEFAULT_CONFIG.msgAlerta, autoPlano:$("#a_auto").checked}).then(()=>{ render(); toast("Ajustes salvos."); }); };
   document.querySelectorAll("[data-m]").forEach(cb => cb.onchange = () => { saveConfig({modulos:Object.assign({}, S.config.modulos, {[cb.dataset.m]:cb.checked})}); render(); });
 };
 

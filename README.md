@@ -47,6 +47,14 @@ Na aba **Preços** você cadastra os tamanhos de marmita, adicionais, bebidas e 
 
 Quando o cliente digita o WhatsApp na página de pedido e já tem endereço cadastrado, aparece marcado **Entregar no meu endereço cadastrado** e ele não precisa digitar nada. Se desmarcar, informa outro endereço só para aquele pedido, que vai na rota do dia. Cliente sem endereço precisa informar, e o sistema já guarda no cadastro dele. A página não mostra dados do cliente: o sistema publica só um código do telefone.
 
+## Pedido pelo link, do jeito profissional
+
+- **Prazo:** em Ajustes escolha se os pedidos fecham no próprio dia ou no dia anterior (ex.: até 14:00 do dia anterior). Os pedidos de um dia só abrem quando o cardápio dele é salvo.
+- **Entrega:** o cliente escolhe Casa, Apartamento (pode deixar na portaria) ou Apartamento (só em mãos). Aparece na lista, nas rotas e no cadastro.
+- **Pix:** com a chave Pix em Ajustes, o cliente avulso vê o valor, o Pix copia e cola e o QR Code assim que confirma, e pode tocar em "Já paguei". Cliente de plano não vê cobrança.
+- **Cliente novo:** quem pede pelo link e não está na base é cadastrado sozinho (dá para desligar em Ajustes).
+- **Fechar os pedidos:** no Dia, passo 4, **Fechar pedidos do dia** trava o link e abre a lista para avisar cada cliente pelo WhatsApp com a confirmação, o total e o Pix.
+
 ## Logo e imagem do cardápio
 
 Em **Ajustes > Logo e cor da marca**, carregue a logo (PNG ou JPG) e escolha a cor. A logo aparece no menu, na tela de entrada, na página de pedido dos clientes e no ícone da aba. No **Cardápio**, o botão **Imagem com a logo** gera uma imagem pronta (1080 × 1350) com pratos, preços e promoções: no celular abre direto o compartilhamento para o WhatsApp; no computador baixa o arquivo.

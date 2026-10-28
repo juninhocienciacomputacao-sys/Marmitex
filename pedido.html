@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@600;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 :root{--bg:#f3f5f1;--surface:#fff;--line:#d3dacd;--fg:#1b241d;--muted:#5d6a60;--brand:#1f5c3d;--brand-fg:#fff;--brand-soft:#dbe9df;--bad:#b3261e;--warn-soft:#fbecc9;
   --display:"Familjen Grotesk","Segoe UI",system-ui,sans-serif;--body:"Atkinson Hyperlegible","Segoe UI",system-ui,sans-serif}
@@ -34,6 +35,12 @@ button{font:inherit;cursor:pointer}
 .err{color:var(--bad);margin:0}
 .chk{flex-direction:row;align-items:center;gap:10px;background:var(--brand-soft);color:var(--fg);border-radius:10px;padding:12px;font-size:1rem}
 .chk input{width:22px;height:22px;flex:none}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opt{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-weight:400;color:var(--fg);font-size:1rem;flex-direction:row}
+.opt input{width:20px;height:20px;flex:none}
+.pix{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px;text-align:left}
+.pix textarea{font:12px/1.35 ui-monospace,monospace;min-height:72px}
+#qr{align-self:center;background:#fff;padding:10px;border-radius:8px}
 .ok{background:var(--brand-soft);border-radius:12px;padding:18px;text-align:center}
 .banner{background:var(--warn-soft);border-radius:10px;padding:10px 12px}
 button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
@@ -50,13 +57,28 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
     <div><div style="font-weight:700;font-size:.9rem;color:var(--muted);margin-bottom:6px">Quantas marmitas?</div>
       <div class="qty"><button type="button" id="menos" aria-label="Menos uma">−</button><b id="q">1</b><button type="button" id="mais" aria-label="Mais uma">+</button></div></div>
     <label>Observação (opcional)<input type="text" id="obs" placeholder="Ex.: sem cebola"></label>
+    <div><div style="font-weight:700;font-size:.9rem;color:var(--muted);margin-bottom:6px">Como entregar?</div>
+      <div class="opts" role="radiogroup">
+        <label class="opt"><input type="radio" name="ent" value="casa"> Casa (entregar na porta)</label>
+        <label class="opt"><input type="radio" name="ent" value="portaria"> Apartamento: pode deixar na portaria ou recepção</label>
+        <label class="opt"><input type="radio" name="ent" value="maos"> Apartamento: entregar só em mãos para mim</label>
+      </div></div>
     <label class="chk" id="usarBox" hidden><input type="checkbox" id="usar" checked> Entregar no meu endereço cadastrado</label>
     <label id="endLbl"><span id="endTit">Endereço para entrega</span><textarea id="end" placeholder="Rua, número, complemento, bairro"></textarea></label>
     <p class="err" id="err"></p>
     <button class="main" id="enviar">Confirmar pedido</button>
     <button class="ghost" id="nao">Não quero hoje</button>
   </section>
-  <section class="ok" id="okBox" hidden><h2 id="okTit">Pedido confirmado!</h2><p id="okTxt" style="margin:6px 0 12px"></p><button class="ghost" id="editar">Mudar pedido</button></section>
+  <section class="ok" id="okBox" hidden><h2 id="okTit">Pedido confirmado!</h2><p id="okTxt" style="margin:6px 0 12px"></p>
+    <div class="pix" id="pixBox" hidden>
+      <h2 style="font-size:1.05rem">Pague agora pelo Pix: <span id="pixVal"></span></h2>
+      <p class="muted" style="margin:0">Pedido avulso entra na produção depois do pagamento. Copie o código e cole no app do seu banco (Pix copia e cola), ou leia o QR Code.</p>
+      <div id="qr"></div>
+      <textarea id="pixCode" readonly aria-label="Código Pix copia e cola"></textarea>
+      <button class="main" id="pixCopy">Copiar código Pix</button>
+      <button class="ghost" id="pixPago">Já paguei</button>
+    </div>
+    <button class="ghost" id="editar" style="margin-top:12px">Mudar pedido</button></section>
   <p class="banner" id="fechado" hidden></p>
 </main>
 <script>
@@ -82,33 +104,47 @@ let qtd = 1, info = {};
 const mem = k => { try{ return localStorage.getItem("pedido-"+k)||""; }catch(e){ return ""; } };
 const lembrar = (k,v) => { try{ localStorage.setItem("pedido-"+k, v); }catch(e){} };
 $("#tel").value = mem("tel"); $("#nome").value = mem("nome");
+{ const e = mem("ent"); const r = document.querySelector('input[name="ent"][value="'+e+'"]'); if(r) r.checked = true; }
 const setQ = n => { qtd = Math.max(1, Math.min(20, n)); $("#q").textContent = qtd; };
 $("#menos").onclick = () => setQ(qtd-1); $("#mais").onclick = () => setQ(qtd+1);
 $("#sub").textContent = DIAS[dt.getDay()][0].toUpperCase()+DIAS[dt.getDay()].slice(1)+", "+pad(D)+"/"+pad(M);
 if(!window.firebase || !FIREBASE_CONFIG){ $("#sub").textContent = "Não foi possível carregar. Confira a internet e abra o link de novo."; return; }
 firebase.initializeApp(FIREBASE_CONFIG);
 const fs = firebase.firestore();
-function prazoPassou(){
-  if(d > hoje) return false; if(d < hoje) return true;
-  const m = String(info.horarioLimite||"").match(/(\d{1,2})[:h](\d{2})?/); if(!m) return false;
-  return now.getHours()*60+now.getMinutes() > Number(m[1])*60+Number(m[2]||0);
+// Prazo: no próprio dia até o horário, ou no dia anterior até o horário (Ajustes)
+function limite(){
+  const m = String(info.horarioLimite||"").match(/(\d{1,2})[:h](\d{2})?/); if(!m) return null;
+  const x = new Date(Y, M-1, D, Number(m[1]), Number(m[2]||0)); if(info.prazoTipo==="anterior") x.setDate(x.getDate()-1); return x;
 }
+function prazoPassou(){ const l = limite(); if(!l) return d < hoje; return now > l; }
+function prazoTxt(){ const l = limite(); if(!l) return ""; return "pedidos até "+pad(l.getHours())+":"+pad(l.getMinutes())+(info.prazoTipo==="anterior"?" de "+DIAS[l.getDay()]+" ("+pad(l.getDate())+"/"+pad(l.getMonth()+1)+")":""); }
+// Pix copia e cola (padrão do Banco Central)
+const semAcento = t => String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^A-Za-z0-9 .-]/g,"").trim();
+function crc16(t){ let c = 0xFFFF; for(let i=0;i<t.length;i++){ c ^= t.charCodeAt(i)<<8; for(let j=0;j<8;j++) c = (c & 0x8000) ? ((c<<1)^0x1021) & 0xFFFF : (c<<1) & 0xFFFF; } return c.toString(16).toUpperCase().padStart(4,"0"); }
+function pixCode(chave, valor, nome, cidade, txid){
+  const f = (id, v) => id + String(v.length).padStart(2,"0") + v;
+  const p = f("00","01") + f("26", f("00","BR.GOV.BCB.PIX") + f("01", chave)) + f("52","0000") + f("53","986") + (valor ? f("54", valor.toFixed(2)) : "") + f("58","BR") + f("59", semAcento(nome).slice(0,25)||"RESTAURANTE") + f("60", semAcento(cidade).slice(0,15)||"BRASIL") + f("62", f("05", String(txid||"").replace(/[^A-Za-z0-9]/g,"").slice(0,25)||"***")) + "6304";
+  return p + crc16(p);
+}
+let cardapio = null, ehPlano = false, ultimo = null;
 Promise.all([fs.collection("publico").doc("info").get().catch(()=>null), fs.collection("cardapios").doc(d).get().catch(()=>null)]).then(([pi, cd]) => {
   info = pi && pi.exists ? pi.data() : {};
   if(info.restaurante){ $("#rest").textContent = info.restaurante; document.title = "Pedido · "+info.restaurante; }
   if(/^data:image\/(png|jpeg|webp);base64,/.test(info.logo||"")){ $("#logo").src = info.logo; $("#logo").hidden = false; const l = document.querySelector('link[rel="icon"]'); if(l) l.href = info.logo; }
   if(/^#[0-9a-f]{6}$/i.test(info.cor||"")) document.documentElement.style.setProperty("--brand", info.cor);
-  const c = cd && cd.exists ? cd.data() : null;
+  const c = cd && cd.exists ? cd.data() : null; cardapio = c;
   if(c && (c.itens||[]).length){
     $("#menu").innerHTML = ""; c.itens.forEach(i => { const li = document.createElement("li"); li.textContent = i.nome; $("#menu").appendChild(li); });
     $("#menuObs").textContent = [c.preco ? "Marmita avulsa: "+Number(c.preco).toLocaleString("pt-BR",{style:"currency",currency:"BRL"}) : "", c.obs||""].filter(Boolean).join(" · ");
     $("#menuBox").hidden = false;
   }
-  if(prazoPassou()){
-    $("#fechado").textContent = "Os pedidos para este dia já encerraram"+(info.horarioLimite?" (até "+info.horarioLimite+")":"")+"."+(info.telefone?" Fale com a gente no WhatsApp: +"+info.telefone:"");
+  const fale = info.telefone ? " Fale com a gente no WhatsApp: +"+info.telefone : "";
+  if(!c || !(c.itens||[]).length){ $("#fechado").textContent = "O cardápio deste dia ainda não foi publicado. Os pedidos abrem assim que ele sair."+fale; $("#fechado").hidden = false; return; }
+  if(c.fechado || prazoPassou()){
+    $("#fechado").textContent = "Os pedidos para este dia já encerraram"+(prazoTxt()?" ("+prazoTxt()+")":"")+"."+fale;
     $("#fechado").hidden = false; return;
   }
-  if(info.horarioLimite) $("#sub").textContent += " · pedidos até "+info.horarioLimite;
+  if(prazoTxt()) $("#sub").textContent += " · "+prazoTxt();
   $("#formBox").hidden = false;
 });
 // Cliente já cadastrado com endereço: o sistema guarda só um código do telefone (sem dados pessoais)
@@ -122,7 +158,7 @@ function mostrarEndereco(){
 async function checarCliente(){
   const tel = normPhone($("#tel").value); if(tel===ultimoTel) return; ultimoTel = tel;
   if(tel.length<12 || tel.length>13 || !window.crypto || !crypto.subtle){ conhecido = null; mostrarEndereco(); return; }
-  try{ const d = await fs.collection("conhecidos").doc(await hashTel(tel)).get(); if(normPhone($("#tel").value)!==tel) return; conhecido = d.exists; if(conhecido) $("#usar").checked = true; }
+  try{ const d = await fs.collection("conhecidos").doc(await hashTel(tel)).get(); if(normPhone($("#tel").value)!==tel) return; conhecido = d.exists; ehPlano = !!(d.exists && d.data().p); if(conhecido) $("#usar").checked = true; }
   catch(e){ conhecido = null; }
   mostrarEndereco();
 }
@@ -136,16 +172,36 @@ async function enviar(q){
   if(!nome){ $("#err").textContent = "Digite seu nome."; $("#nome").focus(); return; }
   const endereco = conhecido===true && $("#usar").checked ? "" : $("#end").value.trim();
   if(q>0 && conhecido===false && !endereco){ $("#err").textContent = "Digite o endereço de entrega."; $("#end").focus(); return; }
+  const entR = document.querySelector('input[name="ent"]:checked'), entrega = entR ? entR.value : "";
+  if(q>0 && !entrega){ $("#err").textContent = "Escolha como entregar (casa, portaria ou em mãos)."; return; }
   const btns = [$("#enviar"), $("#nao")]; btns.forEach(b => b.disabled = true);
   try{
-    await fs.collection("respostas").doc(d+"_"+tel).set({data:d, telefone:tel, nome:nome.slice(0,80), qtd:q, obs:$("#obs").value.trim().slice(0,300), endereco:endereco.slice(0,300), hora:new Date().toISOString()});
-    lembrar("tel", $("#tel").value.trim()); lembrar("nome", nome);
+    ultimo = {data:d, telefone:tel, nome:nome.slice(0,80), qtd:q, obs:$("#obs").value.trim().slice(0,300), endereco:endereco.slice(0,300), hora:new Date().toISOString(), entrega, pago:""};
+    await fs.collection("respostas").doc(d+"_"+tel).set(ultimo);
+    lembrar("tel", $("#tel").value.trim()); lembrar("nome", nome); if(entrega) lembrar("ent", entrega);
     $("#formBox").hidden = true; $("#okBox").hidden = false;
     $("#okTit").textContent = q ? "Pedido confirmado!" : "Tudo certo!";
     $("#okTxt").textContent = q ? q+(q>1?" marmitas":" marmita")+" para "+DIAS[dt.getDay()]+", "+pad(D)+"/"+pad(M)+". Obrigado!" : "Anotamos que você não vai querer marmita neste dia.";
+    mostrarPix(q, tel);
   }catch(e){ $("#err").textContent = "Não foi possível enviar. Confira a internet e tente de novo."; }
   btns.forEach(b => b.disabled = false);
 }
+// Avulso paga na hora: Pix com o valor do pedido (cliente de plano não paga aqui)
+function mostrarPix(q, tel){
+  const preco = Number(cardapio && cardapio.preco)||0;
+  $("#pixBox").hidden = true;
+  if(!q || ehPlano || !info.pixChave || !preco) return;
+  const total = Math.round(q*preco*100)/100, code = pixCode(info.pixChave, total, info.pixNome||info.restaurante, info.pixCidade, "MX"+d.replace(/-/g,"").slice(2)+tel.slice(-4));
+  $("#pixVal").textContent = total.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+  $("#pixCode").value = code; $("#qr").innerHTML = ""; $("#qr").hidden = false;
+  try{ if(window.QRCode) new QRCode($("#qr"), {text:code, width:200, height:200, correctLevel:QRCode.CorrectLevel.M}); else $("#qr").hidden = true; }catch(e){ $("#qr").hidden = true; }
+  $("#pixPago").disabled = false; $("#pixPago").textContent = "Já paguei";
+  $("#pixBox").hidden = false;
+}
+$("#pixCopy").onclick = async () => { const t = $("#pixCode").value; try{ await navigator.clipboard.writeText(t); }catch(e){ $("#pixCode").select(); document.execCommand("copy"); } $("#pixCopy").textContent = "Código copiado!"; setTimeout(() => $("#pixCopy").textContent = "Copiar código Pix", 2500); };
+$("#pixPago").onclick = async () => { if(!ultimo) return; $("#pixPago").disabled = true;
+  try{ ultimo = Object.assign({}, ultimo, {pago:"informado"}); await fs.collection("respostas").doc(ultimo.data+"_"+ultimo.telefone).set(ultimo); $("#pixPago").textContent = "Obrigado! Vamos conferir o pagamento."; }
+  catch(e){ $("#pixPago").disabled = false; $("#pixPago").textContent = "Não foi possível avisar. Tente de novo."; } };
 $("#enviar").onclick = () => enviar(qtd);
 $("#nao").onclick = () => enviar(0);
 $("#editar").onclick = () => { $("#okBox").hidden = true; $("#formBox").hidden = false; };
