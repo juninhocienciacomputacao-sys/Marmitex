@@ -78,7 +78,9 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
       <button class="main" id="pixCopy">Copiar código Pix</button>
       <button class="ghost" id="pixPago">Já paguei</button>
     </div>
-    <button class="ghost" id="editar" style="margin-top:12px">Mudar pedido</button></section>
+    <div class="pix" id="pagBox" hidden><h2 style="font-size:1.05rem">Pagamento: <span id="pagVal"></span></h2><p class="muted" style="margin:0" id="pagTxt"></p><a class="main" id="pagWa" hidden target="_blank" rel="noopener" style="text-align:center;text-decoration:none">Combinar o pagamento no WhatsApp</a></div>
+    <button class="ghost" id="editar" style="margin-top:12px">Mudar pedido</button>
+    <a href="atendimento.html#cuidados" style="display:block;margin-top:12px;color:var(--brand);font-weight:700">🧊 Como conservar e aquecer suas marmitas</a></section>
   <p class="banner" id="fechado" hidden></p>
 </main>
 <script>
@@ -135,7 +137,7 @@ Promise.all([fs.collection("publico").doc("info").get().catch(()=>null), fs.coll
   const c = cd && cd.exists ? cd.data() : null; cardapio = c;
   if(c && (c.itens||[]).length){
     $("#menu").innerHTML = ""; c.itens.forEach(i => { const li = document.createElement("li"); li.textContent = i.nome; $("#menu").appendChild(li); });
-    $("#menuObs").textContent = [c.preco ? "Marmita avulsa: "+Number(c.preco).toLocaleString("pt-BR",{style:"currency",currency:"BRL"}) : "", c.obs||""].filter(Boolean).join(" · ");
+    $("#menuObs").textContent = [c.preco ? "Marmita avulsa: "+Number(c.preco).toLocaleString("pt-BR",{style:"currency",currency:"BRL"}) : "", c.obs||"", (info.pagamentos||[]).length ? "Pagamento: "+info.pagamentos.join(", ") : ""].filter(Boolean).join(" · ");
     $("#menuBox").hidden = false;
   }
   const fale = info.telefone ? " Fale com a gente no WhatsApp: +"+info.telefone : "";
@@ -189,8 +191,15 @@ async function enviar(q){
 // Avulso paga na hora: Pix com o valor do pedido (cliente de plano não paga aqui)
 function mostrarPix(q, tel){
   const preco = Number(cardapio && cardapio.preco)||0;
-  $("#pixBox").hidden = true;
-  if(!q || ehPlano || !info.pixChave || !preco) return;
+  $("#pixBox").hidden = true; $("#pagBox").hidden = true;
+  if(!q || ehPlano) return;
+  if(!info.pixChave || !preco){
+    const tot = preco ? Math.round(q*preco*100)/100 : 0, formas = (info.pagamentos||[]).join(", ");
+    $("#pagVal").textContent = tot ? tot.toLocaleString("pt-BR",{style:"currency",currency:"BRL"}) : "a combinar";
+    $("#pagTxt").textContent = (formas ? "Aceitamos: "+formas+". " : "") + "Pedido avulso entra na produção depois do pagamento. Vamos te enviar os dados pelo WhatsApp.";
+    if(info.telefone){ $("#pagWa").href = "https://wa.me/"+info.telefone+"?text="+encodeURIComponent("Olá! Fiz o pedido de "+q+" marmita(s) para "+pad(D)+"/"+pad(M)+" e quero combinar o pagamento."); $("#pagWa").hidden = false; }
+    $("#pagBox").hidden = false; return;
+  }
   const total = Math.round(q*preco*100)/100, code = pixCode(info.pixChave, total, info.pixNome||info.restaurante, info.pixCidade, "MX"+d.replace(/-/g,"").slice(2)+tel.slice(-4));
   $("#pixVal").textContent = total.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
   $("#pixCode").value = code; $("#qr").innerHTML = ""; $("#qr").hidden = false;

@@ -46,11 +46,11 @@ service cloud.firestore {
         request.resource.data.keys().hasOnly(['telefone','nome','planoId','inicio','endereco','entrega','obs','hora','pago'])
         && request.resource.data.keys().hasAll(['telefone','nome','planoId','inicio','endereco','entrega','obs','hora','pago'])
         && request.resource.data.telefone is string
-        && request.resource.data.telefone.size() >= 12 && request.resource.data.telefone.size() <= 13
+        && request.resource.data.telefone.matches('[0-9]{12,13}')
         && id == request.resource.data.telefone
         && request.resource.data.nome is string && request.resource.data.nome.size() <= 80
         && request.resource.data.planoId is string && request.resource.data.planoId.size() <= 40
-        && request.resource.data.inicio is string && request.resource.data.inicio.size() == 10
+        && request.resource.data.inicio is string && request.resource.data.inicio.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')
         && request.resource.data.endereco is string && request.resource.data.endereco.size() <= 300
         && request.resource.data.entrega in ['casa', 'portaria', 'maos']
         && request.resource.data.obs is string && request.resource.data.obs.size() <= 300
@@ -65,8 +65,12 @@ service cloud.firestore {
         && request.resource.data.keys().hasAll(['data','telefone','nome','qtd','obs','endereco','hora'])
         && request.resource.data.data is string && request.resource.data.data.size() == 10
         && request.resource.data.telefone is string
-        && request.resource.data.telefone.size() >= 12 && request.resource.data.telefone.size() <= 13
+        && request.resource.data.telefone.matches('[0-9]{12,13}')
+        && request.resource.data.data.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')
         && id == request.resource.data.data + '_' + request.resource.data.telefone
+        // só aceita pedido para dia com cardápio publicado e ainda aberto
+        && exists(/databases/$(database)/documents/cardapios/$(request.resource.data.data))
+        && get(/databases/$(database)/documents/cardapios/$(request.resource.data.data)).data.get('fechado', false) != true
         && request.resource.data.qtd is int && request.resource.data.qtd >= 0 && request.resource.data.qtd <= 20
         && request.resource.data.nome is string && request.resource.data.nome.size() <= 80
         && request.resource.data.obs is string && request.resource.data.obs.size() <= 300

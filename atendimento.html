@@ -72,6 +72,7 @@ table{width:100%;border-collapse:collapse}td{padding:6px 0;border-bottom:1px sol
     <button class="big" id="bPlano"><span class="ico">📅</span><span><b>Assinar um plano</b><span class="muted" id="bPlanoTxt">Marmitas todo dia, sem precisar pedir</span></span></button>
     <button class="big" id="bCong" hidden><span class="ico">🧊</span><span><b>Congeladas</b><span class="muted">Pacotes para a semana</span></span></button>
     <button class="big" id="bPrecos" hidden><span class="ico">💰</span><span><b>Preços e promoções</b><span class="muted">Tamanhos, adicionais e entrega</span></span></button>
+    <button class="big" id="bCuid" hidden><span class="ico">🧊</span><span><b>Como conservar e aquecer</b><span class="muted">Freezer, validade, descongelar e micro-ondas</span></span></button>
     <a class="big" id="bFalar" href="#" target="_blank" rel="noopener" hidden><span class="ico">💬</span><span><b>Falar com a gente</b><span class="muted">Tirar dúvidas no WhatsApp</span></span></a>
     <p class="muted" style="text-align:center;margin:4px 0 0;font-size:.9rem">🛵 Só entrega, na sua casa ou no trabalho.</p>
   </section>
@@ -108,10 +109,12 @@ table{width:100%;border-collapse:collapse}td{padding:6px 0;border-bottom:1px sol
       <button class="main" id="pixCopy">Copiar código Pix</button>
       <button class="ghost" id="pixPago">Já paguei</button>
     </div>
+    <div class="pix" id="pagBox" hidden><h2 style="font-size:1.05rem">Pagamento: <span id="pagVal"></span></h2><p class="muted" style="margin:0" id="pagTxt"></p><a class="main" id="pagWa" hidden target="_blank" rel="noopener" style="text-align:center;text-decoration:none">Combinar o pagamento no WhatsApp</a></div>
     <button class="ghost" data-home>Voltar ao início</button>
   </section>
 
   <section id="vCong" class="card" hidden><button class="back" data-home>‹ Voltar</button><h2>Congeladas</h2><div id="listaCong"></div><a class="main" id="congWa" href="#" target="_blank" rel="noopener" style="text-align:center;text-decoration:none">Pedir congeladas no WhatsApp</a></section>
+  <section id="vCuid" class="card" hidden><button class="back" data-home>‹ Voltar</button><div id="txtCuid" style="white-space:pre-wrap;line-height:1.5"></div></section>
   <section id="vPrecos" class="card" hidden><button class="back" data-home>‹ Voltar</button><h2>Preços</h2><div id="listaPrecos"></div></section>
   <p class="banner" id="aviso" hidden></p>
 </main>
@@ -138,7 +141,7 @@ const normPhone = r => { let x = String(r||"").replace(/\D/g,"").replace(/^0+/,"
 const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const mem = k => { try{ return localStorage.getItem("pedido-"+k)||""; }catch(e){ return ""; } };
 const lembrar = (k,v) => { try{ localStorage.setItem("pedido-"+k, v); }catch(e){} };
-const telas = ["vHome","vPlanos","vOk","vCong","vPrecos"];
+const telas = ["vHome","vPlanos","vOk","vCong","vPrecos","vCuid"];
 const ver = id => { telas.forEach(t => $("#"+t).hidden = t!==id); window.scrollTo(0,0); };
 document.addEventListener("click", e => { if(e.target.closest("[data-home]")){ e.preventDefault(); ver("vHome"); } });
 if(!window.firebase || !FIREBASE_CONFIG){ $("#sub").textContent = "Não foi possível carregar. Confira a internet e abra o link de novo."; return; }
@@ -177,8 +180,9 @@ Promise.all([fs.collection("publico").doc("info").get().catch(()=>null), fs.coll
   if(planos.length){ const min = Math.min(...planos.filter(p=>p.marmitas&&p.preco).map(p=>p.preco/p.marmitas)); if(isFinite(min)) $("#bPlanoTxt").textContent = "A partir de "+brl(min)+" por marmita, sem precisar pedir todo dia"; } else $("#bPlano").hidden = true;
   if((cat.pacotes||[]).length) $("#bCong").hidden = false;
   if((cat.precos||[]).length || (cat.promos||[]).length) $("#bPrecos").hidden = false;
+  if(cat.cuidados){ $("#bCuid").hidden = false; $("#txtCuid").innerHTML = esc(cat.cuidados).replace(/\*([^*\n]+)\*/g, "<b>$1</b>"); $("#bCuid").onclick = () => ver("vCuid"); }
   if(info.telefone){ $("#bFalar").href = wa("Olá! Quero tirar uma dúvida."); $("#bFalar").hidden = false; }
-  ver("vHome");
+  ver(location.hash==="#cuidados" && cat.cuidados ? "vCuid" : "vHome");
   const p = await proximoDia();
   if(p){ $("#bPedir").href = "pedido.html?d="+p.d; $("#bPedirTxt").textContent = "Cardápio de "+DIAS[new Date(p.d+"T12:00").getDay()]+", "+fmt(p.d)+(p.l?" · pedidos até "+pad(p.l.getHours())+":"+pad(p.l.getMinutes())+(info.prazoTipo==="anterior"?" de "+DIAS[p.l.getDay()]:""):""); }
   else { $("#bPedir").href = wa("Olá! Quero pedir uma marmita."); $("#bPedir").target = "_blank"; $("#bPedirTxt").textContent = "O próximo cardápio ainda não saiu. Toque para falar com a gente."; }
@@ -221,12 +225,17 @@ $("#assinar").onclick = async () => {
     lembrar("tel", $("#tel").value.trim()); lembrar("nome", nome); lembrar("ent", entR.value);
     $("#okTit").textContent = "Plano assinado!";
     $("#okTxt").textContent = planoSel.nome+": começa em "+fmt(ini)+". Suas marmitas já entram na lista de entrega nos dias do plano. Se um dia não quiser, é só avisar pelo link do cardápio.";
-    $("#pixBox").hidden = true;
+    $("#pixBox").hidden = true; $("#pagBox").hidden = true;
     if(info.pixChave && planoSel.preco){
       const code = pixCode(info.pixChave, Number(planoSel.preco), info.pixNome||info.restaurante, info.pixCidade, "PL"+tel.slice(-6));
       $("#pixVal").textContent = brl(planoSel.preco); $("#pixCode").value = code; $("#qr").innerHTML = ""; $("#qr").hidden = false;
       try{ if(window.QRCode) new QRCode($("#qr"), {text:code, width:200, height:200, correctLevel:QRCode.CorrectLevel.M}); else $("#qr").hidden = true; }catch(e){ $("#qr").hidden = true; }
       $("#pixPago").disabled = false; $("#pixPago").textContent = "Já paguei"; $("#pixBox").hidden = false;
+    } else {
+      const formas = (info.pagamentos||[]).join(", ");
+      $("#pagVal").textContent = planoSel.preco ? brl(planoSel.preco) : "a combinar";
+      $("#pagTxt").textContent = (formas ? "Aceitamos: "+formas+". " : "") + "Vamos te enviar os dados de pagamento pelo WhatsApp.";
+      $("#pagWa").href = wa("Olá! Assinei o plano "+planoSel.nome+" e quero combinar o pagamento."); $("#pagWa").hidden = !info.telefone; $("#pagBox").hidden = false;
     }
     ver("vOk");
   }catch(e){ $("#err").textContent = "Não foi possível enviar. Confira a internet e tente de novo."; }

@@ -142,6 +142,7 @@ a.btn.primary{color:var(--brand-fg)}
   .item{grid-template-columns:1fr auto}
   .item select{grid-column:1/2}
   h1{font-size:1.4rem}
+  .stats{grid-template-columns:1fr 1fr;gap:8px}.stat{padding:10px 12px}.stat b{font-size:1.4rem}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -155,7 +156,7 @@ a.btn.primary{color:var(--brand-fg)}
 <script>
 (function(){
 "use strict";
-window.__RULES = "rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n\n    // Administrador: troque SEU-EMAIL-AQUI pelo seu e-mail (s\u00f3 uma vez).\n    // Os outros usu\u00e1rios voc\u00ea cadastra dentro do sistema, em Ajustes > Usu\u00e1rios do sistema.\n    function dono() {\n      return request.auth != null && request.auth.token.email in ['SEU-EMAIL-AQUI'];\n    }\n    function usuarios() {\n      return /databases/$(database)/documents/acesso/usuarios;\n    }\n    function membro() {\n      return dono() || (request.auth != null && exists(usuarios())\n        && request.auth.token.email in get(usuarios()).data.emails);\n    }\n\n    // O sistema: administrador e usu\u00e1rios cadastrados leem e gravam.\n    match /{col}/{document=**} {\n      allow read: if membro();\n      allow write: if membro() && col != 'acesso';\n    }\n\n    // Lista de usu\u00e1rios: todos os usu\u00e1rios veem, s\u00f3 o administrador muda.\n    match /acesso/{doc} {\n      allow read: if membro();\n      allow write: if dono();\n    }\n\n    // P\u00e1gina de pedido: qualquer pessoa v\u00ea o card\u00e1pio e o nome do restaurante.\n    match /cardapios/{dia} {\n      allow read: if true;\n    }\n    match /publico/{doc} {\n      allow read: if true;\n    }\n    // P\u00e1gina de pedido: confere se o telefone (em c\u00f3digo, sem dados pessoais) j\u00e1 tem endere\u00e7o cadastrado.\n    // S\u00f3 pode consultar um c\u00f3digo por vez; ningu\u00e9m de fora consegue listar.\n    match /conhecidos/{h} {\n      allow get: if true;\n    }\n\n    // Assinatura de plano pela p\u00e1gina de atendimento: qualquer pessoa envia, ningu\u00e9m de fora l\u00ea.\n    match /assinaturas/{id} {\n      allow create, update: if\n        request.resource.data.keys().hasOnly(['telefone','nome','planoId','inicio','endereco','entrega','obs','hora','pago'])\n        && request.resource.data.keys().hasAll(['telefone','nome','planoId','inicio','endereco','entrega','obs','hora','pago'])\n        && request.resource.data.telefone is string\n        && request.resource.data.telefone.size() >= 12 && request.resource.data.telefone.size() <= 13\n        && id == request.resource.data.telefone\n        && request.resource.data.nome is string && request.resource.data.nome.size() <= 80\n        && request.resource.data.planoId is string && request.resource.data.planoId.size() <= 40\n        && request.resource.data.inicio is string && request.resource.data.inicio.size() == 10\n        && request.resource.data.endereco is string && request.resource.data.endereco.size() <= 300\n        && request.resource.data.entrega in ['casa', 'portaria', 'maos']\n        && request.resource.data.obs is string && request.resource.data.obs.size() <= 300\n        && request.resource.data.hora is string && request.resource.data.hora.size() <= 30\n        && request.resource.data.pago in ['', 'informado'];\n    }\n\n    // Pedidos pelo link: qualquer pessoa envia o pr\u00f3prio pedido, ningu\u00e9m de fora l\u00ea.\n    match /respostas/{id} {\n      allow create, update: if\n        request.resource.data.keys().hasOnly(['data','telefone','nome','qtd','obs','endereco','hora','entrega','pago'])\n        && request.resource.data.keys().hasAll(['data','telefone','nome','qtd','obs','endereco','hora'])\n        && request.resource.data.data is string && request.resource.data.data.size() == 10\n        && request.resource.data.telefone is string\n        && request.resource.data.telefone.size() >= 12 && request.resource.data.telefone.size() <= 13\n        && id == request.resource.data.data + '_' + request.resource.data.telefone\n        && request.resource.data.qtd is int && request.resource.data.qtd >= 0 && request.resource.data.qtd <= 20\n        && request.resource.data.nome is string && request.resource.data.nome.size() <= 80\n        && request.resource.data.obs is string && request.resource.data.obs.size() <= 300\n        && request.resource.data.endereco is string && request.resource.data.endereco.size() <= 300\n        && request.resource.data.hora is string && request.resource.data.hora.size() <= 30\n        && (!('entrega' in request.resource.data) || request.resource.data.entrega in ['', 'casa', 'portaria', 'maos'])\n        && (!('pago' in request.resource.data) || request.resource.data.pago in ['', 'informado']);\n    }\n  }\n}\n";
+window.__RULES = "rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n\n    // Administrador: troque SEU-EMAIL-AQUI pelo seu e-mail (s\u00f3 uma vez).\n    // Os outros usu\u00e1rios voc\u00ea cadastra dentro do sistema, em Ajustes > Usu\u00e1rios do sistema.\n    function dono() {\n      return request.auth != null && request.auth.token.email in ['SEU-EMAIL-AQUI'];\n    }\n    function usuarios() {\n      return /databases/$(database)/documents/acesso/usuarios;\n    }\n    function membro() {\n      return dono() || (request.auth != null && exists(usuarios())\n        && request.auth.token.email in get(usuarios()).data.emails);\n    }\n\n    // O sistema: administrador e usu\u00e1rios cadastrados leem e gravam.\n    match /{col}/{document=**} {\n      allow read: if membro();\n      allow write: if membro() && col != 'acesso';\n    }\n\n    // Lista de usu\u00e1rios: todos os usu\u00e1rios veem, s\u00f3 o administrador muda.\n    match /acesso/{doc} {\n      allow read: if membro();\n      allow write: if dono();\n    }\n\n    // P\u00e1gina de pedido: qualquer pessoa v\u00ea o card\u00e1pio e o nome do restaurante.\n    match /cardapios/{dia} {\n      allow read: if true;\n    }\n    match /publico/{doc} {\n      allow read: if true;\n    }\n    // P\u00e1gina de pedido: confere se o telefone (em c\u00f3digo, sem dados pessoais) j\u00e1 tem endere\u00e7o cadastrado.\n    // S\u00f3 pode consultar um c\u00f3digo por vez; ningu\u00e9m de fora consegue listar.\n    match /conhecidos/{h} {\n      allow get: if true;\n    }\n\n    // Assinatura de plano pela p\u00e1gina de atendimento: qualquer pessoa envia, ningu\u00e9m de fora l\u00ea.\n    match /assinaturas/{id} {\n      allow create, update: if\n        request.resource.data.keys().hasOnly(['telefone','nome','planoId','inicio','endereco','entrega','obs','hora','pago'])\n        && request.resource.data.keys().hasAll(['telefone','nome','planoId','inicio','endereco','entrega','obs','hora','pago'])\n        && request.resource.data.telefone is string\n        && request.resource.data.telefone.matches('[0-9]{12,13}')\n        && id == request.resource.data.telefone\n        && request.resource.data.nome is string && request.resource.data.nome.size() <= 80\n        && request.resource.data.planoId is string && request.resource.data.planoId.size() <= 40\n        && request.resource.data.inicio is string && request.resource.data.inicio.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')\n        && request.resource.data.endereco is string && request.resource.data.endereco.size() <= 300\n        && request.resource.data.entrega in ['casa', 'portaria', 'maos']\n        && request.resource.data.obs is string && request.resource.data.obs.size() <= 300\n        && request.resource.data.hora is string && request.resource.data.hora.size() <= 30\n        && request.resource.data.pago in ['', 'informado'];\n    }\n\n    // Pedidos pelo link: qualquer pessoa envia o pr\u00f3prio pedido, ningu\u00e9m de fora l\u00ea.\n    match /respostas/{id} {\n      allow create, update: if\n        request.resource.data.keys().hasOnly(['data','telefone','nome','qtd','obs','endereco','hora','entrega','pago'])\n        && request.resource.data.keys().hasAll(['data','telefone','nome','qtd','obs','endereco','hora'])\n        && request.resource.data.data is string && request.resource.data.data.size() == 10\n        && request.resource.data.telefone is string\n        && request.resource.data.telefone.matches('[0-9]{12,13}')\n        && request.resource.data.data.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')\n        && id == request.resource.data.data + '_' + request.resource.data.telefone\n        // s\u00f3 aceita pedido para dia com card\u00e1pio publicado e ainda aberto\n        && exists(/databases/$(database)/documents/cardapios/$(request.resource.data.data))\n        && get(/databases/$(database)/documents/cardapios/$(request.resource.data.data)).data.get('fechado', false) != true\n        && request.resource.data.qtd is int && request.resource.data.qtd >= 0 && request.resource.data.qtd <= 20\n        && request.resource.data.nome is string && request.resource.data.nome.size() <= 80\n        && request.resource.data.obs is string && request.resource.data.obs.size() <= 300\n        && request.resource.data.endereco is string && request.resource.data.endereco.size() <= 300\n        && request.resource.data.hora is string && request.resource.data.hora.size() <= 30\n        && (!('entrega' in request.resource.data) || request.resource.data.entrega in ['', 'casa', 'portaria', 'maos'])\n        && (!('pago' in request.resource.data) || request.resource.data.pago in ['', 'informado']);\n    }\n  }\n}\n";
 // ---------- helpers ----------
 const $ = s => document.querySelector(s);
 const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -247,7 +248,7 @@ const ICONS = {
 const icon = id => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(ICONS[id]||"")+'</svg>';
 
 // ---------- state ----------
-const DEFAULT_CONFIG = {restaurante:"", meuNomeWhats:"", horarioLimite:"10:30", alertaSaldo:3, alertaDias:5, msgAlerta:"Olá {nome}! Restam {saldo} marmitas no seu plano {plano}, que vai até {fim}. Quer renovar?", enderecoRestaurante:"", cidade:"", custoMarmita:0, custoFixoMensal:0, telefoneRestaurante:"", premioIndicacao:"1 marmita grátis", autoPlano:true, abertos:[], feriadosLocais:"", prazoTipo:"mesmo", pixChave:"", pixNome:"", pixCidade:"", horaEntrega:"", autoCadastro:true, estoqueCong:0, estoqueMinCong:0, movCong:[], modulos:{clientes:true,planos:true,congeladas:true,precos:true,cardapio:true,calendario:true,relatorios:true,entregas:true,financeiro:true,marketing:true}};
+const DEFAULT_CONFIG = {pagamentosAceitos:["Pix","Dinheiro","Cartão de débito","Cartão de crédito"], restaurante:"", meuNomeWhats:"", horarioLimite:"10:30", alertaSaldo:3, alertaDias:5, msgAlerta:"Olá {nome}! Restam {saldo} marmitas no seu plano {plano}, que vai até {fim}. Quer renovar?", enderecoRestaurante:"", cidade:"", custoMarmita:0, custoFixoMensal:0, telefoneRestaurante:"", premioIndicacao:"1 marmita grátis", autoPlano:true, abertos:[], feriadosLocais:"", cuidados:"", validadeCong:60, prazoTipo:"mesmo", pixChave:"", pixNome:"", pixCidade:"", horaEntrega:"", autoCadastro:true, estoqueCong:0, estoqueMinCong:0, movCong:[], modulos:{clientes:true,planos:true,congeladas:true,precos:true,cardapio:true,calendario:true,relatorios:true,entregas:true,financeiro:true,marketing:true}};
 const S = {clientes:[], planos:[], cardapios:{}, config:structuredClone(DEFAULT_CONFIG), tab:"hoje", loaded:{}, mode:"loading",
   busca:"", filtro:"todos", mostrar:100, cardData:today(), calMes:today().slice(0,7), pedidos:{}, respostas:[], ready:{}, acesso:{emails:[], info:{}}, entregadores:[], pacotes:[], encomendas:[], precos:[], promocoes:[], assinaturas:[], cgFiltro:"abertas", fin:{}, finPeriodo:"mes", diaData:today(), confBusca:"", relPeriodo:"7", relTipo:"todos"};
 
@@ -310,7 +311,29 @@ const Store = {
 async function saveConfig(patch){
   S.config = Object.assign({}, S.config, patch);
   try{ await Store.set("config","geral",S.config); }catch(e){ toast(erroMsg(e)); }
-  if(window.__fs) Store.set("publico","info",{restaurante:S.config.restaurante||"", horarioLimite:S.config.horarioLimite||"10:30", telefone:normPhone(S.config.telefoneRestaurante)||"", logo:logoOk()?S.config.logo:"", cor:S.config.corMarca||"", prazoTipo:S.config.prazoTipo||"mesmo", pixChave:S.config.pixChave||"", pixNome:S.config.pixNome||"", pixCidade:S.config.pixCidade||S.config.cidade||""}).catch(()=>{});
+  syncInfo(true);
+}
+// Chave Pix no formato que o banco aceita: telefone com +55, CPF/CNPJ só números, e-mail em minúsculas
+function cpfOk(n){ if(!/^\d{11}$/.test(n) || /^(\d)\1+$/.test(n)) return false; const dv = k => { let s=0; for(let i=0;i<k;i++) s += Number(n[i])*(k+1-i); const r = (s*10)%11; return r===10?0:r; }; return dv(9)===Number(n[9]) && dv(10)===Number(n[10]); }
+function normPix(k){
+  k = String(k||"").trim(); if(!k) return "";
+  if(k.includes("@")) return k.toLowerCase().replace(/\s/g,"");
+  if(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(k)) return k.toLowerCase();
+  const dig = k.replace(/\D/g,"");
+  if(k.startsWith("+")) return "+"+dig;
+  if(dig.length===14) return dig;
+  if(dig.length===11 && cpfOk(dig) && !/[()]/.test(k)) return dig;
+  if(dig.length===10 || dig.length===11) return "+55"+dig;
+  if((dig.length===12 || dig.length===13) && dig.startsWith("55")) return "+"+dig;
+  return k;
+}
+// Dados que as páginas do cliente leem (nome, logo, prazo, Pix, formas de pagamento)
+function syncInfo(forcar){
+  if(!window.__fs || !S.ready.config) return;
+  const info = {restaurante:S.config.restaurante||"", horarioLimite:S.config.horarioLimite||"10:30", telefone:normPhone(S.config.telefoneRestaurante)||"", logo:logoOk()?S.config.logo:"", cor:S.config.corMarca||"", prazoTipo:S.config.prazoTipo||"mesmo", pixChave:normPix(S.config.pixChave), pixNome:S.config.pixNome||"", pixCidade:S.config.pixCidade||S.config.cidade||"", pagamentos:(S.config.pagamentosAceitos||[]).slice(0,10)};
+  const j = JSON.stringify(info); let antes = ""; try{ antes = localStorage.getItem("marmitex-info")||""; }catch(e){}
+  if(!forcar && j===antes) return;
+  Store.set("publico","info",info).then(() => { try{ localStorage.setItem("marmitex-info", j); }catch(e){} }).catch(()=>{});
 }
 function erroMsg(e){
   if(!e) return "Não foi possível salvar.";
@@ -351,7 +374,7 @@ const modoTxt = c => MODOS[c.entregaModo] || "";
 const semAcento = t => String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^A-Za-z0-9 .-]/g,"").trim();
 function crc16(t){ let c = 0xFFFF; for(let i=0;i<t.length;i++){ c ^= t.charCodeAt(i)<<8; for(let j=0;j<8;j++) c = (c & 0x8000) ? ((c<<1)^0x1021) & 0xFFFF : (c<<1) & 0xFFFF; } return c.toString(16).toUpperCase().padStart(4,"0"); }
 function pixCode(valor, txid){
-  const chave = String(S.config.pixChave||"").trim(); if(!chave) return "";
+  const chave = normPix(S.config.pixChave); if(!chave) return "";
   const f = (id, v) => id + String(v.length).padStart(2,"0") + v;
   const p = f("00","01") + f("26", f("00","BR.GOV.BCB.PIX") + f("01", chave)) + f("52","0000") + f("53","986") + (valor ? f("54", Number(valor).toFixed(2)) : "") + f("58","BR") + f("59", semAcento(S.config.pixNome||S.config.restaurante).slice(0,25)||"RESTAURANTE") + f("60", semAcento(S.config.pixCidade||S.config.cidade).slice(0,15)||"BRASIL") + f("62", f("05", String(txid||"").replace(/[^A-Za-z0-9]/g,"").slice(0,25)||"***")) + "6304";
   return p + crc16(p);
@@ -419,15 +442,21 @@ function msgAlerta(c){
 let wq = Promise.resolve();
 const FALHOU = Symbol("falhou");
 const enqueue = fn => (wq = wq.then(fn).catch(e => { toast(erroMsg(e)); return FALHOU; }));
-function setConf(d, c, qtd, extra){
-  const prev = (pedido(d).confirmados||{})[c.id];
-  const avulso = prev && prev.qtd>0 ? !!prev.avulso : (!c.planoId || statusCliente(c).k==="bad");
-  const entry = Object.assign({qtd:Math.max(0,qtd), avulso, hora:new Date().toISOString()}, extra||{});
-  const local = Object.assign({}, prev, entry);
+function setConf(d, c, qtd, extra){ return setConfVarios(d, [[c, qtd, extra]]); }
+// Vários clientes no mesmo dia viram uma gravação só (rápido mesmo com centenas de pedidos)
+function setConfVarios(d, itens){
+  if(!itens.length) return Promise.resolve();
+  const conf = Object.assign({}, pedido(d).confirmados), patch = {}, agora = new Date().toISOString();
+  for(const [c, qtd, extra] of itens){
+    const prev = conf[c.id];
+    const avulso = prev && prev.qtd>0 ? !!prev.avulso : (!c.planoId || statusCliente(c).k==="bad");
+    const entry = Object.assign({qtd:Math.max(0,qtd), avulso, hora:agora}, extra||{});
+    conf[c.id] = Object.assign({}, prev, entry); patch[c.id] = entry;
+  }
   const existed = !!S.pedidos[d]; invalidar();
-  S.pedidos[d] = Object.assign({data:d, enviado:false}, S.pedidos[d], {confirmados:Object.assign({}, pedido(d).confirmados, {[c.id]:local})});
+  S.pedidos[d] = Object.assign({data:d, enviado:false}, S.pedidos[d], {confirmados:conf});
   const novo = S.pedidos[d];
-  return enqueue(() => existed ? Store.update("pedidos", d, {confirmados:{[c.id]:entry}}) : Store.merge("pedidos", d, novo));
+  return enqueue(() => existed ? Store.update("pedidos", d, {confirmados:patch}) : Store.merge("pedidos", d, novo));
 }
 function linkPedido(d){
   if(!window.__fs) return "";
@@ -435,15 +464,24 @@ function linkPedido(d){
 }
 // depois de lançado no pedido do dia, o pedido do link é apagado (o sistema não precisa ler de novo)
 const apagando = new Set();
-function apagarResposta(r){ if(apagando.has(r.id)) return; apagando.add(r.id); enqueue(() => Store.del("respostas", r.id)); }
+function apagarResposta(r){ apagarRespostas([r]); }
+function apagarRespostas(lista){
+  const ids = lista.map(r => r.id).filter(id => !apagando.has(id)); if(!ids.length) return;
+  ids.forEach(id => apagando.add(id));
+  enqueue(async () => {
+    if(!window.__fs){ for(const id of ids) await Store.del("respostas", id); return; }
+    for(let i=0; i<ids.length; i+=400){ const b = window.__fs.batch(); ids.slice(i, i+400).forEach(id => b.delete(window.__fs.collection("respostas").doc(id))); await b.commit(); }
+  });
+}
 const prontos = (...cols) => cols.every(c => S.ready[c]);
 // Pedidos feitos pelo link: aplica cada resposta nova ou alterada ao pedido do dia
 const criando = new Set(), mudouModo = new Set();
 function processarRespostas(){
   if(!window.__fs || !prontos("clientes","pedidos","respostas")) return;
+  const lixo = [], lote = {};
   S.respostas.forEach(r => {
     if(!r.data) return;
-    if(r.data < today()){ apagarResposta(r); return; }
+    if(r.data < today()){ lixo.push(r); return; }
     let c = idx().porTel.get(r.telefone);
     if(!c){
       if(S.config.autoCadastro===false || !(Number(r.qtd)>0) || criando.has(r.telefone)) return;
@@ -457,11 +495,13 @@ function processarRespostas(){
     if(r.entrega && r.entrega!==c.entregaModo && !mudouModo.has(c.id)){ mudouModo.add(c.id); enqueue(() => Store.update("clientes", c.id, {entregaModo:r.entrega})); }
     if(cur && cur.respHora===r.hora){
       if(r.pago==="informado" && !cur.pixInformado) patchConf(r.data, {[c.id]:{pixInformado:true}});
-      apagarResposta(r); return;
+      lixo.push(r); return;
     }
     (() => { const end = String(r.endereco||"").trim(); if(end && !c.rua && !c.endereco){ const e = splitEndereco(end); const patch = {rua:e.rua||end, numero:e.numero||"", complemento:e.complemento||""}; if(e.bairro && !c.bairro) patch.bairro = e.bairro; enqueue(() => Store.update("clientes", c.id, patch)); } })(),
-    setConf(r.data, c, Number(r.qtd)||0, {respHora:r.hora, origem:"link", endEntrega:(c.rua||c.endereco) && String(r.endereco||"").trim()!==(c.endLink||"") ? String(r.endereco||"").trim() : "", obsDia:String(r.obs||"").trim(), entrega:String(r.entrega||""), pixInformado:r.pago==="informado"}).then(res => { if(res!==FALHOU) apagarResposta(r); });
+    (lote[r.data] ||= {itens:[], resps:[]}); lote[r.data].itens.push([c, Number(r.qtd)||0, {respHora:r.hora, origem:"link", endEntrega:(c.rua||c.endereco) && String(r.endereco||"").trim()!==(c.endLink||"") ? String(r.endereco||"").trim() : "", obsDia:String(r.obs||"").trim(), entrega:String(r.entrega||""), pixInformado:r.pago==="informado"}]); lote[r.data].resps.push(r);
   });
+  apagarRespostas(lixo);
+  for(const d in lote) setConfVarios(d, lote[d].itens).then(res => { if(res!==FALHOU) apagarRespostas(lote[d].resps); });
 }
 // Clientes de plano entram sozinhos nos dias abertos em que recebem
 const autoFeito = {};
@@ -469,7 +509,7 @@ function autoPlanoDia(d){
   if(S.config.autoPlano===false || d < today() || !isOpen(d) || autoFeito[d]) return;
   if(!prontos("clientes","pedidos","planos","config")) return;
   autoFeito[d] = true;
-  planoHoje(d).forEach(c => setConf(d, c, plano(c.planoId)?.porDia||1, {origem:"plano"}));
+  setConfVarios(d, planoHoje(d).map(c => [c, plano(c.planoId)?.porDia||1, {origem:"plano"}]));
 }
 let autoT;
 // ----- Fechar os pedidos do dia e avisar os clientes -----
@@ -493,6 +533,7 @@ function msgConfirmacao(d, x){
   }
   t += "\n📍 "+(enderecoTxt(c)||"endereço a confirmar")+(modoTxt(c)?"\n"+modoTxt(c):"");
   if(S.config.horaEntrega) t += "\n🛵 Saímos para entrega a partir de "+S.config.horaEntrega+".";
+  if(modOn("congeladas") && congDia(d).some(e => e.clienteId===x.id)) t += "\n🧊 Suas congeladas vão junto: guarde no freezer (-18 °C) assim que receber. Validade de até "+(Number(S.config.validadeCong)||60)+" dias."+(linkCuidados()?" Como conservar e aquecer: "+linkCuidados():"");
   return t + "\n\n"+(S.config.restaurante||"Obrigado pela preferência!");
 }
 function msgGeral(d){
@@ -518,7 +559,7 @@ function syncCatalogo(){
     planos: S.planos.filter(p => p.tipo!=="personalizado" && p.ativo!==false && p.preco).map(p => ({id:p.id, nome:p.nome||"", marmitas:Number(p.marmitas)||0, porDia:Number(p.porDia)||1, duracao:Number(p.duracao)||0, dias:p.dias||[], preco:Number(p.preco)||0, descricao:p.descricao||""})),
     pacotes: modOn("congeladas") ? S.pacotes.filter(p => p.ativo!==false).map(p => ({nome:p.nome||"", unidades:Number(p.unidades)||0, preco:Number(p.preco)||0, descricao:p.descricao||""})) : [],
     precos: modOn("precos") ? S.precos.filter(p => p.ativo!==false).sort((a,b) => CAT_PRECO.indexOf(a.cat)-CAT_PRECO.indexOf(b.cat) || (a.preco||0)-(b.preco||0)).map(p => ({nome:p.nome||"", descricao:p.descricao||"", preco:precoNoDia(p, t)})) : [],
-    promos: modOn("precos") ? promosDia(t).map(textoPromo) : [], dia:t
+    promos: modOn("precos") ? promosDia(t).map(textoPromo) : [], dia:t, cuidados:cuidados()
   };
   const j = JSON.stringify(cat); let antes = ""; try{ antes = localStorage.getItem("marmitex-cat")||""; }catch(e){}
   if(j===antes) return;
@@ -575,7 +616,7 @@ async function syncConhecidos(){
   }catch(e){ /* tenta de novo na próxima mudança */ }
   syncCon = false;
 }
-function automacoes(){ clearTimeout(autoT); autoT = setTimeout(() => { syncCatalogo(); processarAssinaturas(); syncConhecidos(); fecharFeriados(); autoPlanoDia(today()); autoPlanoDia(S.diaData); processarRespostas(); }, 400); }
+function automacoes(){ clearTimeout(autoT); autoT = setTimeout(() => { syncInfo(); syncCatalogo(); processarAssinaturas(); syncConhecidos(); fecharFeriados(); autoPlanoDia(today()); autoPlanoDia(S.diaData); processarRespostas(); }, 400); }
 function setPedidoCampos(d, patch){
   const existed = !!S.pedidos[d];
   S.pedidos[d] = Object.assign({data:d, confirmados:{}}, S.pedidos[d], patch);
@@ -630,8 +671,11 @@ function render(){
   const v = $("#view");
   const banner = S.mode==="local" ? '<div class="banner"><b>Modo de teste:</b> os dados ficam só neste navegador. Configure o Firebase para salvar e ver os mesmos dados no celular e no computador.</div>' : "";
   v.onclick = null;
-  v.innerHTML = banner + (S.permErro && window.__fs ? painelRegras(true) : "") + (VIEWS[S.tab] || VIEWS.hoje)();
-  (BIND[S.tab]||(()=>{}))();
+  let html;
+  try{ html = (VIEWS[S.tab] || VIEWS.hoje)(); }
+  catch(e){ console.error(e); html = '<section class="panel"><h2>Esta tela não abriu</h2><p class="muted">Seus dados estão salvos. Recarregue a página; se continuar, faça um backup em Ajustes e avise o suporte.</p><p class="muted" style="font-size:.8rem">'+esc(String(e && e.message || e))+'</p><button class="btn primary" onclick="location.reload()">Recarregar</button></section>'; }
+  v.innerHTML = banner + (S.permErro && window.__fs ? painelRegras(true) : "") + html;
+  try{ (BIND[S.tab]||(()=>{}))(); }catch(e){ console.error(e); }
 }
 
 // ---------- views ----------
@@ -683,6 +727,7 @@ VIEWS.hoje = () => {
     <div class="stat"><b>${tot-av}</b><span>de plano</span></div>
     <div class="stat"><b>${av}</b><span>avulsas${preco?" · "+brl(av*preco):""}</span></div>
   </div>
+  ${(() => { if(!S.ready.config) return ""; const f = [!S.config.restaurante&&"nome do restaurante", !normPix(S.config.pixChave)&&"chave Pix (sem ela o cliente avulso não vê como pagar)", !S.config.telefoneRestaurante&&"WhatsApp do restaurante"].filter(Boolean); return f.length ? `<div class="banner row" style="justify-content:space-between" id="faltaCfg"><span>Falta preencher em Ajustes: <b>${f.join(", ")}</b>.</span><button class="btn small" data-go="ajustes">Preencher agora</button></div>` : ""; })()}
   ${window.__fs && (diasDesdeBackup()===null || diasDesdeBackup()>7) && S.ready.config ? `<div class="banner row" style="justify-content:space-between">Faça o backup semanal para não correr risco de perder dados. <button class="btn small" data-go="ajustes">Fazer backup</button></div>` : ""}
   <section class="panel"><div class="steps">
     ${step(1,"Lançar o cardápio do dia", !!card, card
@@ -1364,6 +1409,66 @@ function formPromo(p){
   });
 }
 
+// ----- Conservação: recomendações ao cliente e etiquetas -----
+function cuidadosPadrao(){
+  const v = Number(S.config.validadeCong)||60;
+  return `🧊 *Como conservar suas marmitas*
+
+*Congeladas*
+• Guarde no freezer (-18 °C ou menos) assim que receber.
+• Validade: até ${v} dias a partir da data de produção da etiqueta.
+• Congelador de geladeira de uma porta não chega a -18 °C: nele, consuma em até 15 dias.
+• Para descongelar, passe para a geladeira na noite anterior (8 a 12 horas). Não descongele na pia nem fora da geladeira.
+• Depois de descongelada, consuma em até 24 horas e não congele de novo.
+
+*Marmitas do dia*
+• Se não for comer em até 2 horas, guarde na geladeira (até 5 °C) e consuma em até 3 dias.
+• Não deixe a marmita mais de 2 horas fora da geladeira.
+
+*Como aquecer*
+• Micro-ondas: abra uma fresta da tampa, aqueça 2 a 3 minutos, mexa e aqueça mais 1 minuto, até ficar bem quente por igual.
+• Direto do freezer: 5 a 7 minutos em potência média, mexendo na metade.
+• Se a embalagem não for própria para micro-ondas, passe para um prato.
+• Aqueça só o que for comer, uma vez.
+
+*Atenção*
+• Embalagem estufada ou aberta, cheiro, cor ou textura estranhos: não consuma e fale com a gente.
+• Guarde a etiqueta para conferir as datas.`;
+}
+const cuidados = () => String(S.config.cuidados||"").trim() || cuidadosPadrao();
+const linkCuidados = () => { const l = linkAtendimento(); return l ? l+"#cuidados" : ""; };
+function imprimirEtiquetas(prato, prod, n){
+  const v = Number(S.config.validadeCong)||60, val = addDays(prod, v);
+  const um = `<div class="et">${logoOk()?`<img src="${S.config.logo}" alt="">`:""}<div class="tx"><b class="r">${esc(S.config.restaurante||"")}</b><b class="p">${esc(prato)}</b>
+    <span>Produção: <b>${fmtDate(prod)}</b> · Validade: <b>${fmtDate(val)}</b> (freezer -18 °C)</span>
+    <span>Descongele na geladeira. Depois de descongelada, consuma em até 24 h. Não congele novamente.</span>
+    <span>Aquecer: micro-ondas 5 a 7 min (direto do freezer), mexendo na metade.</span>${S.config.telefoneRestaurante?`<span>${esc(fmtPhone(normPhone(S.config.telefoneRestaurante)))}</span>`:""}</div></div>`;
+  const w = window.open("", "_blank"); if(!w){ toast("Permita abrir janelas para imprimir as etiquetas."); return; }
+  w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Etiquetas · ${esc(prato)}</title><style>
+    @page{size:A4;margin:8mm}body{margin:0;font:10px/1.25 Arial,sans-serif;color:#000}
+    .g{display:grid;grid-template-columns:repeat(3,1fr);gap:3mm}
+    .et{border:1px dashed #999;border-radius:3mm;padding:2.5mm;display:flex;gap:2mm;height:33mm;overflow:hidden;break-inside:avoid}
+    .et img{width:12mm;height:12mm;object-fit:contain;flex:none}.tx{display:flex;flex-direction:column;gap:.6mm}
+    .r{font-size:9px;color:#444}.p{font-size:12px}
+    .bar{font:14px Arial;margin:0 0 4mm}@media print{.bar{display:none}}</style></head><body>
+    <p class="bar">${n} etiquetas · <button onclick="print()">Imprimir</button></p><div class="g">${Array.from({length:n}, () => um).join("")}</div>
+    <script>setTimeout(()=>print(),400)<\/script></body></html>`);
+  w.document.close();
+}
+function formEtiquetas(){
+  const pratos = [...new Set([...S.pacotes.map(p=>p.nome), ...pratosCat("Prato principal")])].filter(Boolean);
+  openModal(`<h2>Etiquetas para as congeladas</h2>
+    <form class="form">
+      <label class="f c6">Prato ou pacote<input type="text" id="et_p" list="et_l" placeholder="Ex.: Frango ao curry com arroz integral"><datalist id="et_l">${pratos.map(n=>`<option value="${esc(n)}">`).join("")}</datalist></label>
+      <label class="f c3">Data de produção<input type="date" id="et_d" value="${today()}"></label>
+      <label class="f c3">Quantidade<input type="number" id="et_n" min="1" max="240" value="24"></label>
+    </form>
+    <p class="muted" style="margin:0">A validade é a data de produção + ${Number(S.config.validadeCong)||60} dias (muda em Congeladas > Recomendações). Uma folha A4 tem 24 etiquetas.</p>
+    <div class="foot"><span style="flex:1"></span><button class="btn" data-close>Cancelar</button><button class="btn primary" id="et_go">Imprimir</button></div>`, () => {
+    $("#et_go").onclick = () => { const p = $("#et_p").value.trim(); if(!p){ toast("Digite o nome do prato."); return; } imprimirEtiquetas(p, $("#et_d").value||today(), Math.max(1, Math.min(240, Number($("#et_n").value)||24))); closeModal(); };
+  });
+}
+
 // ----- Congeladas -----
 const pacote = id => S.pacotes.find(p => p.id===id);
 const congDia = d => S.encomendas.filter(e => e.data===d);
@@ -1420,6 +1525,13 @@ VIEWS.congeladas = () => {
     <div class="row" style="justify-content:space-between"><h2>Pacotes</h2><button class="btn small" id="cgNovoPac">+ Pacote</button></div>
     ${S.pacotes.length ? `<div class="tablebox"><table style="min-width:0"><thead><tr><th>Pacote</th><th>Refeições</th><th>Preço</th><th>Por refeição</th></tr></thead><tbody>${S.pacotes.slice().sort((a,b)=>(a.nome||"").localeCompare(b.nome||"","pt-BR")).map(p=>`<tr class="click" data-pac="${esc(p.id)}" tabindex="0"><td><b>${esc(p.nome)}</b>${p.ativo===false?' <span class="pill">pausado</span>':""}${p.descricao?`<div class="muted" style="font-size:.8rem">${esc(p.descricao)}</div>`:""}</td><td class="num">${p.unidades||"—"}</td><td class="num">${brl(p.preco)}</td><td class="num">${p.unidades?brl((p.preco||0)/p.unidades):"—"}</td></tr>`).join("")}</tbody></table></div>` : `<p class="muted" style="margin:0">Cadastre os pacotes que você vende, por exemplo "Kit 10 congeladas fit".</p>`}
   </section>
+  <section class="panel" style="display:flex;flex-direction:column;gap:10px">
+    <div class="row" style="justify-content:space-between"><h2>Recomendações ao cliente</h2><div class="row"><button class="btn small" id="cuCopiar">Copiar</button><button class="btn small" id="cuEtq">Imprimir etiquetas</button></div></div>
+    <p class="muted" style="margin:0">Aparece na página de atendimento e no pedido (link "Como conservar"), e vai junto no aviso de quem recebe congeladas. Edite se quiser.</p>
+    <div class="form"><label class="f c2">Validade no freezer (dias)<input type="number" min="1" max="180" id="cuVal" value="${esc(Number(S.config.validadeCong)||60)}"></label></div>
+    <textarea id="cuTxt" style="min-height:260px">${esc(cuidados())}</textarea>
+    <div class="row"><button class="btn primary small" id="cuSalvar">Salvar recomendações</button><button class="btn small" id="cuPadrao">Voltar ao texto padrão</button></div>
+  </section>
   <section class="panel" style="display:flex;flex-direction:column;gap:10px"><h2>Estoque</h2>
     <div class="form">
       <label class="f c2">Produzi agora (unidades)<input type="number" min="1" id="cgProd" placeholder="Ex.: 40"></label>
@@ -1432,10 +1544,14 @@ VIEWS.congeladas = () => {
   <textarea id="msgCopy" aria-hidden="true" tabindex="-1" style="position:absolute;left:-9999px;width:1px;height:1px"></textarea>`;
 };
 BIND.congeladas = () => {
+  $("#cuCopiar").onclick = () => { const t = cuidados(); $("#msgCopy").value = t; copiar(t); };
+  $("#cuEtq").onclick = () => formEtiquetas();
+  $("#cuSalvar").onclick = async () => { const v = Math.max(1, Number($("#cuVal").value)||60), t = $("#cuTxt").value.trim(); const pad0 = t===cuidadosPadrao().trim(); await saveConfig({validadeCong:v, cuidados:pad0?"":t}); render(); toast("Recomendações salvas."); };
+  $("#cuPadrao").onclick = async () => { await saveConfig({cuidados:""}); render(); toast("Texto padrão restaurado."); };
   const enc = id => S.encomendas.find(e => e.id===id);
   $("#cgNova").onclick = () => formEncomenda();
   $("#cgNovoPac").onclick = () => formPacote();
-  $("#cgCopiar").onclick = () => { const t = preencher(TEMPLATES.congeladas.whatsapp, null).replace("Oi, tudo bem!","Oi!"); $("#msgCopy").value = t; copiar(t); };
+  $("#cgCopiar").onclick = () => { const t = preencher(TEMPLATES.congeladas.whatsapp, null).replace("Oi, tudo bem!","Oi!") + (linkCuidados() ? "\n\n🧊 Como conservar e aquecer: "+linkCuidados() : ""); $("#msgCopy").value = t; copiar(t); };
   document.querySelectorAll("[data-pac]").forEach(r => { r.onclick = () => formPacote(pacote(r.dataset.pac)); r.onkeydown = e => { if(e.key==="Enter") r.onclick(); }; });
   document.querySelectorAll("[data-cgf]").forEach(b => b.onclick = () => { S.cgFiltro = b.dataset.cgf; render(); });
   document.querySelectorAll("[data-cged]").forEach(b => b.onclick = () => formEncomenda(enc(b.dataset.cged)));
@@ -2127,6 +2243,7 @@ VIEWS.ajustes = () => `
       <label class="f c2">Chave Pix<input type="text" id="a_pix" value="${esc(S.config.pixChave)}" placeholder="CNPJ, e-mail, +55 telefone ou chave aleatória"></label>
       <label class="f c2">Nome de quem recebe o Pix<input type="text" id="a_pixNome" value="${esc(S.config.pixNome)}" placeholder="Como aparece no banco"></label>
       <label class="f c2">Cidade do Pix<input type="text" id="a_pixCid" value="${esc(S.config.pixCidade)}" placeholder="${esc(S.config.cidade||"Sua cidade")}"></label>
+      <div class="f c6"><span>Formas de pagamento aceitas (aparecem para o cliente no link)</span><div class="row" style="flex-wrap:wrap;gap:10px">${PAGAMENTOS.map(pg=>`<label class="check"><input type="checkbox" data-pagac="${esc(pg)}" ${(S.config.pagamentosAceitos||[]).includes(pg)?"checked":""}> ${esc(pg)}</label>`).join("")}</div></div>
       <label class="check c6"><input type="checkbox" id="a_autoCad" ${S.config.autoCadastro!==false?"checked":""}> Cadastrar sozinho o cliente novo que pedir pelo link</label>
       <label class="f c4">Endereço do restaurante (saída das rotas)<input type="text" id="a_end" value="${esc(S.config.enderecoRestaurante)}" placeholder="Rua, número, bairro, cidade"></label>
       <label class="f c2">Cidade<input type="text" id="a_cid" value="${esc(S.config.cidade)}"></label>
@@ -2277,7 +2394,7 @@ function bindUsuarios(){
 BIND.ajustes = () => {
   bindMarca();
   if(window.__fs){ bindUsuarios(); bindBackup(); }
-  $("#a_save").onclick = () => { const ferAntes = S.config.feriadosLocais||"", ferNovo = $("#a_fer").value.trim(); S.config.feriadosLocais = ferNovo; const abertos = ferNovo!==ferAntes ? S.config.abertos.filter(d => !(d>=today() && feriado(d))) : S.config.abertos; saveConfig({abertos, feriadosLocais:ferNovo, restaurante:$("#a_nome").value.trim(), meuNomeWhats:$("#a_wa").value.trim(), horarioLimite:$("#a_hora").value.trim()||"10:30", prazoTipo:$("#a_prazo").value, horaEntrega:$("#a_horaEnt").value.trim(), pixChave:$("#a_pix").value.trim(), pixNome:$("#a_pixNome").value.trim(), pixCidade:$("#a_pixCid").value.trim(), autoCadastro:$("#a_autoCad").checked, enderecoRestaurante:$("#a_end").value.trim(), cidade:$("#a_cid").value.trim(), telefoneRestaurante:$("#a_tel").value.trim(), custoMarmita:Number($("#a_custo").value)||0, custoFixoMensal:Number($("#a_fixo").value)||0, premioIndicacao:$("#a_premio").value.trim()||"1 marmita grátis", alertaSaldo:Number($("#a_alerta").value)||0, alertaDias:Number($("#a_alertaDias").value)||0, msgAlerta:$("#a_msg").value.trim()||DEFAULT_CONFIG.msgAlerta, autoPlano:$("#a_auto").checked}).then(()=>{ render(); toast("Ajustes salvos."); }); };
+  $("#a_save").onclick = () => { const ferAntes = S.config.feriadosLocais||"", ferNovo = $("#a_fer").value.trim(); S.config.feriadosLocais = ferNovo; const abertos = ferNovo!==ferAntes ? S.config.abertos.filter(d => !(d>=today() && feriado(d))) : S.config.abertos; saveConfig({abertos, feriadosLocais:ferNovo, restaurante:$("#a_nome").value.trim(), meuNomeWhats:$("#a_wa").value.trim(), horarioLimite:$("#a_hora").value.trim()||"10:30", prazoTipo:$("#a_prazo").value, horaEntrega:$("#a_horaEnt").value.trim(), pixChave:normPix($("#a_pix").value), pagamentosAceitos:[...document.querySelectorAll("[data-pagac]:checked")].map(x=>x.dataset.pagac), pixNome:$("#a_pixNome").value.trim(), pixCidade:$("#a_pixCid").value.trim(), autoCadastro:$("#a_autoCad").checked, enderecoRestaurante:$("#a_end").value.trim(), cidade:$("#a_cid").value.trim(), telefoneRestaurante:$("#a_tel").value.trim(), custoMarmita:Number($("#a_custo").value)||0, custoFixoMensal:Number($("#a_fixo").value)||0, premioIndicacao:$("#a_premio").value.trim()||"1 marmita grátis", alertaSaldo:Number($("#a_alerta").value)||0, alertaDias:Number($("#a_alertaDias").value)||0, msgAlerta:$("#a_msg").value.trim()||DEFAULT_CONFIG.msgAlerta, autoPlano:$("#a_auto").checked}).then(()=>{ render(); toast("Ajustes salvos."); }); };
   document.querySelectorAll("[data-m]").forEach(cb => cb.onchange = () => { saveConfig({modulos:Object.assign({}, S.config.modulos, {[cb.dataset.m]:cb.checked})}); render(); });
 };
 

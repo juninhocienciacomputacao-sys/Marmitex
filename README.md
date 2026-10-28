@@ -73,6 +73,21 @@ Na aba **Congeladas** você cadastra os pacotes (ex.: Kit 10 congeladas fit), la
 - **Receber** lança o valor no Financeiro. **Entregar** tira as unidades do estoque.
 - **Copiar oferta** monta a mensagem com os pacotes e preços para o WhatsApp.
 
+## Conservação das congeladas e etiquetas
+
+Em **Congeladas > Recomendações ao cliente** fica um texto pronto (freezer a -18 °C, validade, descongelar na geladeira, consumir em até 24 h depois de descongelada, nunca recongelar, como aquecer). Dá para editar e mudar a validade. O texto aparece na página de atendimento (`atendimento.html#cuidados`), no link de pedido e na mensagem de confirmação de quem recebe congeladas. O botão **Imprimir etiquetas** gera folha A4 com 24 etiquetas: prato, data de produção, validade e modo de preparo.
+
+## Pagamento
+
+Preencha em **Ajustes** a chave Pix (o sistema já arruma o formato: telefone vira +55, CPF/CNPJ só números) e marque as formas de pagamento aceitas. Com a chave, o cliente avulso recebe o Pix copia e cola e o QR Code na hora do pedido. Sem a chave, a página mostra o valor, as formas aceitas e um botão para combinar no WhatsApp. Enquanto faltar nome, Pix ou WhatsApp do restaurante, a tela **Dia** avisa.
+
+## Segurança e desempenho (auditoria de 28/10/2026)
+
+- Regras testadas no emulador do Firebase (30 testes): quem não está logado só lê cardápio e dados públicos, só envia o próprio pedido ou assinatura, e não lê nem lista clientes, pedidos, financeiro ou respostas. E-mail logado que não está cadastrado não acessa nada.
+- Pedido pelo link só é aceito para dia com cardápio publicado e não fechado (o Firebase barra, não só a página).
+- Muitos pedidos de uma vez (ex.: 1000 pela manhã) e clientes de plano entram em uma gravação só por dia, sem travar. Testado com 2000 clientes.
+- Se uma tela der erro, aparece um aviso com botão de recarregar, sem perder dados.
+
 ## Feriados
 
 Os feriados nacionais aparecem no Calendário e ficam fechados (os atalhos "Abrir seg a sex/sáb" pulam os feriados). Para abrir num feriado, toque no dia. Os feriados da sua cidade você cadastra em **Ajustes**.
