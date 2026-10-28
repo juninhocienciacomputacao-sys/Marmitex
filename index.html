@@ -354,7 +354,15 @@ function idx(){
   return IDX = {porId, porTel, uso};
 }
 const invalidar = () => { IDX = null; };
-const confirmadosDia = d => Object.entries(pedido(d).confirmados||{}).filter(([id,v]) => v && v.qtd>0).map(([id,v]) => ({id, qtd:v.qtd, avulso:!!v.avulso, origem:v.origem||"", cliente:idx().porId.get(id) || {id, nome:"(cliente apagado)"}}));
+function clienteDoDia(id, v){
+  const c = idx().porId.get(id) || {id, nome:"(cliente apagado)"};
+  if(!v.endEntrega && !v.obsDia) return c;
+  const x = Object.assign({}, c);
+  if(v.endEntrega){ x.rua = v.endEntrega; x.numero = ""; x.complemento = ""; x.referencia = "endereço informado no pedido de hoje"; }
+  if(v.obsDia) x.obs = [c.obs, "Hoje: "+v.obsDia].filter(Boolean).join(" · ");
+  return x;
+}
+const confirmadosDia = d => Object.entries(pedido(d).confirmados||{}).filter(([id,v]) => v && v.qtd>0).map(([id,v]) => ({id, qtd:v.qtd, avulso:!!v.avulso, origem:v.origem||"", cliente:clienteDoDia(id, v)}));
 function usadas(c){
   if(!c.planoId) return 0; let n = 0;
   (idx().uso[c.id]||[]).forEach(([d,q]) => { if(c.inicio && d < c.inicio) return; if(c.fim && d > c.fim) return; n += q; });
@@ -405,7 +413,8 @@ function processarRespostas(){
     const c = idx().porTel.get(r.telefone); if(!c) return;
     const cur = (pedido(r.data).confirmados||{})[c.id];
     if(cur && cur.respHora===r.hora){ apagarResposta(r); return; }
-    setConf(r.data, c, Number(r.qtd)||0, {respHora:r.hora, origem:"link"}).then(res => { if(res!==FALHOU) apagarResposta(r); });
+    (() => { const end = String(r.endereco||"").trim(); if(end && !c.rua && !c.endereco){ const e = splitEndereco(end); const patch = {rua:e.rua||end, numero:e.numero||"", complemento:e.complemento||""}; if(e.bairro && !c.bairro) patch.bairro = e.bairro; enqueue(() => Store.update("clientes", c.id, patch)); } })(),
+    setConf(r.data, c, Number(r.qtd)||0, {respHora:r.hora, origem:"link", endEntrega:(c.rua||c.endereco) ? String(r.endereco||"").trim() : "", obsDia:String(r.obs||"").trim()}).then(res => { if(res!==FALHOU) apagarResposta(r); });
   });
 }
 // Clientes de plano entram sozinhos nos dias abertos em que recebem
@@ -417,7 +426,28 @@ function autoPlanoDia(d){
   planoHoje(d).forEach(c => setConf(d, c, plano(c.planoId)?.porDia||1, {origem:"plano"}));
 }
 let autoT;
-function automacoes(){ clearTimeout(autoT); autoT = setTimeout(() => { fecharFeriados(); autoPlanoDia(today()); autoPlanoDia(S.diaData); processarRespostas(); }, 400); }
+// Página de pedido: reconhece quem já tem endereço cadastrado sem expor dados (só um código do telefone)
+const temEndereco = c => c.ativo!==false && c.telefone && (c.rua || c.endereco);
+async function hashTel(t){ const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("marmitex:"+t)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join(""); }
+let syncCon = false;
+async function syncConhecidos(){
+  if(syncCon || !window.__fs || !window.crypto || !crypto.subtle || !prontos("clientes")) return;
+  syncCon = true;
+  try{
+    let feitos = {}; try{ feitos = JSON.parse(localStorage.getItem("marmitex-conh")||"{}"); }catch(e){}
+    const quer = {}; for(const c of S.clientes) if(temEndereco(c)) quer[await hashTel(c.telefone)] = 1;
+    const novos = Object.keys(quer).filter(h => !feitos[h]), velhos = Object.keys(feitos).filter(h => !quer[h]);
+    const ops = [...novos.map(h => [h,1]), ...velhos.map(h => [h,0])];
+    for(let i=0; i<ops.length; i+=400){
+      const b = window.__fs.batch();
+      ops.slice(i, i+400).forEach(([h,on]) => { const ref = window.__fs.collection("conhecidos").doc(h); on ? b.set(ref, {e:1}) : b.delete(ref); });
+      await b.commit();
+    }
+    try{ localStorage.setItem("marmitex-conh", JSON.stringify(quer)); }catch(e){}
+  }catch(e){ /* tenta de novo na próxima mudança */ }
+  syncCon = false;
+}
+function automacoes(){ clearTimeout(autoT); autoT = setTimeout(() => { syncConhecidos(); fecharFeriados(); autoPlanoDia(today()); autoPlanoDia(S.diaData); processarRespostas(); }, 400); }
 function setPedidoCampos(d, patch){
   const existed = !!S.pedidos[d];
   S.pedidos[d] = Object.assign({data:d, confirmados:{}}, S.pedidos[d], patch);

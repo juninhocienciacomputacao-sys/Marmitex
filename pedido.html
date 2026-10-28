@@ -32,6 +32,8 @@ button{font:inherit;cursor:pointer}
 .main{background:var(--brand);color:var(--brand-fg);border:0;border-radius:10px;padding:14px;font-weight:700;font-size:1.05rem}
 .ghost{background:none;border:1px solid var(--line);color:var(--fg);border-radius:10px;padding:12px;font-weight:700}
 .err{color:var(--bad);margin:0}
+.chk{flex-direction:row;align-items:center;gap:10px;background:var(--brand-soft);color:var(--fg);border-radius:10px;padding:12px;font-size:1rem}
+.chk input{width:22px;height:22px;flex:none}
 .ok{background:var(--brand-soft);border-radius:12px;padding:18px;text-align:center}
 .banner{background:var(--warn-soft);border-radius:10px;padding:10px 12px}
 button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
@@ -48,7 +50,8 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
     <div><div style="font-weight:700;font-size:.9rem;color:var(--muted);margin-bottom:6px">Quantas marmitas?</div>
       <div class="qty"><button type="button" id="menos" aria-label="Menos uma">−</button><b id="q">1</b><button type="button" id="mais" aria-label="Mais uma">+</button></div></div>
     <label>Observação (opcional)<input type="text" id="obs" placeholder="Ex.: sem cebola"></label>
-    <label>Endereço (só no primeiro pedido ou se mudou)<textarea id="end" placeholder="Rua, número, complemento, bairro"></textarea></label>
+    <label class="chk" id="usarBox" hidden><input type="checkbox" id="usar" checked> Entregar no meu endereço cadastrado</label>
+    <label id="endLbl"><span id="endTit">Endereço para entrega</span><textarea id="end" placeholder="Rua, número, complemento, bairro"></textarea></label>
     <p class="err" id="err"></p>
     <button class="main" id="enviar">Confirmar pedido</button>
     <button class="ghost" id="nao">Não quero hoje</button>
@@ -108,14 +111,34 @@ Promise.all([fs.collection("publico").doc("info").get().catch(()=>null), fs.coll
   if(info.horarioLimite) $("#sub").textContent += " · pedidos até "+info.horarioLimite;
   $("#formBox").hidden = false;
 });
+// Cliente já cadastrado com endereço: o sistema guarda só um código do telefone (sem dados pessoais)
+let conhecido = null, chkT, ultimoTel = "";
+async function hashTel(t){ const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("marmitex:"+t)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join(""); }
+function mostrarEndereco(){
+  const usa = conhecido===true && $("#usar").checked;
+  $("#usarBox").hidden = conhecido!==true; $("#endLbl").hidden = usa;
+  $("#endTit").textContent = conhecido===true ? "Outro endereço, só para este pedido" : "Endereço para entrega";
+}
+async function checarCliente(){
+  const tel = normPhone($("#tel").value); if(tel===ultimoTel) return; ultimoTel = tel;
+  if(tel.length<12 || tel.length>13 || !window.crypto || !crypto.subtle){ conhecido = null; mostrarEndereco(); return; }
+  try{ const d = await fs.collection("conhecidos").doc(await hashTel(tel)).get(); if(normPhone($("#tel").value)!==tel) return; conhecido = d.exists; if(conhecido) $("#usar").checked = true; }
+  catch(e){ conhecido = null; }
+  mostrarEndereco();
+}
+$("#tel").addEventListener("input", () => { clearTimeout(chkT); chkT = setTimeout(checarCliente, 400); });
+$("#usar").onchange = () => { mostrarEndereco(); if(!$("#usar").checked) $("#end").focus(); };
+if($("#tel").value) checarCliente();
 async function enviar(q){
   const tel = normPhone($("#tel").value), nome = $("#nome").value.trim();
   $("#err").textContent = "";
   if(tel.length<12 || tel.length>13){ $("#err").textContent = "Digite seu WhatsApp com DDD, por exemplo (11) 91234-5678."; $("#tel").focus(); return; }
   if(!nome){ $("#err").textContent = "Digite seu nome."; $("#nome").focus(); return; }
+  const endereco = conhecido===true && $("#usar").checked ? "" : $("#end").value.trim();
+  if(q>0 && conhecido===false && !endereco){ $("#err").textContent = "Digite o endereço de entrega."; $("#end").focus(); return; }
   const btns = [$("#enviar"), $("#nao")]; btns.forEach(b => b.disabled = true);
   try{
-    await fs.collection("respostas").doc(d+"_"+tel).set({data:d, telefone:tel, nome:nome.slice(0,80), qtd:q, obs:$("#obs").value.trim().slice(0,300), endereco:$("#end").value.trim().slice(0,300), hora:new Date().toISOString()});
+    await fs.collection("respostas").doc(d+"_"+tel).set({data:d, telefone:tel, nome:nome.slice(0,80), qtd:q, obs:$("#obs").value.trim().slice(0,300), endereco:endereco.slice(0,300), hora:new Date().toISOString()});
     lembrar("tel", $("#tel").value.trim()); lembrar("nome", nome);
     $("#formBox").hidden = true; $("#okBox").hidden = false;
     $("#okTit").textContent = q ? "Pedido confirmado!" : "Tudo certo!";

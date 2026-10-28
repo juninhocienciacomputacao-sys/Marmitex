@@ -34,6 +34,11 @@ service cloud.firestore {
     match /publico/{doc} {
       allow read: if true;
     }
+    // Página de pedido: confere se o telefone (em código, sem dados pessoais) já tem endereço cadastrado.
+    // Só pode consultar um código por vez; ninguém de fora consegue listar.
+    match /conhecidos/{h} {
+      allow get: if true;
+    }
 
     // Pedidos pelo link: qualquer pessoa envia o próprio pedido, ninguém de fora lê.
     match /respostas/{id} {
