@@ -91,6 +91,12 @@ Depois desta atualização, publique de novo as regras do Firebase (Ajustes > Re
 
 Preencha em **Ajustes** a chave Pix (o sistema já arruma o formato: telefone vira +55, CPF/CNPJ só números) e marque as formas de pagamento aceitas. Com a chave, o cliente avulso recebe o Pix copia e cola e o QR Code na hora do pedido. Sem a chave, a página mostra o valor, as formas aceitas e um botão para combinar no WhatsApp. Enquanto faltar nome, Pix ou WhatsApp do restaurante, a tela **Dia** avisa.
 
+## Para fazer agora e Verificar sistema
+
+- Na tela **Dia**, o quadro **Para fazer agora** junta tudo que precisa de você: regras do Firebase desatualizadas, dados faltando nos Ajustes, backup atrasado, cardápio dos próximos dias que ainda não saiu e Pix que o cliente avisou que pagou. Cada item tem o botão que resolve.
+- Em **Ajustes > Verificar sistema**, o sistema confere no seu Firebase se está conectado, se os dados estão protegidos (testa como alguém de fora), se as regras estão atualizadas e se Pix, WhatsApp, backup e cardápio estão em dia.
+- **Atualizar regras (1 toque)**: copia as regras já com o seu e-mail e abre a página certa do Firebase. É só colar e Publicar. O sistema guarda o e-mail do dono, para que ele nunca saia das regras.
+
 ## Segurança e desempenho (auditoria de 28/10/2026)
 
 - Regras testadas no emulador do Firebase (30 testes): quem não está logado só lê cardápio e dados públicos, só envia o próprio pedido ou assinatura, e não lê nem lista clientes, pedidos, financeiro ou respostas. E-mail logado que não está cadastrado não acessa nada.

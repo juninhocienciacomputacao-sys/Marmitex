@@ -43,6 +43,10 @@ service cloud.firestore {
     match /pedidosPub/{h} {
       allow get: if true;
     }
+    // Versão destas regras: o sistema confere se as regras publicadas são as mais novas.
+    match /versaoRegras/{v} {
+      allow get: if v == '2026-10-29';
+    }
 
     // Assinatura de plano pela página de atendimento: qualquer pessoa envia, ninguém de fora lê.
     match /assinaturas/{id} {

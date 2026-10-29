@@ -156,7 +156,8 @@ a.btn.primary{color:var(--brand-fg)}
 <script>
 (function(){
 "use strict";
-window.__RULES = "rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n\n    // Administrador: troque SEU-EMAIL-AQUI pelo seu e-mail (s\u00f3 uma vez).\n    // Os outros usu\u00e1rios voc\u00ea cadastra dentro do sistema, em Ajustes > Usu\u00e1rios do sistema.\n    function dono() {\n      return request.auth != null && request.auth.token.email in ['SEU-EMAIL-AQUI'];\n    }\n    function usuarios() {\n      return /databases/$(database)/documents/acesso/usuarios;\n    }\n    function membro() {\n      return dono() || (request.auth != null && exists(usuarios())\n        && request.auth.token.email in get(usuarios()).data.emails);\n    }\n\n    // O sistema: administrador e usu\u00e1rios cadastrados leem e gravam.\n    match /{col}/{document=**} {\n      allow read: if membro();\n      allow write: if membro() && col != 'acesso';\n    }\n\n    // Lista de usu\u00e1rios: todos os usu\u00e1rios veem, s\u00f3 o administrador muda.\n    match /acesso/{doc} {\n      allow read: if membro();\n      allow write: if dono();\n    }\n\n    // P\u00e1gina de pedido: qualquer pessoa v\u00ea o card\u00e1pio e o nome do restaurante.\n    match /cardapios/{dia} {\n      allow read: if true;\n    }\n    match /publico/{doc} {\n      allow read: if true;\n    }\n    // P\u00e1gina de pedido: confere se o telefone (em c\u00f3digo, sem dados pessoais) j\u00e1 tem endere\u00e7o cadastrado.\n    // S\u00f3 pode consultar um c\u00f3digo por vez; ningu\u00e9m de fora consegue listar.\n    match /conhecidos/{h} {\n      allow get: if true;\n    }\n    // P\u00e1gina de pedido: mostra ao cliente quantas marmitas ele j\u00e1 pediu no dia (c\u00f3digo de telefone+dia, sem dados pessoais)\n    match /pedidosPub/{h} {\n      allow get: if true;\n    }\n\n    // Assinatura de plano pela p\u00e1gina de atendimento: qualquer pessoa envia, ningu\u00e9m de fora l\u00ea.\n    match /assinaturas/{id} {\n      allow create, update: if\n        request.resource.data.keys().hasOnly(['telefone','nome','planoId','inicio','endereco','entrega','obs','hora','pago'])\n        && request.resource.data.keys().hasAll(['telefone','nome','planoId','inicio','endereco','entrega','obs','hora','pago'])\n        && request.resource.data.telefone is string\n        && request.resource.data.telefone.matches('[0-9]{12,13}')\n        && id == request.resource.data.telefone\n        && request.resource.data.nome is string && request.resource.data.nome.size() <= 80\n        && request.resource.data.planoId is string && request.resource.data.planoId.size() <= 40\n        && request.resource.data.inicio is string && request.resource.data.inicio.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')\n        && request.resource.data.endereco is string && request.resource.data.endereco.size() <= 300\n        && request.resource.data.entrega in ['casa', 'portaria', 'maos']\n        && request.resource.data.obs is string && request.resource.data.obs.size() <= 300\n        && request.resource.data.hora is string && request.resource.data.hora.size() <= 30\n        && request.resource.data.pago in ['', 'informado'];\n    }\n\n    // Pedidos pelo link: qualquer pessoa envia o pr\u00f3prio pedido, ningu\u00e9m de fora l\u00ea.\n    match /respostas/{id} {\n      allow create, update: if\n        request.resource.data.keys().hasOnly(['data','telefone','nome','qtd','obs','endereco','hora','entrega','pago'])\n        && request.resource.data.keys().hasAll(['data','telefone','nome','qtd','obs','endereco','hora'])\n        && request.resource.data.data is string && request.resource.data.data.size() == 10\n        && request.resource.data.telefone is string\n        && request.resource.data.telefone.matches('[0-9]{12,13}')\n        && request.resource.data.data.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')\n        && id == request.resource.data.data + '_' + request.resource.data.telefone\n        // s\u00f3 aceita pedido para dia com card\u00e1pio publicado e ainda aberto\n        && exists(/databases/$(database)/documents/cardapios/$(request.resource.data.data))\n        && get(/databases/$(database)/documents/cardapios/$(request.resource.data.data)).data.get('fechado', false) != true\n        && request.resource.data.qtd is int && request.resource.data.qtd >= 0 && request.resource.data.qtd <= 20\n        && request.resource.data.nome is string && request.resource.data.nome.size() <= 80\n        && request.resource.data.obs is string && request.resource.data.obs.size() <= 300\n        && request.resource.data.endereco is string && request.resource.data.endereco.size() <= 300\n        && request.resource.data.hora is string && request.resource.data.hora.size() <= 30\n        && (!('entrega' in request.resource.data) || request.resource.data.entrega in ['', 'casa', 'portaria', 'maos'])\n        && (!('pago' in request.resource.data) || request.resource.data.pago in ['', 'informado']);\n    }\n  }\n}\n";
+window.__RULES = "rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n\n    // Administrador: troque SEU-EMAIL-AQUI pelo seu e-mail (s\u00f3 uma vez).\n    // Os outros usu\u00e1rios voc\u00ea cadastra dentro do sistema, em Ajustes > Usu\u00e1rios do sistema.\n    function dono() {\n      return request.auth != null && request.auth.token.email in ['SEU-EMAIL-AQUI'];\n    }\n    function usuarios() {\n      return /databases/$(database)/documents/acesso/usuarios;\n    }\n    function membro() {\n      return dono() || (request.auth != null && exists(usuarios())\n        && request.auth.token.email in get(usuarios()).data.emails);\n    }\n\n    // O sistema: administrador e usu\u00e1rios cadastrados leem e gravam.\n    match /{col}/{document=**} {\n      allow read: if membro();\n      allow write: if membro() && col != 'acesso';\n    }\n\n    // Lista de usu\u00e1rios: todos os usu\u00e1rios veem, s\u00f3 o administrador muda.\n    match /acesso/{doc} {\n      allow read: if membro();\n      allow write: if dono();\n    }\n\n    // P\u00e1gina de pedido: qualquer pessoa v\u00ea o card\u00e1pio e o nome do restaurante.\n    match /cardapios/{dia} {\n      allow read: if true;\n    }\n    match /publico/{doc} {\n      allow read: if true;\n    }\n    // P\u00e1gina de pedido: confere se o telefone (em c\u00f3digo, sem dados pessoais) j\u00e1 tem endere\u00e7o cadastrado.\n    // S\u00f3 pode consultar um c\u00f3digo por vez; ningu\u00e9m de fora consegue listar.\n    match /conhecidos/{h} {\n      allow get: if true;\n    }\n    // P\u00e1gina de pedido: mostra ao cliente quantas marmitas ele j\u00e1 pediu no dia (c\u00f3digo de telefone+dia, sem dados pessoais)\n    match /pedidosPub/{h} {\n      allow get: if true;\n    }\n    // Vers\u00e3o destas regras: o sistema confere se as regras publicadas s\u00e3o as mais novas.\n    match /versaoRegras/{v} {\n      allow get: if v == '2026-10-29';\n    }\n\n    // Assinatura de plano pela p\u00e1gina de atendimento: qualquer pessoa envia, ningu\u00e9m de fora l\u00ea.\n    match /assinaturas/{id} {\n      allow create, update: if\n        request.resource.data.keys().hasOnly(['telefone','nome','planoId','inicio','endereco','entrega','obs','hora','pago'])\n        && request.resource.data.keys().hasAll(['telefone','nome','planoId','inicio','endereco','entrega','obs','hora','pago'])\n        && request.resource.data.telefone is string\n        && request.resource.data.telefone.matches('[0-9]{12,13}')\n        && id == request.resource.data.telefone\n        && request.resource.data.nome is string && request.resource.data.nome.size() <= 80\n        && request.resource.data.planoId is string && request.resource.data.planoId.size() <= 40\n        && request.resource.data.inicio is string && request.resource.data.inicio.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')\n        && request.resource.data.endereco is string && request.resource.data.endereco.size() <= 300\n        && request.resource.data.entrega in ['casa', 'portaria', 'maos']\n        && request.resource.data.obs is string && request.resource.data.obs.size() <= 300\n        && request.resource.data.hora is string && request.resource.data.hora.size() <= 30\n        && request.resource.data.pago in ['', 'informado'];\n    }\n\n    // Pedidos pelo link: qualquer pessoa envia o pr\u00f3prio pedido, ningu\u00e9m de fora l\u00ea.\n    match /respostas/{id} {\n      allow create, update: if\n        request.resource.data.keys().hasOnly(['data','telefone','nome','qtd','obs','endereco','hora','entrega','pago'])\n        && request.resource.data.keys().hasAll(['data','telefone','nome','qtd','obs','endereco','hora'])\n        && request.resource.data.data is string && request.resource.data.data.size() == 10\n        && request.resource.data.telefone is string\n        && request.resource.data.telefone.matches('[0-9]{12,13}')\n        && request.resource.data.data.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')\n        && id == request.resource.data.data + '_' + request.resource.data.telefone\n        // s\u00f3 aceita pedido para dia com card\u00e1pio publicado e ainda aberto\n        && exists(/databases/$(database)/documents/cardapios/$(request.resource.data.data))\n        && get(/databases/$(database)/documents/cardapios/$(request.resource.data.data)).data.get('fechado', false) != true\n        && request.resource.data.qtd is int && request.resource.data.qtd >= 0 && request.resource.data.qtd <= 20\n        && request.resource.data.nome is string && request.resource.data.nome.size() <= 80\n        && request.resource.data.obs is string && request.resource.data.obs.size() <= 300\n        && request.resource.data.endereco is string && request.resource.data.endereco.size() <= 300\n        && request.resource.data.hora is string && request.resource.data.hora.size() <= 30\n        && (!('entrega' in request.resource.data) || request.resource.data.entrega in ['', 'casa', 'portaria', 'maos'])\n        && (!('pago' in request.resource.data) || request.resource.data.pago in ['', 'informado']);\n    }\n  }\n}\n";
+window.__RULES_VER = "2026-10-29";
 // ---------- helpers ----------
 const $ = s => document.querySelector(s);
 const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -259,7 +260,20 @@ function avisoPermissao(col, e){
 }
 const emailLogado = () => String(((window.__auth && window.__auth.currentUser) || {}).email || "").toLowerCase();
 const projetoFb = () => { try{ return window.firebase.app().options.projectId || ""; }catch(e){ return ""; } };
-function regrasProntas(){ return String(window.__RULES||"").replace("'SEU-EMAIL-AQUI'", "'"+emailLogado().replace(/'/g,"")+"'"); }
+function regrasProntas(){ const em = [...new Set([String(S.config.donoEmail||"").toLowerCase(), emailLogado()].filter(Boolean))].map(e => "'"+e.replace(/'/g,"")+"'").join(", "); return String(window.__RULES||"").replace("'SEU-EMAIL-AQUI'", em || "'SEU-EMAIL-AQUI'"); }
+const urlRegras = () => { const pj = projetoFb(); return "https://console.firebase.google.com/"+(pj?"project/"+encodeURIComponent(pj)+"/firestore/rules":""); };
+// Um toque: copia as regras e abre a página certa do Firebase
+function atualizarRegras(){
+  const t = regrasProntas(); if(!S.config.donoEmail && emailLogado()) saveConfig({donoEmail:emailLogado()});
+  const w = window.open(urlRegras(), "_blank"); try{ if(w) w.opener = null; }catch(e){}
+  const fim = ok => { openModal(`<h2>Atualizar regras do Firebase</h2><ol style="margin:0;padding-left:20px;line-height:1.7">
+      <li>${ok?"As regras já foram <b>copiadas</b>.":"Copie as regras do quadro abaixo."}</li>
+      <li>Na página do Firebase que abriu${w?"":" (<a href=\""+esc(urlRegras())+"\" target=\"_blank\" rel=\"noopener\">abrir aqui</a>)"}, apague tudo, cole e toque em <b>Publicar</b>.</li>
+      <li>Volte aqui e toque em <b>Verificar agora</b>.</li></ol>
+      ${ok?"":`<textarea readonly style="min-height:160px;font:12px ui-monospace,monospace" id="rgTxt">${esc(t)}</textarea>`}
+      <div class="foot"><span style="flex:1"></span><button class="btn" data-close>Fechar</button><button class="btn primary" id="rgVer">Verificar agora</button></div>`, () => { $("#rgVer").onclick = () => { closeModal(); diagnostico(true).then(() => toast(DIAG.regras===true ? "Regras atualizadas. Tudo certo!" : "Ainda não atualizou. Espere 1 minuto e verifique de novo.")); }; const ta = $("#rgTxt"); if(ta){ ta.focus(); ta.select(); } }); };
+  navigator.clipboard.writeText(t).then(() => fim(true), () => fim(false));
+}
 function painelRegras(erro){
   const pj = projetoFb(), url = "https://console.firebase.google.com/"+(pj?"project/"+encodeURIComponent(pj)+"/firestore/rules":"");
   return `<div class="banner" style="display:flex;flex-direction:column;gap:8px;${erro?"border:2px solid var(--bad)":""}">
@@ -267,7 +281,7 @@ function painelRegras(erro){
     <span>1) Toque em <b>Copiar regras prontas</b> (já vão com o seu e-mail). 2) Toque em <b>Abrir regras do Firebase</b>. 3) Apague tudo o que está lá, cole e toque em <b>Publicar</b>. 4) Espere 1 minuto e toque em <b>Recarregar</b>.</span>
     <div class="row"><button class="btn small primary" data-copyrules>Copiar regras prontas</button><a class="btn small" href="${esc(url)}" target="_blank" rel="noopener">Abrir regras do Firebase</a><button class="btn small" onclick="location.reload()">Recarregar</button></div></div>`;
 }
-document.addEventListener("click", e => { if(e.target && e.target.closest && e.target.closest("[data-copyrules]")){ const t = regrasProntas(); navigator.clipboard.writeText(t).then(() => toast("Regras copiadas. Agora cole no Firebase e toque em Publicar."), () => { const ta = $("#msgCopy"); if(ta){ ta.value = t; ta.focus(); ta.select(); } toast("Não consegui copiar sozinho. Tente pelo computador."); }); } });
+document.addEventListener("click", e => { if(e.target && e.target.closest && e.target.closest("[data-regras1]")){ atualizarRegras(); return; } if(e.target && e.target.closest && e.target.closest("[data-copyrules]")){ const t = regrasProntas(); navigator.clipboard.writeText(t).then(() => toast("Regras copiadas. Agora cole no Firebase e toque em Publicar."), () => { const ta = $("#msgCopy"); if(ta){ ta.value = t; ta.focus(); ta.select(); } toast("Não consegui copiar sozinho. Tente pelo computador."); }); } });
 // ---------- store (shared db, or this-browser fallback) ----------
 const Store = {
   fs:null, local:null, subs:{},
@@ -326,6 +340,56 @@ function normPix(k){
   if(dig.length===10 || dig.length===11) return "+55"+dig;
   if((dig.length===12 || dig.length===13) && dig.startsWith("55")) return "+"+dig;
   return k;
+}
+// Verificar sistema: confere no Firebase de verdade, como um cliente de fora e como você
+const DIAG = {regras:null, seguro:null, publico:null, hora:"", rodando:false};
+async function diagnostico(forcar){
+  if(!window.__fs || !window.firebase || DIAG.rodando || (!forcar && DIAG.hora)) return DIAG;
+  DIAG.rodando = true;
+  try{
+    const app = firebase.apps.find(a => a.name==="diag") || firebase.initializeApp(firebase.app().options, "diag");
+    const fora = app.firestore();
+    const tenta = async f => { try{ await f(); return true; }catch(e){ return e && e.code==="permission-denied" ? false : null; } };
+    const [pub, cli, ver] = await Promise.all([
+      tenta(() => fora.collection("publico").doc("info").get()),
+      tenta(() => fora.collection("clientes").limit(1).get()),
+      tenta(() => fora.collection("versaoRegras").doc(String(window.__RULES_VER||"x")).get())
+    ]);
+    DIAG.publico = pub; DIAG.seguro = cli===null ? null : !cli; DIAG.regras = ver; DIAG.hora = new Date().toISOString();
+  }catch(e){}
+  DIAG.rodando = false; rerenderSafe(); return DIAG;
+}
+// Tudo que precisa da sua ação, num lugar só (tela Dia)
+function pendencias(){
+  if(!S.ready.config) return [];
+  const out = [], P = (txt, btn, attr) => out.push({txt, btn, attr});
+  if(window.__fs && DIAG.regras===false) P("<b>Regras do Firebase desatualizadas.</b> Sem a atualização, partes do link de pedido não funcionam.", "Atualizar regras (1 toque)", "data-regras1");
+  if(window.__fs && DIAG.seguro===false) P("<b>Atenção: seus dados estão abertos na internet.</b> Atualize as regras agora.", "Atualizar regras", "data-regras1");
+  const f = [!S.config.restaurante&&"nome do restaurante", !normPix(S.config.pixChave)&&"chave Pix", !S.config.telefoneRestaurante&&"WhatsApp do restaurante"].filter(Boolean);
+  if(f.length) P("Falta preencher em Ajustes: <b>"+f.join(", ")+"</b>.", "Preencher agora", 'data-go="ajustes"');
+  if(window.__fs && (diasDesdeBackup()===null || diasDesdeBackup()>7)) P("Faça o backup semanal para não correr risco de perder dados.", "Fazer backup", 'data-go="ajustes"');
+  for(let i=1; i<=3; i++){ const d = addDays(today(), i); if(isOpen(d) && !S.cardapios[d]){ P("Ainda não tem cardápio para <b>"+DOW_LONG[parseIso(d).getDay()]+" ("+fmtDate(d).slice(0,5)+")</b>. Os clientes só conseguem pedir depois que ele sai.", "Montar cardápio", 'data-cardpara="'+d+'"'); break; } }
+  const pixConf = confirmadosDia(today()).filter(x => x.avulso && x.pixInf && !avPago(today(), x.id)).length;
+  if(pixConf) P("<b>"+pixConf+"</b> cliente(s) avisaram que pagaram o Pix hoje. Confira no banco e marque como recebido no Financeiro.", "Conferir", 'data-go="financeiro"');
+  return out;
+}
+const painelPendencias = () => { const l = pendencias(); return l.length ? `<section class="panel" id="pend" style="display:flex;flex-direction:column;gap:8px;border-left:4px solid var(--warn, #c98a00)"><h2 style="margin:0">Para fazer agora (${l.length})</h2>${l.map(x => `<div class="row" style="justify-content:space-between;gap:8px;flex-wrap:wrap"><span style="flex:1;min-width:200px">${x.txt}</span><button class="btn small primary" ${x.attr}>${esc(x.btn)}</button></div>`).join("")}</section>` : ""; };
+function viewDiagnostico(){
+  const L = (ok, bom, ruim, neutro) => `<li>${ok===true?"✅ "+bom:ok===false?"❌ "+ruim:"⏳ "+(neutro||"Ainda não verificado")}</li>`;
+  const card = S.cardapios[today()];
+  return `<section class="panel" style="display:flex;flex-direction:column;gap:10px" id="diagBox"><h2>Verificar sistema</h2>
+    <p class="muted" style="margin:0">Confere no seu Firebase, de verdade, se está tudo funcionando e seguro.${DIAG.hora?" Última verificação: "+new Date(DIAG.hora).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})+".":""}</p>
+    <ul style="margin:0;padding-left:4px;list-style:none;line-height:1.8">
+      ${L(S.ready.config && !S.permErro, "Conectado, lendo e salvando seus dados", "Sem permissão para os seus dados: atualize as regras")}
+      ${L(DIAG.seguro, "Dados protegidos: quem está de fora não vê clientes, pedidos nem financeiro", "Dados ABERTOS para qualquer pessoa: atualize as regras agora")}
+      ${L(DIAG.regras, "Regras do Firebase atualizadas", "Regras do Firebase desatualizadas")}
+      ${L(DIAG.publico, "Página de pedido consegue ler cardápio e informações", "Página de pedido sem acesso ao cardápio")}
+      ${L(!!normPix(S.config.pixChave), "Chave Pix cadastrada", "Chave Pix não cadastrada (cliente avulso não recebe o Pix)")}
+      ${L(!!S.config.telefoneRestaurante, "WhatsApp do restaurante cadastrado", "WhatsApp do restaurante não cadastrado")}
+      ${L(diasDesdeBackup()!==null && diasDesdeBackup()<=7, "Backup em dia", "Backup atrasado ou nunca feito")}
+      ${L(isOpen(today()) ? !!card : true, isOpen(today()) ? "Cardápio de hoje publicado" : "Hoje está fechado", "Hoje está aberto e ainda não tem cardápio")}
+    </ul>
+    <div class="row"><button class="btn primary" id="diagGo">${DIAG.rodando?"Verificando...":"Verificar agora"}</button>${DIAG.regras===false||DIAG.seguro===false?`<button class="btn" data-regras1>Atualizar regras (1 toque)</button>`:""}</div></section>`;
 }
 // Dados que as páginas do cliente leem (nome, logo, prazo, Pix, formas de pagamento)
 function syncInfo(forcar){
@@ -653,7 +717,7 @@ async function syncPedidosPub(){
   }catch(e){}
   syncPP = false;
 }
-function automacoes(){ clearTimeout(autoT); autoT = setTimeout(() => { syncInfo(); syncCatalogo(); syncPedidosPub(); processarAssinaturas(); syncConhecidos(); fecharFeriados(); autoPlanoDia(today()); autoPlanoDia(S.diaData); processarRespostas(); }, 400); }
+function automacoes(){ clearTimeout(autoT); autoT = setTimeout(() => { if(S.ready.config) diagnostico(false); syncInfo(); syncCatalogo(); syncPedidosPub(); processarAssinaturas(); syncConhecidos(); fecharFeriados(); autoPlanoDia(today()); autoPlanoDia(S.diaData); processarRespostas(); }, 400); }
 function setPedidoCampos(d, patch){
   const existed = !!S.pedidos[d];
   S.pedidos[d] = Object.assign({data:d, confirmados:{}}, S.pedidos[d], patch);
@@ -764,8 +828,7 @@ VIEWS.hoje = () => {
     <div class="stat"><b>${tot-av}</b><span>de plano</span></div>
     <div class="stat"><b>${av}</b><span>avulsas${preco?" · "+brl(av*preco):""}</span></div>
   </div>
-  ${(() => { if(!S.ready.config) return ""; const f = [!S.config.restaurante&&"nome do restaurante", !normPix(S.config.pixChave)&&"chave Pix (sem ela o cliente avulso não vê como pagar)", !S.config.telefoneRestaurante&&"WhatsApp do restaurante"].filter(Boolean); return f.length ? `<div class="banner row" style="justify-content:space-between" id="faltaCfg"><span>Falta preencher em Ajustes: <b>${f.join(", ")}</b>.</span><button class="btn small" data-go="ajustes">Preencher agora</button></div>` : ""; })()}
-  ${window.__fs && (diasDesdeBackup()===null || diasDesdeBackup()>7) && S.ready.config ? `<div class="banner row" style="justify-content:space-between">Faça o backup semanal para não correr risco de perder dados. <button class="btn small" data-go="ajustes">Fazer backup</button></div>` : ""}
+  ${painelPendencias()}
   <section class="panel"><div class="steps">
     ${step(1,"Lançar o cardápio do dia", !!card, card
       ? `<p>${(card.itens||[]).map(i=>esc(i.nome)).join(" · ")}</p><div class="row"><button class="btn small" data-go="cardapio">Editar cardápio</button></div>`
@@ -831,6 +894,7 @@ function renderBuscaConf(){
 }
 BIND.hoje = () => {
   document.querySelectorAll("[data-go]").forEach(b => b.onclick = () => { if(b.dataset.go==="cardapio"){ S.cardData = S.diaData; draft = null; } go(b.dataset.go); });
+  document.querySelectorAll("[data-cardpara]").forEach(b => b.onclick = () => { S.cardData = b.dataset.cardpara; draft = null; go("cardapio"); });
   const setD = v => { if(!v) return; S.diaData = v; S.confBusca = ""; render(); automacoes(); };
   $("#dDate").onchange = e => setD(e.target.value);
   $("#dPrev").onclick = () => setD(addDays(S.diaData,-1));
@@ -2297,7 +2361,7 @@ VIEWS.ajustes = () => `
     <div class="row"><button class="btn primary" id="a_save">Salvar</button></div>
   </section>
   ${viewMarca()}
-  ${window.__fs ? viewBackup() + viewUsuarios() + `<section class="panel" style="display:flex;flex-direction:column;gap:12px"><h2>Regras do Firebase</h2><p class="muted" style="margin:0">Se aparecer erro de permissão, ou depois de uma atualização do sistema, copie as regras prontas e publique no Firebase.</p>${painelRegras(false)}</section>` : ""}
+  ${window.__fs ? viewDiagnostico() + viewBackup() + viewUsuarios() + `<section class="panel" style="display:flex;flex-direction:column;gap:12px"><h2>Regras do Firebase</h2><p class="muted" style="margin:0">Se aparecer erro de permissão, ou depois de uma atualização do sistema, copie as regras prontas e publique no Firebase.</p>${painelRegras(false)}</section>` : ""}
   <section class="panel" style="display:flex;flex-direction:column;gap:12px"><h2>Módulos</h2>
     <div class="mods">${MODULOS.filter(m=>!m.fixo).map(m=>`<div class="mod"><div><b>${esc(m.nome)}</b> ${m.breve?'<span class="pill">em breve</span>':""}<p>${esc(m.desc)}</p></div><input type="checkbox" data-m="${m.id}" ${m.breve?"disabled":""} ${!m.breve && S.config.modulos[m.id]!==false?"checked":""} aria-label="Ligar ${esc(m.nome)}" style="width:22px;height:22px"></div>`).join("")}</div>
   </section>
@@ -2432,6 +2496,7 @@ BIND.ajustes = () => {
   bindMarca();
   if(window.__fs){ bindUsuarios(); bindBackup(); }
   $("#a_save").onclick = () => { const ferAntes = S.config.feriadosLocais||"", ferNovo = $("#a_fer").value.trim(); S.config.feriadosLocais = ferNovo; const abertos = ferNovo!==ferAntes ? S.config.abertos.filter(d => !(d>=today() && feriado(d))) : S.config.abertos; saveConfig({abertos, feriadosLocais:ferNovo, restaurante:$("#a_nome").value.trim(), meuNomeWhats:$("#a_wa").value.trim(), horarioLimite:$("#a_hora").value.trim()||"10:30", prazoTipo:$("#a_prazo").value, horaEntrega:$("#a_horaEnt").value.trim(), pixChave:normPix($("#a_pix").value), pagamentosAceitos:[...document.querySelectorAll("[data-pagac]:checked")].map(x=>x.dataset.pagac), pixNome:$("#a_pixNome").value.trim(), pixCidade:$("#a_pixCid").value.trim(), autoCadastro:$("#a_autoCad").checked, enderecoRestaurante:$("#a_end").value.trim(), cidade:$("#a_cid").value.trim(), telefoneRestaurante:$("#a_tel").value.trim(), custoMarmita:Number($("#a_custo").value)||0, custoFixoMensal:Number($("#a_fixo").value)||0, premioIndicacao:$("#a_premio").value.trim()||"1 marmita grátis", alertaSaldo:Number($("#a_alerta").value)||0, alertaDias:Number($("#a_alertaDias").value)||0, msgAlerta:$("#a_msg").value.trim()||DEFAULT_CONFIG.msgAlerta, autoPlano:$("#a_auto").checked}).then(()=>{ render(); toast("Ajustes salvos."); }); };
+  { const g = $("#diagGo"); if(g) g.onclick = () => { g.textContent = "Verificando..."; diagnostico(true).then(() => toast("Verificação concluída.")); }; }
   document.querySelectorAll("[data-m]").forEach(cb => cb.onchange = () => { saveConfig({modulos:Object.assign({}, S.config.modulos, {[cb.dataset.m]:cb.checked})}); render(); });
 };
 
