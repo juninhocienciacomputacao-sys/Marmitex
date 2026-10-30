@@ -294,6 +294,44 @@ function painelRegras(erro){
 }
 document.addEventListener("click", e => { if(e.target && e.target.closest && e.target.closest("[data-regras1]")){ atualizarRegras(); return; } if(e.target && e.target.closest && e.target.closest("[data-copyrules]")){ const t = regrasProntas(); navigator.clipboard.writeText(t).then(() => toast("Regras copiadas. Agora cole no Firebase e toque em Publicar."), () => { const ta = $("#msgCopy"); if(ta){ ta.value = t; ta.focus(); ta.select(); } toast("Não consegui copiar sozinho. Tente pelo computador."); }); } });
 // ---------- store (shared db, or this-browser fallback) ----------
+// ----- Maiúsculas e minúsculas padronizadas (nomes e endereços) -----
+const MINUSC = new Set(["de","da","do","das","dos","e","em","na","no","nas","nos","à","às","ao","aos","com","para","por","pela","pelo","del","di","du"]);
+const UFS = new Set("AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO".split(" "));
+const SIGLAS = new Set(["BR","JK","CEP","DAIA","CPF","CNPJ"]);
+const ROMANOS = /^(i{1,3}|iv|vi{0,3}|ix|xi{0,3}|xiv|xv|xx)$/i;
+const TIPO_END = /^(rua|r|avenida|av|travessa|tv|alameda|al|quadra|qd|q|lote|lt|l|bloco|bl|casa|apto|ap|apartamento|setor|st|conjunto|cj|etapa|chácara|chacara|rodovia|rod|viela|vila|praça|praca|residencial|condomínio|condominio|cond|jardim|jd|parque|pq|fase|módulo|modulo|torre|sala|loja|galpão|área|area)$/i;
+function titulo(s){
+  const txt = String(s==null?"":s).replace(/\s+/g," ").trim(); if(!txt) return txt;
+  const toks = txt.split(" "); let antes = "", antesTok = "";
+  return toks.map((tok, ti) => {
+    const m = tok.match(/^([^\p{L}\p{N}]*)(.*?)([^\p{L}\p{N}]*)$/u); if(!m || !m[2]){ antesTok = tok; return tok; }
+    const partes = m[2].split(/([-'’./])/); const ultimo = ti===toks.length-1;
+    const out = partes.map((p, pi) => {
+      if(!p || /^[-'’./]$/.test(p)) return p;
+      const low = p.toLocaleLowerCase("pt-BR"), up = p.toLocaleUpperCase("pt-BR"), primeiro = ti===0 && pi===0;
+      if(/\d/.test(p)) return up;
+      if(p===up && SIGLAS.has(up)) return up;
+      if(UFS.has(up) && ultimo && pi===partes.length-1 && (p===up || (pi>0 && partes[pi-1]==="/") || (pi===0 && antesTok==="-"))) return up;
+      if(/^n[º°]$/i.test(p)) return primeiro ? "Nº" : "nº";
+      if(p.length>1 && ROMANOS.test(p)) return up;
+      if(p.length===1){
+        if(!primeiro && pi===0 && (low==="e" || ((low==="a" || low==="o" || low==="à") && !TIPO_END.test(antes)))) return low;
+        return up;
+      }
+      if(!primeiro && pi===0 && MINUSC.has(low)) return low;
+      return low.charAt(0).toLocaleUpperCase("pt-BR") + low.slice(1);
+    }).join("");
+    antes = m[2]; antesTok = tok;
+    return m[1] + out + m[3];
+  }).join(" ");
+}
+const CAMPOS_TITULO = ["nome","rua","complemento","bairro","cidade"];
+function padronizarCliente(obj){
+  if(!obj || typeof obj!=="object") return obj;
+  const r = Object.assign({}, obj);
+  CAMPOS_TITULO.forEach(k => { if(typeof r[k]==="string") r[k] = titulo(r[k]); });
+  return r;
+}
 const Store = {
   fs:null, local:null, subs:{},
   async init(){
@@ -313,18 +351,19 @@ const Store = {
     }
   },
   async set(col, id, data){
-    const body = Object.assign({}, data); delete body.id;
+    const body = Object.assign({}, col==="clientes" ? padronizarCliente(data) : data); delete body.id;
     if(this.fs) return this.fs.collection(col).doc(id).set(body);
     (this.local[col] ||= {})[id] = body; this.saveLocal(); this.subs[col] && this.watch(col, this.subs[col]);
   },
   async update(col, id, patch){
+    if(col==="clientes") patch = padronizarCliente(patch);
     if(this.fs) return this.fs.collection(col).doc(id).set(patch, {merge:true});
     const cur = (this.local[col] ||= {})[id]; if(!cur) throw {code:"invalid_argument"};
     const merge = (x,y) => { for(const k in y){ if(y[k] && typeof y[k]==="object" && !Array.isArray(y[k]) && x[k] && typeof x[k]==="object") merge(x[k],y[k]); else x[k]=y[k]; } };
     merge(cur, patch); this.saveLocal(); this.subs[col] && this.watch(col, this.subs[col]);
   },
   async merge(col, id, data){
-    const body = Object.assign({}, data); delete body.id;
+    const body = Object.assign({}, col==="clientes" ? padronizarCliente(data) : data); delete body.id;
     if(this.fs) return this.fs.collection(col).doc(id).set(body, {merge:true});
     return (this.local[col]||{})[id] ? this.update(col, id, body) : this.set(col, id, body);
   },
@@ -728,7 +767,16 @@ async function syncPedidosPub(){
   }catch(e){}
   syncPP = false;
 }
-function automacoes(){ clearTimeout(autoT); autoT = setTimeout(() => { if(S.ready.config) diagnostico(false); syncInfo(); syncCatalogo(); syncPedidosPub(); processarAssinaturas(); syncConhecidos(); fecharFeriados(); autoPlanoDia(today()); autoPlanoDia(S.diaData); processarRespostas(); }, 400); }
+// corrige uma vez os clientes já cadastrados com maiúsculas e minúsculas fora do padrão
+let padronizou = false;
+function padronizarCadastrados(){
+  if(padronizou || !S.ready.clientes) return; padronizou = true;
+  S.clientes.forEach(c => {
+    const patch = {}; CAMPOS_TITULO.forEach(k => { if(typeof c[k]==="string" && c[k] && titulo(c[k])!==c[k]) patch[k] = titulo(c[k]); });
+    if(Object.keys(patch).length) enqueue(() => Store.update("clientes", c.id, patch));
+  });
+}
+function automacoes(){ clearTimeout(autoT); autoT = setTimeout(() => { if(S.ready.config) diagnostico(false); syncInfo(); syncCatalogo(); syncPedidosPub(); processarAssinaturas(); syncConhecidos(); fecharFeriados(); autoPlanoDia(today()); autoPlanoDia(S.diaData); processarRespostas(); padronizarCadastrados(); }, 400); }
 function setPedidoCampos(d, patch){
   const existed = !!S.pedidos[d];
   S.pedidos[d] = Object.assign({data:d, confirmados:{}}, S.pedidos[d], patch);
@@ -1017,6 +1065,7 @@ function formCliente(c, pre){
       if(p.duracao) $("#c_fim").value = addDays(ini, Number(p.duracao)-1);
       if(p.marmitas) $("#c_qtd").value = p.marmitas;
     };
+    ["#c_nome","#c_rua","#c_comp","#c_bairro","#c_cid"].forEach(sel => { const el = $(sel); if(el) el.addEventListener("blur", () => { el.value = titulo(el.value); }); });
     $("#c_plano").onchange = fillFromPlan; $("#c_ini").onchange = () => { if($("#c_plano").value) fillFromPlan(); };
     $("#c_save").onclick = async () => {
       const nome = $("#c_nome").value.trim(); if(!nome){ toast("Preencha o nome."); $("#c_nome").focus(); return; }
