@@ -3,9 +3,21 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Fazer pedido</title>
+<title>Nutri Sabori · Faça seu pedido</title>
+<meta name="description" content="Comida fitness e saudável. Veja o cardápio do dia e peça em 1 minuto. Entrega na sua casa.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Nutri Sabori">
+<meta property="og:title" content="Nutri Sabori · Faça seu pedido">
+<meta property="og:description" content="Comida fitness e saudável. Veja o cardápio do dia e peça em 1 minuto. Entrega na sua casa.">
+<meta property="og:image" content="https://juninhocienciacomputacao-sys.github.io/Marmitex/og-logo.jpg">
+<meta property="og:image:width" content="600">
+<meta property="og:image:height" content="600">
+<meta property="og:url" content="https://juninhocienciacomputacao-sys.github.io/Marmitex/pedido.html">
+<meta name="twitter:card" content="summary">
+<script>window.__MARCA={"nome": "Nutri Sabori", "slogan": "Comida fitness e saudável"};</script>
 <meta name="theme-color" content="#1f5c3d">
 <link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@600;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -166,7 +178,7 @@ async function buscarJa(tel){
   mostrarJa();
 }
 Promise.all([fs.collection("publico").doc("info").get().catch(()=>null), fs.collection("cardapios").doc(d).get().catch(()=>null)]).then(([pi, cd]) => {
-  info = pi && pi.exists ? pi.data() : {};
+  info = pi && pi.exists ? pi.data() : {}; if(!info.restaurante && window.__MARCA) info.restaurante = window.__MARCA.nome;
   if(info.restaurante){ $("#rest").textContent = info.restaurante; document.title = "Pedido · "+info.restaurante; }
   if(/^data:image\/(png|jpeg|webp);base64,/.test(info.logo||"")){ $("#logo").src = info.logo; $("#logo").hidden = false; const l = document.querySelector('link[rel="icon"]'); if(l) l.href = info.logo; }
   if(/^#[0-9a-f]{6}$/i.test(info.cor||"")) document.documentElement.style.setProperty("--brand", info.cor);

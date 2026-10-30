@@ -3,11 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Marmitex Gestão</title>
+<title>Nutri Sabori · Gestão</title>
+<meta name="description" content="Sistema de gestão do Nutri Sabori.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Nutri Sabori">
+<meta property="og:title" content="Nutri Sabori · Gestão">
+<meta property="og:description" content="Sistema de gestão do Nutri Sabori.">
+<meta property="og:image" content="https://juninhocienciacomputacao-sys.github.io/Marmitex/og-logo.jpg">
+<meta property="og:image:width" content="600">
+<meta property="og:image:height" content="600">
+<meta property="og:url" content="https://juninhocienciacomputacao-sys.github.io/Marmitex/">
+<meta name="twitter:card" content="summary">
+<script>window.__MARCA={"nome": "Nutri Sabori", "slogan": "Comida fitness e saudável"};</script>
 <meta name="theme-color" content="#1f5c3d">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Marmitex">
+<meta name="apple-mobile-web-app-title" content="Nutri Sabori">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -734,8 +745,9 @@ async function baixar(nome, csv){
 function menuText(dataIso){
   const c = S.cardapios[dataIso]; if(!c) return "";
   const d = parseIso(dataIso);
-  let t = "🍱 *Cardápio de "+DOW_LONG[d.getDay()]+", "+pad(d.getDate())+"/"+pad(d.getMonth()+1)+"*";
-  if(S.config.restaurante) t += "\n_"+S.config.restaurante+"_";
+  const slog = (window.__MARCA && window.__MARCA.slogan) || "";
+  let t = S.config.restaurante ? "🥗 *"+S.config.restaurante.toUpperCase()+"*"+(slog?"\n_"+slog+"_":"")+"\n\n" : "";
+  t += "🍱 *Cardápio de "+DOW_LONG[d.getDay()]+", "+pad(d.getDate())+"/"+pad(d.getMonth()+1)+"*";
   t += "\n";
   CATEGORIAS.forEach(cat => {
     const its = (c.itens||[]).filter(i => i.cat===cat && i.nome);
@@ -760,7 +772,7 @@ function menuText(dataIso){
 function modOn(id){ const m = MODULOS.find(x=>x.id===id); return m.fixo || (!m.breve && S.config.modulos[id]!==false); }
 function renderNav(){
   const tabs = MODULOS.filter(m => modOn(m.id));
-  $("#nav").innerHTML = '<div class="logo">'+(logoOk()?'<img src="'+esc(S.config.logo)+'" alt="">':"")+'<div>'+esc(S.config.restaurante||"Marmitex")+'<small>Marmitas fitness</small></div></div>' +
+  $("#nav").innerHTML = '<div class="logo">'+(logoOk()?'<img src="'+esc(S.config.logo)+'" alt="">':"")+'<div>'+esc(S.config.restaurante||"Marmitex")+'<small>'+esc((window.__MARCA&&window.__MARCA.slogan)||"Marmitas fitness")+'</small></div></div>' +
     tabs.map(m => '<button class="navbtn" data-tab="'+m.id+'" '+(S.tab===m.id?'aria-current="page"':'')+'>'+icon(m.id)+'<span>'+esc(m.nome)+'</span></button>').join("");
   $("#nav").querySelectorAll("[data-tab]").forEach(b => b.onclick = () => go(b.dataset.tab));
 }
@@ -2529,7 +2541,7 @@ async function boot(){
   if(window.__fs) Store.watch("assinaturas", (docs, m) => { S.assinaturas = docs; marcar("assinaturas", m); rerenderSafe(); automacoes(); });
   Store.watch("encomendas", docs => { S.encomendas = docs; rerenderSafe(); }, addDays(today(),-100));
   if(window.__fs) Store.watch("acesso", docs => { const u = docs.find(d => d.id==="usuarios") || {}; S.acesso = {emails:Array.isArray(u.emails)?u.emails:[], info:u.info||{}}; rerenderSafe(); });
-  Store.watch("config", (docs, m) => { const g = docs.find(d=>d.id==="geral"); S.config = Object.assign(structuredClone(DEFAULT_CONFIG), g||{}); S.config.modulos = Object.assign({}, DEFAULT_CONFIG.modulos, (g&&g.modulos)||{}); delete S.config.id; marcar("config", m); aplicarMarca(); rerenderSafe(); automacoes(); });
+  Store.watch("config", (docs, m) => { const g = docs.find(d=>d.id==="geral"); S.config = Object.assign(structuredClone(DEFAULT_CONFIG), g||{}); S.config.modulos = Object.assign({}, DEFAULT_CONFIG.modulos, (g&&g.modulos)||{}); delete S.config.id; if(!S.config.restaurante && window.__MARCA && window.__MARCA.nome) S.config.restaurante = window.__MARCA.nome; marcar("config", m); aplicarMarca(); rerenderSafe(); automacoes(); });
   render();
 }
 window.__startApp = boot;
@@ -2589,24 +2601,24 @@ const AUTH_ERR = {
 function loginScreen(msg){
   let lg = "", nm = ""; try{ lg = localStorage.getItem("marmitex-logo")||""; nm = localStorage.getItem("marmitex-nome")||""; }catch(e){}
   const logoHtml = /^data:image\/(png|jpeg|webp);base64,/.test(lg) ? `<img src="${lg}" alt="" style="width:88px;height:88px;object-fit:contain;border-radius:16px;align-self:center">` : "";
-  show(`${logoHtml}<h2${logoHtml?' style="text-align:center"':""}>${esc(nm||"Marmitex Gestão")}</h2>
+  show(`${logoHtml}<h2${logoHtml?' style="text-align:center"':""}>${esc(nm||(window.__MARCA&&window.__MARCA.nome)||"Marmitex Gestão")}</h2>
     <p class="muted" style="margin:0">Entre com seu e-mail e senha.</p>
     <form id="g_form" class="form" style="grid-template-columns:1fr">
       <label class="f">E-mail<input type="text" id="g_email" autocomplete="username" inputmode="email"></label>
       <label class="f">Senha<input type="password" id="g_pass" autocomplete="current-password"></label>
     </form>
     <p id="g_err" style="color:var(--bad);margin:0">${esc(msg||"")}</p>
-    <div class="foot" style="justify-content:space-between"><button class="btn small" id="g_reset">Esqueci a senha</button><span style="flex:1"></span><button class="btn" id="g_new">Criar acesso</button><button class="btn primary" id="g_in">Entrar</button></div>
-    <p class="muted" style="font-size:.8rem;margin:0">Primeira vez? Digite e-mail e uma senha e toque em Criar acesso. <button class="btn small" id="g_cfgchg" style="margin-left:4px">Trocar configuração</button></p>`);
+    <div class="foot" style="justify-content:space-between"><button class="btn small" id="g_reset">Esqueci a senha</button><span style="flex:1"></span>${FIREBASE_CONFIG?"":'<button class="btn" id="g_new">Criar acesso</button>'}<button class="btn primary" id="g_in">Entrar</button></div>
+    ${FIREBASE_CONFIG ? `<p class="muted" style="font-size:.8rem;margin:0;text-align:center">Acesso restrito à equipe. Novos usuários são cadastrados pelo administrador.</p>` : `<p class="muted" style="font-size:.8rem;margin:0">Primeira vez? Digite e-mail e uma senha e toque em Criar acesso. <button class="btn small" id="g_cfgchg" style="margin-left:4px">Trocar configuração</button></p>`}`);
   const em = () => document.getElementById("g_email").value.trim(), pw = () => document.getElementById("g_pass").value;
   const err = e => { document.getElementById("g_err").style.color = "var(--bad)"; document.getElementById("g_err").textContent = AUTH_ERR[e && e.code] || ("Não foi possível entrar ("+((e && e.code)||"erro")+")."); };
   const auth = firebase.auth();
   document.getElementById("g_in").onclick = () => auth.signInWithEmailAndPassword(em(), pw()).catch(err);
   document.getElementById("g_form").onsubmit = e => { e.preventDefault(); auth.signInWithEmailAndPassword(em(), pw()).catch(err); };
   document.getElementById("g_pass").onkeydown = e => { if(e.key==="Enter"){ e.preventDefault(); auth.signInWithEmailAndPassword(em(), pw()).catch(err); } };
-  document.getElementById("g_new").onclick = () => auth.createUserWithEmailAndPassword(em(), pw()).catch(err);
+  if(document.getElementById("g_new")) document.getElementById("g_new").onclick = () => auth.createUserWithEmailAndPassword(em(), pw()).catch(err);
   document.getElementById("g_reset").onclick = () => { if(!em()){ document.getElementById("g_err").textContent = "Digite seu e-mail primeiro."; return; } auth.sendPasswordResetEmail(em()).then(() => { const g = document.getElementById("g_err"); g.style.color = "var(--ok, #1f7a4d)"; g.textContent = "Pronto! Enviamos um e-mail para "+em()+" com o link para criar uma senha nova. Procure também em Spam e em Promoções (remetente noreply@...firebaseapp.com). O link vale por 1 hora. Depois de trocar, volte aqui e toque em Entrar com a senha nova."; }).catch(err); };
-  document.getElementById("g_cfgchg").onclick = () => { if(FIREBASE_CONFIG) return; try{ localStorage.removeItem("marmitex-fb"); }catch(e){} location.reload(); };
+  if(document.getElementById("g_cfgchg")) document.getElementById("g_cfgchg").onclick = () => { if(FIREBASE_CONFIG) return; try{ localStorage.removeItem("marmitex-fb"); }catch(e){} location.reload(); };
 }
 function start(){
   const cfg = getCfg();
