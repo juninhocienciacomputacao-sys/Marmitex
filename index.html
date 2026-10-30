@@ -325,6 +325,7 @@ function titulo(s){
     return m[1] + out + m[3];
   }).join(" ");
 }
+const nomeCompleto = n => String(n||"").trim().split(/\s+/).filter(w => /\p{L}{2,}/u.test(w) && !/^(de|da|do|das|dos|e)$/i.test(w)).length >= 2;
 const CAMPOS_TITULO = ["nome","rua","complemento","bairro","cidade"];
 function padronizarCliente(obj){
   if(!obj || typeof obj!=="object") return obj;
@@ -1039,7 +1040,7 @@ function formCliente(c, pre){
   openModal(`
     <h2>${novo?"Novo cliente":"Editar cliente"}</h2>
     <form id="fc" class="form">
-      <label class="f c4">Nome<input type="text" id="c_nome" required value="${esc(c.nome)}"></label>
+      <label class="f c4">Nome e sobrenome<input type="text" id="c_nome" required placeholder="Ex.: Maria Souza" value="${esc(c.nome)}"></label>
       <label class="f c2">Telefone (WhatsApp)<input type="tel" id="c_tel" placeholder="(11) 91234-5678" value="${esc(c.telefone?fmtPhone(c.telefone):"")}"></label>
       <label class="f c4">Rua / avenida<input type="text" id="c_rua" value="${esc(c.rua)}"></label>
       <label class="f c2">Número<input type="text" id="c_num" value="${esc(c.numero)}"></label>
@@ -1069,6 +1070,7 @@ function formCliente(c, pre){
     $("#c_plano").onchange = fillFromPlan; $("#c_ini").onchange = () => { if($("#c_plano").value) fillFromPlan(); };
     $("#c_save").onclick = async () => {
       const nome = $("#c_nome").value.trim(); if(!nome){ toast("Preencha o nome."); $("#c_nome").focus(); return; }
+      if(!nomeCompleto(nome)){ toast("Preencha o nome e o sobrenome."); $("#c_nome").focus(); return; }
       const tel = normPhone($("#c_tel").value);
       const data = Object.assign({}, c, {nome, telefone:tel, rua:$("#c_rua").value.trim(), numero:$("#c_num").value.trim(), complemento:$("#c_comp").value.trim(), bairro:$("#c_bairro").value.trim(), cidade:$("#c_cid").value.trim(), referencia:$("#c_ref").value.trim(), entregaModo:$("#c_ent").value, pagamento:$("#c_pag").value, planoId:$("#c_plano").value, inicio:$("#c_ini").value, fim:$("#c_fim").value, marmitasContratadas:Number($("#c_qtd").value)||0, obs:$("#c_obs").value.trim(), indicadoPor:$("#c_ind").value, ativo:$("#c_ativo").checked, atualizado:new Date().toISOString()});
       let id = c.id || (tel || uid());

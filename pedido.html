@@ -69,7 +69,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
   <section class="card" id="menuBox" hidden><h2>Hoje tem</h2><ul id="menu"></ul><p class="muted" id="menuObs" style="margin:0"></p></section>
   <section class="card" id="formBox" hidden>
     <label>Seu WhatsApp (com DDD)<input type="tel" id="tel" inputmode="tel" autocomplete="tel" placeholder="(11) 91234-5678"></label>
-    <label>Seu nome<input type="text" id="nome" autocomplete="name"></label>
+    <label>Nome e sobrenome<input type="text" id="nome" autocomplete="name" placeholder="Ex.: Maria Souza"></label>
     <div class="ja" id="jaBox" hidden><div>Você já pediu <b id="jaQ"></b> para este dia. O que deseja fazer?</div>
       <div class="modos"><button type="button" id="mAlt" aria-pressed="false">Alterar quantidade</button><button type="button" id="mComp" aria-pressed="false">Complementar pedido</button></div></div>
     <div id="qBox"><div style="font-weight:700;font-size:.9rem;color:var(--muted);margin-bottom:6px" id="qTit">Quantas marmitas?</div>
@@ -141,6 +141,7 @@ function prazoTxt(){ const l = limite(); if(!l) return ""; return "pedidos até 
 // Pix copia e cola (padrão do Banco Central)
 const semAcento = t => String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^A-Za-z0-9 .-]/g,"").trim();
 function crc16(t){ let c = 0xFFFF; for(let i=0;i<t.length;i++){ c ^= t.charCodeAt(i)<<8; for(let j=0;j<8;j++) c = (c & 0x8000) ? ((c<<1)^0x1021) & 0xFFFF : (c<<1) & 0xFFFF; } return c.toString(16).toUpperCase().padStart(4,"0"); }
+const nomeCompleto = n => String(n||"").trim().split(/\s+/).filter(w => /\p{L}{2,}/u.test(w) && !/^(de|da|do|das|dos|e)$/i.test(w)).length >= 2;
 function pixCode(chave, valor, nome, cidade, txid){
   const f = (id, v) => id + String(v.length).padStart(2,"0") + v;
   const p = f("00","01") + f("26", f("00","BR.GOV.BCB.PIX") + f("01", chave)) + f("52","0000") + f("53","986") + (valor ? f("54", valor.toFixed(2)) : "") + f("58","BR") + f("59", semAcento(nome).slice(0,25)||"RESTAURANTE") + f("60", semAcento(cidade).slice(0,15)||"BRASIL") + f("62", f("05", String(txid||"").replace(/[^A-Za-z0-9]/g,"").slice(0,25)||"***")) + "6304";
@@ -222,6 +223,7 @@ async function enviar(q){
   $("#err").textContent = "";
   if(tel.length<12 || tel.length>13){ $("#err").textContent = "Digite seu WhatsApp com DDD, por exemplo (11) 91234-5678."; $("#tel").focus(); return; }
   if(!nome){ $("#err").textContent = "Digite seu nome."; $("#nome").focus(); return; }
+  if(!nomeCompleto(nome)){ $("#err").textContent = "Digite seu nome e sobrenome."; $("#nome").focus(); return; }
   const comp = q>0 && modo==="comp" && ja && ja.q>0, antes = ja && ja.q>0 ? ja.q : 0;
   const total = comp ? Math.min(20, antes+q) : q;
   if(comp && antes+q>20){ $("#err").textContent = "O máximo por pedido é 20 marmitas. Fale com a gente pelo WhatsApp."; return; }
