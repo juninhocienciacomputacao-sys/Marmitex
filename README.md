@@ -87,6 +87,17 @@ Quem já pediu e abre o link de novo vê "Você já pediu X marmitas" e escolhe:
 No Financeiro, se o cliente pagou e depois aumentou, aparece só o valor que falta ("Complemento").
 Depois desta atualização, publique de novo as regras do Firebase (Ajustes > Regras do Firebase).
 
+## Financeiro automático
+
+- **A receber** mostra tudo que falta receber: avulsos dos últimos 30 dias (inclusive de dias anteriores, o "fiado"), planos novos e congeladas.
+- **Cobrar** abre o WhatsApp do cliente com a mensagem de cobrança e o Pix copia e cola já com o valor.
+- Quem pagou pelo link e marcou "Já paguei" aparece com **Pix informado**. Depois de conferir no banco, o botão **Dar baixa** lança todos de uma vez.
+- **Despesas fixas do mês**: cadastre uma vez (aluguel, funcionários, luz, internet) com o dia do vencimento. O sistema lança sozinho todo mês, sem repetir.
+
+## Controle diário, semanal e mensal
+
+Em **Relatórios**, escolha o período e **Por dia**, **Por semana** ou **Por mês**. A tabela mostra marmitas (plano e avulsas), quanto entrou, quanto saiu e o lucro de cada linha. O botão **Baixar (.csv)** abre no Excel.
+
 ## Pagamento
 
 Preencha em **Ajustes** a chave Pix (o sistema já arruma o formato: telefone vira +55, CPF/CNPJ só números) e marque as formas de pagamento aceitas. Com a chave, o cliente avulso recebe o Pix copia e cola e o QR Code na hora do pedido. Sem a chave, a página mostra o valor, as formas aceitas e um botão para combinar no WhatsApp. Enquanto faltar nome, Pix ou WhatsApp do restaurante, a tela **Dia** avisa.
