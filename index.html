@@ -262,7 +262,7 @@ const icon = id => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" s
 // ---------- state ----------
 const DEFAULT_CONFIG = {pagamentosAceitos:["Pix","Dinheiro","Cartão de débito","Cartão de crédito"], restaurante:"", meuNomeWhats:"", horarioLimite:"10:30", alertaSaldo:3, alertaDias:5, msgAlerta:"Olá {nome}! Restam {saldo} marmitas no seu plano {plano}, que vai até {fim}. Quer renovar?", enderecoRestaurante:"", cidade:"", custoMarmita:0, custoFixoMensal:0, telefoneRestaurante:"", premioIndicacao:"1 marmita grátis", autoPlano:true, abertos:[], feriadosLocais:"", cuidados:"", validadeCong:60, prazoTipo:"mesmo", pixChave:"", pixNome:"", pixCidade:"", horaEntrega:"", autoCadastro:true, estoqueCong:0, estoqueMinCong:0, movCong:[], modulos:{clientes:true,planos:true,congeladas:true,precos:true,cardapio:true,calendario:true,relatorios:true,entregas:true,financeiro:true,marketing:true}};
 const S = {clientes:[], planos:[], cardapios:{}, config:structuredClone(DEFAULT_CONFIG), tab:"hoje", loaded:{}, mode:"loading",
-  busca:"", filtro:"todos", mostrar:100, cardData:today(), calMes:today().slice(0,7), pedidos:{}, respostas:[], ready:{}, acesso:{emails:[], info:{}}, entregadores:[], pacotes:[], encomendas:[], precos:[], promocoes:[], assinaturas:[], cgFiltro:"abertas", fin:{}, finPeriodo:"mes", diaData:today(), confBusca:"", relPeriodo:"7", relTipo:"todos"};
+  busca:"", filtro:"todos", mostrar:100, cardData:today(), calMes:today().slice(0,7), pedidos:{}, respostas:[], ready:{}, acesso:{emails:[], info:{}}, entregadores:[], pacotes:[], encomendas:[], precos:[], promocoes:[], assinaturas:[], cgFiltro:"abertas", fin:{}, finPeriodo:"mes", diaData:today(), confBusca:"", relPeriodo:"7", relTipo:"todos", relGrupo:"dia"};
 
 // Erro de permissão do Firebase: mostra o e-mail e entrega as regras prontas
 function avisoPermissao(col, e){
@@ -777,7 +777,7 @@ function padronizarCadastrados(){
     if(Object.keys(patch).length) enqueue(() => Store.update("clientes", c.id, patch));
   });
 }
-function automacoes(){ clearTimeout(autoT); autoT = setTimeout(() => { if(S.ready.config) diagnostico(false); syncInfo(); syncCatalogo(); syncPedidosPub(); processarAssinaturas(); syncConhecidos(); fecharFeriados(); autoPlanoDia(today()); autoPlanoDia(S.diaData); processarRespostas(); padronizarCadastrados(); }, 400); }
+function automacoes(){ clearTimeout(autoT); autoT = setTimeout(() => { if(S.ready.config) diagnostico(false); syncInfo(); syncCatalogo(); syncPedidosPub(); processarAssinaturas(); syncConhecidos(); fecharFeriados(); autoPlanoDia(today()); autoPlanoDia(S.diaData); processarRespostas(); padronizarCadastrados(); lancarFixas(); }, 400); }
 function setPedidoCampos(d, patch){
   const existed = !!S.pedidos[d];
   S.pedidos[d] = Object.assign({data:d, confirmados:{}}, S.pedidos[d], patch);
@@ -1838,6 +1838,13 @@ function dadosRel(){
   const [ini,fim] = periodo();
   const dias = Object.keys(S.pedidos).filter(d => d>=ini && d<=fim).sort();
   const porDia = dias.map(d => { const c = confirmadosDia(d); const pl = c.filter(x=>!x.avulso).reduce((s,x)=>s+x.qtd,0), av = c.filter(x=>x.avulso).reduce((s,x)=>s+x.qtd,0); return {d, cli:c.length, pl, av, rec:av*(Number(S.cardapios[d] && S.cardapios[d].preco)||0)}; }).filter(x => x.pl+x.av>0);
+  // Agrupado por dia, semana ou mês, com o dinheiro que entrou e saiu (Financeiro)
+  const chave = d => { if(S.relGrupo==="mes") return d.slice(0,7); if(S.relGrupo==="semana"){ const x = parseIso(d); x.setDate(x.getDate()-((x.getDay()+6)%7)); return iso(x); } return d; };
+  const grupos = {};
+  const g = k => grupos[k] ||= {k, cli:0, pl:0, av:0, recebido:0, despesas:0};
+  porDia.forEach(x => { const o = g(chave(x.d)); o.cli += x.cli; o.pl += x.pl; o.av += x.av; });
+  lancamentos(ini, fim).forEach(l => { const o = g(chave(l.data)); if(l.tipo==="receita") o.recebido += l.valor; else o.despesas += l.valor; });
+  const porGrupo = Object.values(grupos).sort((a,b) => a.k.localeCompare(b.k));
   const porCli = {};
   S.clientes.filter(c => c.ativo!==false && c.planoId).forEach(c => porCli[c.id] = {c, pl:0, av:0, dias:0});
   dias.forEach(d => confirmadosDia(d).forEach(x => { const o = porCli[x.id] ||= {c:x.cliente, pl:0, av:0, dias:0}; o.dias++; if(x.avulso) o.av += x.qtd; else o.pl += x.qtd; }));
@@ -1845,18 +1852,21 @@ function dadosRel(){
   if(S.relTipo==="plano") cli = cli.filter(o => o.c.planoId);
   if(S.relTipo==="avulso") cli = cli.filter(o => !o.c.planoId || o.av>0);
   cli.sort((a,b) => (b.pl+b.av)-(a.pl+a.av) || (a.c.nome||"").localeCompare(b.c.nome||"","pt-BR"));
-  return {ini, fim, porDia, cli};
+  return {ini, fim, porDia, porGrupo, cli};
 }
 VIEWS.relatorios = () => {
   const r = dadosRel();
   const tPl = r.porDia.reduce((s,x)=>s+x.pl,0), tAv = r.porDia.reduce((s,x)=>s+x.av,0), tRec = r.porDia.reduce((s,x)=>s+x.rec,0);
-  const max = Math.max(1, ...r.porDia.map(x=>x.pl+x.av));
+  const max = Math.max(1, ...r.porGrupo.map(x=>x.pl+x.av));
+  const rotulo = k => S.relGrupo==="mes" ? MESES[Number(k.slice(5,7))-1]+"/"+k.slice(0,4) : S.relGrupo==="semana" ? "Semana "+fmtDate(k).slice(0,5)+" a "+fmtDate(addDays(k,6)).slice(0,5) : DOW[parseIso(k).getDay()]+" "+fmtDate(k);
+  const tRecebido = r.porGrupo.reduce((s,x)=>s+x.recebido,0), tDesp = r.porGrupo.reduce((s,x)=>s+x.despesas,0);
   const planoCli = S.clientes.filter(c=>c.ativo!==false && c.planoId);
   const saldoTotal = planoCli.reduce((s,c)=>s+Math.max(0, c.marmitasContratadas?saldo(c):0),0);
   return `
   <div class="head"><div><h1>Relatórios</h1><p>${fmtDate(r.ini)} a ${fmtDate(r.fim)}</p></div>
     <div class="row">
       <select id="relP" style="width:auto" aria-label="Período">${[["hoje","Hoje"],["7","Últimos 7 dias"],["30","Últimos 30 dias"],["mes","Este mês"],["mespass","Mês passado"]].map(([v,t])=>`<option value="${v}" ${S.relPeriodo===v?"selected":""}>${t}</option>`).join("")}</select>
+      <select id="relG" style="width:auto" aria-label="Agrupar">${[["dia","Por dia"],["semana","Por semana"],["mes","Por mês"]].map(([v,t])=>`<option value="${v}" ${S.relGrupo===v?"selected":""}>${t}</option>`).join("")}</select>
       <select id="relT" style="width:auto" aria-label="Tipo de cliente">${[["todos","Todos os clientes"],["plano","Só de plano"],["avulso","Só avulsos"]].map(([v,t])=>`<option value="${v}" ${S.relTipo===v?"selected":""}>${t}</option>`).join("")}</select>
     </div></div>
   <div class="stats">
@@ -1865,10 +1875,16 @@ VIEWS.relatorios = () => {
     <div class="stat"><b>${tAv}</b><span>avulsas${tRec?" · "+brl(tRec):""}</span></div>
     <div class="stat"><b>${saldoTotal}</b><span>marmitas ainda a entregar nos planos</span></div>
   </div>
-  <section style="display:flex;flex-direction:column;gap:10px"><div class="row" style="justify-content:space-between"><h2>Por dia</h2><button class="btn small" id="csvDias" ${r.porDia.length?"":"disabled"}>Baixar (.csv)</button></div>
-    ${r.porDia.length ? `<div class="tablebox"><table><thead><tr><th>Dia</th><th>Clientes</th><th>Plano</th><th>Avulsas</th><th>Total</th><th style="width:30%"></th></tr></thead><tbody>
-    ${r.porDia.map(x=>{const dd=parseIso(x.d);return `<tr><td class="num">${DOW[dd.getDay()]} ${fmtDate(x.d)}</td><td class="num">${x.cli}</td><td class="num">${x.pl}</td><td class="num">${x.av}</td><td class="num"><b>${x.pl+x.av}</b></td><td><span class="bar" style="width:${x.pl/max*100}%"></span><span class="bar av" style="width:${x.av/max*100}%"></span></td></tr>`}).join("")}
-    </tbody></table></div>` : `<div class="panel empty">Nenhum pedido confirmado neste período.</div>`}
+  <div class="stats">
+    <div class="stat"><b style="color:var(--ok)">${brl(tRecebido)}</b><span>recebido no período</span></div>
+    <div class="stat"><b style="color:var(--bad)">${brl(tDesp)}</b><span>despesas no período</span></div>
+    <div class="stat"><b style="color:${tRecebido-tDesp>=0?"var(--ok)":"var(--bad)"}">${brl(tRecebido-tDesp)}</b><span>lucro no período</span></div>
+    <div class="stat"><b>${tPl+tAv ? brl(tDesp/(tPl+tAv)) : "—"}</b><span>gasto por marmita (com despesas fixas)</span></div>
+  </div>
+  <section style="display:flex;flex-direction:column;gap:10px"><div class="row" style="justify-content:space-between"><h2>${{dia:"Controle por dia",semana:"Controle por semana",mes:"Controle por mês"}[S.relGrupo]||"Controle por dia"}</h2><button class="btn small" id="csvDias" ${r.porGrupo.length?"":"disabled"}>Baixar (.csv)</button></div>
+    ${r.porGrupo.length ? `<div class="tablebox"><table><thead><tr><th>${{dia:"Dia",semana:"Semana",mes:"Mês"}[S.relGrupo]||"Dia"}</th><th>Pedidos</th><th>Plano</th><th>Avulsas</th><th>Total</th><th>Recebido</th><th>Despesas</th><th>Lucro</th><th style="width:18%"></th></tr></thead><tbody>
+    ${r.porGrupo.map(x=>`<tr><td class="num">${esc(rotulo(x.k))}</td><td class="num">${x.cli}</td><td class="num">${x.pl}</td><td class="num">${x.av}</td><td class="num"><b>${x.pl+x.av}</b></td><td class="num">${brl(x.recebido)}</td><td class="num">${brl(x.despesas)}</td><td class="num" style="color:${x.recebido-x.despesas>=0?"var(--ok)":"var(--bad)"}">${brl(x.recebido-x.despesas)}</td><td><span class="bar" style="width:${x.pl/max*100}%"></span><span class="bar av" style="width:${x.av/max*100}%"></span></td></tr>`).join("")}
+    </tbody></table></div>` : `<div class="panel empty">Nenhum pedido ou lançamento neste período.</div>`}
   </section>
   <section style="display:flex;flex-direction:column;gap:10px"><div class="row" style="justify-content:space-between"><h2>Relação de clientes</h2><button class="btn small" id="csvCli" ${r.cli.length?"":"disabled"}>Baixar (.csv)</button></div>
     ${r.cli.length ? `<div class="tablebox"><table><thead><tr><th>Cliente</th><th>Tipo</th><th>Plano</th><th>Marmitas no período</th><th>Contratadas</th><th>Saldo</th><th>Fim</th><th>Situação</th></tr></thead><tbody>
@@ -1880,8 +1896,9 @@ VIEWS.relatorios = () => {
 BIND.relatorios = () => {
   $("#relP").onchange = e => { S.relPeriodo = e.target.value; render(); };
   $("#relT").onchange = e => { S.relTipo = e.target.value; render(); };
+  $("#relG").onchange = e => { S.relGrupo = e.target.value; render(); };
   const r = dadosRel();
-  const a = $("#csvDias"); if(a) a.onclick = () => baixar("marmitas-por-dia-"+r.ini+"-a-"+r.fim+".csv", toCsv([["Dia","Clientes","Plano","Avulsas","Total","Receita avulsas"], ...r.porDia.map(x=>[fmtDate(x.d),x.cli,x.pl,x.av,x.pl+x.av,String(x.rec.toFixed(2)).replace(".",",")])]));
+  const a = $("#csvDias"); if(a) a.onclick = () => baixar("controle-por-"+(S.relGrupo||"dia")+"-"+r.ini+"-a-"+r.fim+".csv", toCsv([[{dia:"Dia",semana:"Semana (início)",mes:"Mês"}[S.relGrupo]||"Dia","Pedidos","Plano","Avulsas","Total","Recebido","Despesas","Lucro"], ...r.porGrupo.map(x=>[S.relGrupo==="mes"?x.k.slice(5,7)+"/"+x.k.slice(0,4):fmtDate(x.k),x.cli,x.pl,x.av,x.pl+x.av,...[x.recebido,x.despesas,x.recebido-x.despesas].map(v=>v.toFixed(2).replace(".",","))])]));
   const b = $("#csvCli"); if(b) b.onclick = () => baixar("clientes-"+r.ini+"-a-"+r.fim+".csv", toCsv([["Cliente","Telefone","Tipo","Plano","Marmitas no período","Avulsas","Contratadas","Saldo","Início","Fim","Situação","Pagamento","Endereço"], ...r.cli.map(o=>{const c=o.c;return [c.nome||"",fmtPhone(c.telefone),c.planoId?"Plano":"Avulso",plano(c.planoId)?.nome||"",o.pl+o.av,o.av,c.planoId?(c.marmitasContratadas||0):"",c.planoId&&c.marmitasContratadas?saldo(c):"",c.inicio?fmtDate(c.inicio):"",c.fim?fmtDate(c.fim):"",statusCliente(c).t,c.pagamento||"",enderecoTxt(c)];})]));
 };
 
@@ -2141,7 +2158,7 @@ function custos(){
   const calc = m>=20 && variavel>0 ? variavel/m : 0;
   return {
     porMarmita: calc || Number(S.config.custoMarmita)||0, porMarmitaCalc: calc,
-    fixoMes: Number(S.config.custoFixoMensal)||fixo, fixoCalc: fixo, marmitas30: m
+    fixoMes: Number(S.config.custoFixoMensal)||totalFixas()||fixo, fixoCalc: fixo, marmitas30: m
   };
 }
 function previsao(){
@@ -2165,12 +2182,37 @@ function previsao(){
   return {c, diasAbertos, diasDoCalendario:dias.length>0, mediaDia, mediaAv, precoAv, renov, recAv, receita, despesa, lucro:receita-despesa, marmitasPrev, saldoTotal, custoPlanos:saldoTotal*c.porMarmita, precoMedio, margemUn, equilibrio: margemUn>0 ? Math.ceil(c.fixoMes/margemUn) : null};
 }
 function aReceber(){
-  const d = S.diaData, preco = Number(S.cardapios[d] && S.cardapios[d].preco)||0;
-  const av = confirmadosDia(d).filter(x=>x.avulso && x.qtd>0).map(x => { const pago = avPagoValor(d, x.id), falta = Math.round((x.qtd*preco - pago)*100)/100; return falta<=0.009 ? null : {tipo:"av", id:"av-"+d+"-"+x.id+(pago>0?"-"+x.qtd:""), c:x.cliente, valor:falta, desc:(pago>0?"Complemento: ":"")+x.qtd+" avulsa(s) em "+fmtDate(d)+(pago>0?" (já pago "+brl(pago)+")":""), d}; }).filter(Boolean);
-  const pl = S.clientes.filter(c => c.ativo!==false && c.planoId && c.inicio && c.inicio>=addDays(today(),-45)).map(c => ({tipo:"pl", id:"pl-"+c.id+"-"+c.inicio, c, valor:Number(plano(c.planoId)?.preco)||0, desc:"Plano "+(plano(c.planoId)?.nome||"")+" desde "+fmtDate(c.inicio)}));
+  const ini = addDays(today(),-DIAS_FIADO), fim = S.diaData>today() ? S.diaData : today();
+  const dias = Object.keys(S.pedidos).filter(d => d>=ini && d<=fim).sort().reverse();
+  const av = dias.flatMap(d => { const preco = Number(S.cardapios[d] && S.cardapios[d].preco)||0; if(!preco) return [];
+    return confirmadosDia(d).filter(x=>x.avulso && x.qtd>0).map(x => { const pago = avPagoValor(d, x.id), falta = Math.round((x.qtd*preco - pago)*100)/100; return falta<=0.009 ? null : {tipo:"av", id:"av-"+d+"-"+x.id+(pago>0?"-"+x.qtd:""), c:x.cliente, valor:falta, pix:x.pixInf, desc:(pago>0?"Complemento: ":"")+x.qtd+" avulsa(s) em "+fmtDate(d)+(pago>0?" (já pago "+brl(pago)+")":""), d}; }).filter(Boolean); });
+  const pl = S.clientes.filter(c => c.ativo!==false && c.planoId && c.inicio && c.inicio>=addDays(today(),-45)).map(c => ({tipo:"pl", id:"pl-"+c.id+"-"+c.inicio, c, pix:!!c.planoPixInformado, valor:Number(plano(c.planoId)?.preco)||0, desc:"Plano "+(plano(c.planoId)?.nome||"")+" desde "+fmtDate(c.inicio)}));
   const cg = modOn("congeladas") ? S.encomendas.filter(e => !e.pago && e.data<=addDays(today(),7)).map(e => ({tipo:"cg", id:"cg-"+e.id, enc:e, c:idx().porId.get(e.clienteId)||{nome:"(cliente apagado)"}, valor:Number(e.valor)||0, desc:"Congeladas: "+descEnc(e)+" · entrega "+fmtDate(e.data)})) : [];
   const pagos = new Set(todosLanc().map(l=>l.id));
   return [...av, ...pl, ...cg].filter(x => !pagos.has(x.id));
+}
+const DIAS_FIADO = 30;
+// Despesas fixas mensais (aluguel, funcionários...): lançadas sozinhas no dia do vencimento
+const fixas = () => (Array.isArray(S.config.fixas) ? S.config.fixas : []).filter(f => f && Number(f.valor)>0);
+const totalFixas = () => fixas().reduce((s,f) => s+Number(f.valor), 0);
+function diaVenc(f, mes){ const ult = new Date(Number(mes.slice(0,4)), Number(mes.slice(5,7)), 0).getDate(); return mes+"-"+pad(Math.min(ult, Math.max(1, Number(f.dia)||1))); }
+function lancarFixas(){
+  if(!prontos("financeiro","config")) return;
+  const t = today(), mes = t.slice(0,7);
+  fixas().forEach(f => {
+    const d = diaVenc(f, mes), id = "fx-"+f.id+"-"+mes;
+    if(d > t || (f.desde && d < f.desde)) return;
+    if(S.fin[d] && S.fin[d].itens && S.fin[d].itens[id]) return; // já lançada (mesmo se apagada à mão)
+    addLanc(d, id, {tipo:"despesa", cat:f.cat||"Outros", valor:Number(f.valor), desc:(f.desc||f.cat||"Despesa fixa")+" (fixa do mês)", pag:f.pag||"", auto:true});
+  });
+}
+function msgCobranca(x){
+  const pix = pixCode(x.valor, x.id);
+  return "Oi, "+String(x.c.nome||"").split(" ")[0]+"! Tudo bem? Passando para lembrar do pagamento de "+x.desc+": *"+brl(x.valor)+"*."+(pix ? "\n\nPix copia e cola:\n"+pix : "")+"\n\nSe já pagou, pode desconsiderar esta mensagem. Obrigado! 💚";
+}
+function receberItem(x){
+  if(x.enc){ marcarPagoCong(x.enc, true); return; }
+  addLanc(today(), x.id, {tipo:"receita", cat:x.tipo==="av"?"Avulso":"Plano", valor:x.valor, desc:x.c.nome+" · "+x.desc, pag:x.pix?"Pix":(x.c.pagamento||""), clienteId:x.c.id});
 }
 VIEWS.financeiro = () => {
   const [ini,fim] = periodoFin(), l = lancamentos(ini,fim);
@@ -2191,9 +2233,10 @@ VIEWS.financeiro = () => {
     <div class="stat"><b style="color:var(--warn)">${brl(arTot)}</b><span>a receber (${ar.length})</span></div>
   </div>
   <section style="display:flex;flex-direction:column;gap:10px"><h2>A receber</h2>
-    <p class="muted" style="margin:0">Avulsos confirmados em ${fmtDate(S.diaData)} e planos iniciados nos últimos 45 dias sem pagamento lançado. Toque em Recebido quando o cliente pagar.</p>
+    <p class="muted" style="margin:0">Avulsos dos últimos ${DIAS_FIADO} dias, planos iniciados nos últimos 45 dias e congeladas, ainda sem pagamento lançado. Toque em <b>Cobrar</b> para mandar a cobrança com o Pix pelo WhatsApp e em <b>Recebido</b> quando o cliente pagar.</p>
+    ${ar.some(x=>x.pix) ? `<div class="row"><button class="btn small primary" id="receberPix">Dar baixa nos ${ar.filter(x=>x.pix).length} que informaram Pix (${brl(ar.filter(x=>x.pix).reduce((s,x)=>s+x.valor,0))})</button><span class="muted" style="font-size:.85rem">Confira no app do banco antes.</span></div>` : ""}
     ${ar.length ? `<div class="tablebox"><table><thead><tr><th>Cliente</th><th>O quê</th><th>Pagamento</th><th>Valor</th><th></th></tr></thead><tbody>
-    ${ar.map((x,i)=>`<tr><td><b>${esc(x.c.nome)}</b><div class="muted" style="font-size:.8rem">${fmtPhone(x.c.telefone)}</div></td><td>${esc(x.desc)}</td><td>${esc(x.c.pagamento||"—")}</td><td class="num">${brl(x.valor)}</td><td><button class="btn small primary" data-receber="${i}">Recebido</button></td></tr>`).join("")}
+    ${ar.map((x,i)=>`<tr><td><b>${esc(x.c.nome)}</b><div class="muted" style="font-size:.8rem">${fmtPhone(x.c.telefone)}</div></td><td>${esc(x.desc)}</td><td>${esc(x.c.pagamento||"—")}${x.pix?' <span class="pill warn">Pix informado</span>':""}</td><td class="num">${brl(x.valor)}</td><td><div class="row" style="flex-wrap:nowrap">${x.c.telefone?`<a class="btn small" href="https://wa.me/${esc(x.c.telefone)}?text=${encodeURIComponent(msgCobranca(x))}" target="_blank" rel="noopener">Cobrar</a>`:""}<button class="btn small primary" data-receber="${i}">Recebido</button></div></td></tr>`).join("")}
     </tbody></table></div>` : `<div class="panel empty">Nada pendente.</div>`}
   </section>
   <div class="grid2">
@@ -2206,6 +2249,19 @@ VIEWS.financeiro = () => {
       <button class="btn small" data-go="ajustes" style="align-self:flex-start">Ajustar valores</button>
     </section>
   </div>
+  <section class="panel" style="display:flex;flex-direction:column;gap:10px"><h2>Despesas fixas do mês</h2>
+    <p class="muted" style="margin:0">Cadastre uma vez (aluguel, funcionários, luz, internet...). O sistema lança sozinho todo mês no dia do vencimento.${fixas().length?" Total por mês: <b>"+brl(totalFixas())+"</b>.":""}</p>
+    ${fixas().length ? `<div class="tablebox"><table><thead><tr><th>Despesa</th><th>Categoria</th><th>Vence dia</th><th>Valor</th><th>Este mês</th><th></th></tr></thead><tbody>
+      ${fixas().map(f=>{const m=today().slice(0,7), d=diaVenc(f,m), it=S.fin[d]&&S.fin[d].itens&&S.fin[d].itens["fx-"+f.id+"-"+m]; return `<tr><td>${esc(f.desc||f.cat)}</td><td>${esc(f.cat)}</td><td class="num">${esc(f.dia)}</td><td class="num">${brl(f.valor)}</td><td>${it&&!it.apagado?'<span class="pill ok">lançada</span>':d>today()?'<span class="pill">vence '+fmtDate(d).slice(0,5)+'</span>':'<span class="pill">próximo mês</span>'}</td><td><button class="btn small danger" data-fixdel="${esc(f.id)}" aria-label="Remover">✕</button></td></tr>`;}).join("")}
+    </tbody></table></div>` : ""}
+    <div class="form" style="align-items:end">
+      <label class="f c2">Despesa<input type="text" id="fx_desc" placeholder="Ex.: Aluguel"></label>
+      <label class="f c2">Categoria<select id="fx_cat">${CAT_FIXO.map(c=>`<option>${c}</option>`).join("")}</select></label>
+      <label class="f c1">Valor (R$)<input type="number" step="0.01" min="0" id="fx_valor" inputmode="decimal"></label>
+      <label class="f c1">Dia<input type="number" min="1" max="31" id="fx_dia" inputmode="numeric" placeholder="5"></label>
+      <div class="c2"><button class="btn" id="fx_add">+ Adicionar despesa fixa</button></div>
+    </div>
+  </section>
   <section style="display:flex;flex-direction:column;gap:10px"><h2>Previsão dos próximos 30 dias</h2>
     <div class="stats">
       <div class="stat"><b>${brl(P.custoPlanos)}</b><span>custo para entregar as ${P.saldoTotal} marmitas já vendidas nos planos</span></div>
@@ -2255,7 +2311,16 @@ BIND.financeiro = () => {
   $("#novaDesp").onclick = () => formLanc("despesa");
   document.querySelectorAll("[data-go]").forEach(b => b.onclick = () => go(b.dataset.go));
   const ar = aReceber();
-  document.querySelectorAll("[data-receber]").forEach(b => b.onclick = () => { const x = ar[b.dataset.receber]; if(x.enc){ marcarPagoCong(x.enc, true); render(); toast("Recebimento lançado."); return; } addLanc(today(), x.id, {tipo:"receita", cat:x.tipo==="av"?"Avulso":"Plano", valor:x.valor, desc:x.c.nome+" · "+x.desc, pag:x.c.pagamento||"", clienteId:x.c.id}); render(); toast("Recebimento lançado."); });
+  document.querySelectorAll("[data-receber]").forEach(b => b.onclick = () => { receberItem(ar[b.dataset.receber]); render(); toast("Recebimento lançado."); });
+  const rp = $("#receberPix"); if(rp) rp.onclick = () => { if(!rp.dataset.sure){ rp.dataset.sure = "1"; rp.textContent = "Confirmar: já conferi no banco"; return; } const l = ar.filter(x=>x.pix); l.forEach(receberItem); render(); toast(l.length+" recebimento(s) lançado(s)."); };
+  $("#fx_add").onclick = () => {
+    const valor = Number($("#fx_valor").value), dia = Math.round(Number($("#fx_dia").value));
+    if(!(valor>0)){ toast("Informe o valor."); $("#fx_valor").focus(); return; }
+    if(!(dia>=1 && dia<=31)){ toast("Informe o dia do vencimento (1 a 31)."); $("#fx_dia").focus(); return; }
+    const f = {id:uid(), desc:$("#fx_desc").value.trim()||$("#fx_cat").value, cat:$("#fx_cat").value, valor, dia, desde:today()};
+    saveConfig({fixas:[...fixas(), f]}).then(() => { lancarFixas(); render(); toast(diaVenc(f, today().slice(0,7))>=today() ? "Despesa fixa salva. Será lançada no dia "+dia+"." : "Despesa fixa salva. Será lançada a partir do próximo mês."); });
+  };
+  document.querySelectorAll("[data-fixdel]").forEach(b => b.onclick = () => { if(!b.dataset.sure){ b.dataset.sure = "1"; b.textContent = "Remover?"; return; } saveConfig({fixas:fixas().filter(f => f.id!==b.dataset.fixdel)}).then(() => { render(); toast("Despesa fixa removida. Os lançamentos já feitos continuam."); }); });
   document.querySelectorAll("[data-apagar]").forEach(b => b.onclick = () => { if(b.dataset.sure){ const [d,id] = b.dataset.apagar.split("|"); apagarLanc(d,id); render(); toast("Lançamento apagado."); } else { b.dataset.sure="1"; b.textContent="Apagar?"; } });
   const [ini,fim] = periodoFin();
   const cf = $("#csvFin"); if(cf) cf.onclick = () => baixar("financeiro-"+ini+"-a-"+fim+".csv", toCsv([["Data","Tipo","Categoria","Descrição","Forma de pagamento","Valor"], ...lancamentos(ini,fim).map(x=>[fmtDate(x.data), x.tipo==="receita"?"Receita":"Despesa", x.cat, x.desc||"", x.pag||"", (x.tipo==="despesa"?-x.valor:x.valor).toFixed(2).replace(".",",")])]));
@@ -2584,7 +2649,7 @@ async function boot(){
   Store.watch("cardapios", docs => { S.cardapios = Object.fromEntries(docs.map(d=>[d.id,d])); rerenderSafe(); });
   Store.watch("pedidos", (docs, m) => { S.pedidos = Object.fromEntries(docs.map(d=>[d.id,d])); marcar("pedidos", m); rerenderSafe(); automacoes(); }, addDays(today(),-75));
   if(window.__fs) Store.watch("respostas", (docs, m) => { S.respostas = docs; marcar("respostas", m); rerenderSafe(); automacoes(); }, addDays(today(),-1));
-  Store.watch("financeiro", docs => { S.fin = Object.fromEntries(docs.map(d=>[d.id,d])); rerenderSafe(); }, addDays(today(),-100));
+  Store.watch("financeiro", (docs, m) => { S.fin = Object.fromEntries(docs.map(d=>[d.id,d])); marcar("financeiro", m); rerenderSafe(); automacoes(); }, addDays(today(),-100));
   Store.watch("entregadores", docs => { S.entregadores = docs; rerenderSafe(); });
   Store.watch("pacotes", (docs, m) => { S.pacotes = docs; marcar("pacotes", m); rerenderSafe(); automacoes(); });
   Store.watch("precos", (docs, m) => { S.precos = docs; marcar("precos", m); rerenderSafe(); automacoes(); });
